@@ -1,0 +1,6 @@
+{
+  "name": "Festofy",
+  "description": "A modern event operations platform for student organizations. Plan. Discover. Participate.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

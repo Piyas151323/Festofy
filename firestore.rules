@@ -1,0 +1,286 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all: Deny all reads and writes unless explicitly permitted
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Authoritative Admin: Verified role in userRoles collection.
+    function isAdmin() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/userRoles/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isOrgMember(orgId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        exists(/databases/$(database)/documents/organizationMembers/$(orgId + '_' + request.auth.uid))
+      );
+    }
+
+    function isOrgOwner(orgId) {
+      return isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/organizationMembers/$(orgId + '_' + request.auth.uid)) &&
+         get(/databases/$(database)/documents/organizationMembers/$(orgId + '_' + request.auth.uid)).data.role == 'owner')
+      );
+    }
+
+    // USERS COLLECTION (Private User Profiles)
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) &&
+        request.resource.data.keys().hasAll(['displayName', 'email', 'createdAt', 'updatedAt']) &&
+        request.resource.data.displayName is string && request.resource.data.displayName.size() <= 120 &&
+        request.resource.data.email is string && request.resource.data.email.size() <= 150;
+      allow update: if isOwner(userId) &&
+        request.resource.data.email == resource.data.email &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+      allow delete: if isAdmin();
+    }
+
+    // USER ROLES COLLECTION (RBAC Enforcement)
+    // New accounts can only initialize their own role strictly as 'student'.
+    // Students and organizers CANNOT self-promote or modify any user role.
+    match /userRoles/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if (isOwner(userId) &&
+        request.resource.data.role == 'student' &&
+        request.resource.data.keys().hasAll(['role', 'createdAt', 'updatedAt'])) ||
+        isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ORGANIZATIONS COLLECTION (Clubs & Applications)
+    // - Approved clubs (and legacy docs) are public.
+    // - Pending, rejected, and suspended organization requests are private to requester and admins.
+    // - Authenticated students may create organization requests strictly with status 'pending' and requestedBy == auth.uid.
+    // - Status transitions to approved/rejected/suspended are strictly restricted to administrators.
+    match /organizations/{organizationId} {
+      allow get: if (!('status' in resource.data) || resource.data.status == 'approved') ||
+        (isSignedIn() && (
+          resource.data.requestedBy == request.auth.uid ||
+          isAdmin() ||
+          isOrgMember(organizationId)
+        ));
+      allow list: if (!('status' in resource.data) || resource.data.status == 'approved') ||
+        (isSignedIn() && (
+          resource.data.requestedBy == request.auth.uid ||
+          isAdmin()
+        ));
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.resource.data.status == 'pending' &&
+          request.resource.data.requestedBy == request.auth.uid &&
+          request.resource.data.name is string &&
+          request.resource.data.name.size() >= 2 &&
+          request.resource.data.name.size() <= 120 &&
+          request.resource.data.keys().hasAll(['name', 'status', 'requestedBy', 'requestedAt', 'createdAt', 'updatedAt']) &&
+          request.resource.data.keys().hasOnly(['id', 'name', 'description', 'logoUrl', 'institution', 'status', 'rejectionReason', 'requestedBy', 'requestedAt', 'createdAt', 'updatedAt'])
+        )
+      );
+      allow update: if isSignedIn() && (
+        // Admin Approval: Pending -> Approved atomically coupled with organizer promotion & owner membership
+        (
+          isAdmin() &&
+          resource.data.status == 'pending' &&
+          request.resource.data.status == 'approved' &&
+          request.resource.data.requestedBy == resource.data.requestedBy &&
+          existsAfter(/databases/$(database)/documents/userRoles/$(resource.data.requestedBy)) &&
+          getAfter(/databases/$(database)/documents/userRoles/$(resource.data.requestedBy)).data.role == 'organizer' &&
+          existsAfter(/databases/$(database)/documents/organizationMembers/$(organizationId + '_' + resource.data.requestedBy)) &&
+          getAfter(/databases/$(database)/documents/organizationMembers/$(organizationId + '_' + resource.data.requestedBy)).data.organizationId == organizationId &&
+          getAfter(/databases/$(database)/documents/organizationMembers/$(organizationId + '_' + resource.data.requestedBy)).data.userId == resource.data.requestedBy &&
+          getAfter(/databases/$(database)/documents/organizationMembers/$(organizationId + '_' + resource.data.requestedBy)).data.role == 'owner'
+        ) ||
+        // Admin Rejection: Pending -> Rejected
+        (
+          isAdmin() &&
+          resource.data.status == 'pending' &&
+          request.resource.data.status == 'rejected' &&
+          request.resource.data.requestedBy == resource.data.requestedBy
+        ) ||
+        // Admin Suspension: Approved -> Suspended
+        (
+          isAdmin() &&
+          resource.data.status == 'approved' &&
+          request.resource.data.status == 'suspended'
+        ) ||
+        // General metadata updates on already approved organizations
+        (
+          (isAdmin() || isOrgMember(organizationId)) &&
+          resource.data.status == 'approved' &&
+          request.resource.data.status == 'approved'
+        )
+      );
+      allow delete: if isAdmin() || (isOrgOwner(organizationId) && (!('status' in resource.data) || resource.data.status == 'approved'));
+    }
+
+    // ORGANIZATION MEMBERS (Private Membership Mapping)
+    // Accessible strictly via deterministic key {orgId}_{userId} or filtered by member/org.
+    // Ordinary students CANNOT enumerate all memberships or self-assign ownership.
+    match /organizationMembers/{membershipId} {
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isOrgMember(resource.data.organizationId) ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isOrgMember(resource.data.organizationId) ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        isOrgOwner(request.resource.data.organizationId)
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isOrgOwner(resource.data.organizationId)
+      );
+    }
+
+    // FESTS COLLECTION (Public Discovery)
+    // Only published and completed fests are public; draft/archived fests require organizer/admin access.
+    match /fests/{festId} {
+      allow get: if resource.data.status in ['published', 'completed'] ||
+        (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+      allow list: if resource.data.status in ['published', 'completed'] ||
+        (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (isOrgMember(request.resource.data.organizationId) &&
+         request.resource.data.organizationId is string)
+      );
+      allow update, delete: if isSignedIn() && (
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId)
+      );
+    }
+
+    // EVENT CATEGORIES (Public Taxonomy)
+    match /eventCategories/{categoryId} {
+      allow get, list: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // EVENTS COLLECTION (Public Contests & Challenges)
+    // Only published and completed events are public; draft/cancelled events require organizer/admin access.
+    // Event creation enforces that festId belongs to the exact same organization.
+    match /events/{eventId} {
+      allow get: if resource.data.status in ['published', 'completed'] ||
+        (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+      allow list: if resource.data.status in ['published', 'completed'] ||
+        (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (isOrgMember(request.resource.data.organizationId) &&
+         exists(/databases/$(database)/documents/fests/$(request.resource.data.festId)) &&
+         get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.organizationId == request.resource.data.organizationId)
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId) ||
+        // Atomic capacity increment strictly during valid student registration
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentRegistrations']) &&
+          request.resource.data.currentRegistrations == (('currentRegistrations' in resource.data && resource.data.currentRegistrations != null) ? resource.data.currentRegistrations + 1 : 1) &&
+          resource.data.status == 'published' &&
+          (!('capacity' in resource.data) || resource.data.capacity == null || request.resource.data.currentRegistrations <= resource.data.capacity) &&
+          existsAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.userId == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.eventId == eventId &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.status in ['confirmed', 'pending']
+        ) ||
+        // Atomic capacity decrement strictly during valid student cancellation
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentRegistrations']) &&
+          'currentRegistrations' in resource.data &&
+          resource.data.currentRegistrations > 0 &&
+          request.resource.data.currentRegistrations == resource.data.currentRegistrations - 1 &&
+          existsAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)) &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.userId == request.auth.uid &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.eventId == eventId &&
+          getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.status == 'cancelled'
+        )
+      );
+      allow delete: if isSignedIn() && (
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId)
+      );
+    }
+
+    // REGISTRATIONS COLLECTION (Strictly Private Participant Records)
+    // Students can ONLY read, list, and create registrations where userId == request.auth.uid.
+    // Deterministic key {eventId}_{userId} prevents duplicate concurrent records.
+    match /registrations/{registrationId} {
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId)
+      );
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId)
+      );
+      allow create: if isSignedIn() &&
+        registrationId == request.resource.data.eventId + '_' + request.auth.uid &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.status in ['pending', 'confirmed'] &&
+        request.resource.data.keys().hasAll(['id', 'eventId', 'festId', 'organizationId', 'userId', 'status', 'registeredAt', 'ticketCode']) &&
+        request.resource.data.keys().hasOnly([
+          'id', 'eventId', 'festId', 'organizationId', 'userId', 'ticketCode', 'status',
+          'registrationType', 'studentName', 'studentEmail', 'studentPhone', 'institution',
+          'studentId', 'teamName', 'teamMembers', 'eventName', 'festName', 'categoryName',
+          'venue', 'startTime', 'endTime', 'organizationName', 'registrationData',
+          'registeredAt', 'updatedAt'
+        ]) &&
+        exists(/databases/$(database)/documents/events/$(request.resource.data.eventId)) &&
+        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organizationId == request.resource.data.organizationId &&
+        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.festId == request.resource.data.festId &&
+        get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.status == 'published' &&
+        // Coupled Atomic Counter Increment: Prevents uncounted registrations and capacity bypass
+        existsAfter(/databases/$(database)/documents/events/$(request.resource.data.eventId)) &&
+        getAfter(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.currentRegistrations == (
+          (('currentRegistrations' in get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data &&
+            get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.currentRegistrations != null)
+            ? get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.currentRegistrations + 1
+            : 1)
+        );
+      allow update: if isSignedIn() && (
+        // Atomic Student Cancellation: Only permitted when status transitions from pending/confirmed to cancelled
+        // and coupled with an atomic decrement of currentRegistrations on the event document.
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == request.auth.uid &&
+          resource.data.status in ['pending', 'confirmed'] &&
+          request.resource.data.status == 'cancelled' &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancellationReason', 'updatedAt']) &&
+          existsAfter(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
+          getAfter(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations == (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations - 1)
+        ) ||
+        // Organizer / Admin Management
+        isAdmin() ||
+        isOrgMember(resource.data.organizationId)
+      );
+      allow delete: if isAdmin() || isOrgOwner(resource.data.organizationId);
+    }
+  }
+}
