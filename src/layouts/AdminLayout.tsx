@@ -52,7 +52,7 @@ export const AdminLayout: React.FC = () => {
 
   const handleSignOut = async () => {
     await signOutUser();
-    navigate('/');
+    navigate('/admin');
   };
 
   const isLinkActive = (path: string, exact?: boolean) => {

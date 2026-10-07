@@ -39,6 +39,46 @@ service cloud.firestore {
       );
     }
 
+    function isApprovedOrg(orgId) {
+      return exists(/databases/$(database)/documents/organizations/$(orgId)) &&
+        (!('status' in get(/databases/$(database)/documents/organizations/$(orgId)).data) ||
+         get(/databases/$(database)/documents/organizations/$(orgId)).data.status == 'approved');
+    }
+
+    function isValidFestPayload(data) {
+      return data.name is string &&
+        data.name.size() >= 3 &&
+        data.name.size() <= 150 &&
+        data.description is string &&
+        data.description.size() >= 3 &&
+        data.description.size() <= 3000 &&
+        data.startDate is string &&
+        data.endDate is string &&
+        data.startDate <= data.endDate &&
+        (!('bannerUrl' in data) || data.bannerUrl == null || (data.bannerUrl is string && data.bannerUrl.size() <= 500));
+    }
+
+    function isValidEventPayload(data) {
+      return data.name is string &&
+        data.name.size() >= 3 &&
+        data.name.size() <= 150 &&
+        data.description is string &&
+        data.description.size() >= 3 &&
+        data.description.size() <= 3000 &&
+        data.venue is string &&
+        data.venue.size() >= 2 &&
+        data.venue.size() <= 100 &&
+        data.startTime is string &&
+        data.endTime is string &&
+        data.startTime <= data.endTime &&
+        data.registrationDeadline is string &&
+        data.registrationDeadline <= data.startTime &&
+        data.registrationDeadline <= data.endTime &&
+        data.capacity is int &&
+        data.capacity >= 1 &&
+        data.capacity <= 100000;
+    }
+
     // USERS COLLECTION (Private User Profiles)
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
@@ -72,7 +112,8 @@ service cloud.firestore {
     // - Authenticated students may create organization requests strictly with status 'pending' and requestedBy == auth.uid.
     // - Status transitions to approved/rejected/suspended are strictly restricted to administrators.
     match /organizations/{organizationId} {
-      allow get: if (!('status' in resource.data) || resource.data.status == 'approved') ||
+      allow get: if resource == null ||
+        (!('status' in resource.data) || resource.data.status == 'approved') ||
         (isSignedIn() && (
           resource.data.requestedBy == request.auth.uid ||
           isAdmin() ||
@@ -156,21 +197,95 @@ service cloud.firestore {
       );
     }
 
-    // FESTS COLLECTION (Public Discovery)
-    // Only published and completed fests are public; draft/archived fests require organizer/admin access.
+    // FESTS COLLECTION (Public Discovery & Lifecycle Control)
+    // - Public: Only published and completed fests are public. Draft and archived fests require organization membership or admin.
+    // - Create: Authenticated organizer who is a member of an approved organization may create a fest strictly with status == 'draft' and valid dates.
+    // - Update:
+    //     (1) Metadata edits on draft/published fests by org members, keeping organizationId and createdAt immutable.
+    //     (2) Controlled lifecycle transitions:
+    //         - draft -> published (requires valid dates and approved org)
+    //         - published -> completed
+    //         - completed -> archived
+    //     (3) Admin override.
+    // - Delete: Only draft fests can be deleted by org members (or admins).
     match /fests/{festId} {
       allow get: if resource.data.status in ['published', 'completed'] ||
         (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
       allow list: if resource.data.status in ['published', 'completed'] ||
         (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+
       allow create: if isSignedIn() && (
         isAdmin() ||
-        (isOrgMember(request.resource.data.organizationId) &&
-         request.resource.data.organizationId is string)
+        (
+          isOrgMember(request.resource.data.organizationId) &&
+          isApprovedOrg(request.resource.data.organizationId) &&
+          request.resource.data.status == 'draft' &&
+          isValidFestPayload(request.resource.data) &&
+          request.resource.data.keys().hasAll(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'createdAt', 'updatedAt']) &&
+          (request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'createdAt', 'updatedAt']) ||
+           request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'eventCount', 'createdAt', 'updatedAt'])) &&
+          (!('eventCount' in request.resource.data) || request.resource.data.eventCount == 0)
+        )
       );
-      allow update, delete: if isSignedIn() && (
+
+      allow update: if isSignedIn() && (
         isAdmin() ||
-        isOrgMember(resource.data.organizationId)
+        (
+          isOrgMember(resource.data.organizationId) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          request.resource.data.id == resource.data.id &&
+          (
+            // 1. Metadata updates on draft fests (remains draft)
+            (
+              resource.data.status == 'draft' &&
+              request.resource.data.status == 'draft' &&
+              isValidFestPayload(request.resource.data) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'updatedAt'])
+            ) ||
+            // 2. Metadata updates on published fests (remains published)
+            (
+              resource.data.status == 'published' &&
+              request.resource.data.status == 'published' &&
+              isValidFestPayload(request.resource.data) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'updatedAt'])
+            ) ||
+            // 3. Lifecycle Transition: draft -> published
+            (
+              resource.data.status == 'draft' &&
+              request.resource.data.status == 'published' &&
+              isApprovedOrg(resource.data.organizationId) &&
+              isValidFestPayload(request.resource.data) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo'])
+            ) ||
+            // 4. Lifecycle Transition: published -> completed
+            (
+              resource.data.status == 'published' &&
+              request.resource.data.status == 'completed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            ) ||
+            // 5. Lifecycle Transition: completed -> archived
+            (
+              resource.data.status == 'completed' &&
+              request.resource.data.status == 'archived' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+            ) ||
+            // 6. Atomic eventCount increment/decrement coupled with event mutations
+            (
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eventCount', 'updatedAt']) &&
+              (
+                (request.resource.data.eventCount == (('eventCount' in resource.data && resource.data.eventCount != null) ? resource.data.eventCount + 1 : 1)) ||
+                ('eventCount' in resource.data && resource.data.eventCount > 0 && request.resource.data.eventCount == resource.data.eventCount - 1)
+              )
+            )
+          )
+        )
+      );
+
+      allow delete: if isSignedIn() && (
+        (isAdmin() || isOrgMember(resource.data.organizationId)) &&
+        resource.data.status == 'draft' &&
+        (!('eventCount' in resource.data) || resource.data.eventCount == 0)
       );
     }
 
@@ -180,23 +295,111 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
-    // EVENTS COLLECTION (Public Contests & Challenges)
+    // EVENTS COLLECTION (Public Contests & Challenges Lifecycle)
     // Only published and completed events are public; draft/cancelled events require organizer/admin access.
     // Event creation enforces that festId belongs to the exact same organization.
     match /events/{eventId} {
-      allow get: if resource.data.status in ['published', 'completed'] ||
+      allow get: if (resource.data.status == 'published' &&
+                     resource.data.festStatus == 'published') ||
         (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
-      allow list: if resource.data.status in ['published', 'completed'] ||
+      allow list: if (resource.data.status == 'published' &&
+                      resource.data.festStatus == 'published') ||
         (isSignedIn() && (isAdmin() || isOrgMember(resource.data.organizationId)));
+
       allow create: if isSignedIn() && (
         isAdmin() ||
-        (isOrgMember(request.resource.data.organizationId) &&
-         exists(/databases/$(database)/documents/fests/$(request.resource.data.festId)) &&
-         get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.organizationId == request.resource.data.organizationId)
+        (
+          isOrgMember(request.resource.data.organizationId) &&
+          isApprovedOrg(request.resource.data.organizationId) &&
+          request.resource.data.status == 'draft' &&
+          request.resource.data.currentRegistrations == 0 &&
+          exists(/databases/$(database)/documents/fests/$(request.resource.data.festId)) &&
+          get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.organizationId == request.resource.data.organizationId &&
+          request.resource.data.festStatus == get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.status &&
+          isValidEventPayload(request.resource.data) &&
+          // RULE-LEVEL COUPLING (Part B1): Transaction must atomically increment fest.eventCount:
+          existsAfter(/databases/$(database)/documents/fests/$(request.resource.data.festId)) &&
+          getAfter(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.eventCount == (
+            (('eventCount' in get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data &&
+              get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.eventCount != null)
+              ? get(/databases/$(database)/documents/fests/$(request.resource.data.festId)).data.eventCount + 1
+              : 1)
+          )
+        )
       );
+
       allow update: if isSignedIn() && (
         isAdmin() ||
-        isOrgMember(resource.data.organizationId) ||
+        (
+          isOrgMember(resource.data.organizationId) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.createdAt == resource.data.createdAt &&
+          (
+            // 1. Metadata update on draft event
+            (
+              resource.data.status == 'draft' &&
+              request.resource.data.status == 'draft' &&
+              isValidEventPayload(request.resource.data) &&
+              request.resource.data.currentRegistrations == resource.data.currentRegistrations &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'name', 'description', 'categoryId', 'bannerUrl', 'venue',
+                'startTime', 'endTime', 'registrationDeadline', 'capacity',
+                'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
+                'customFormFields', 'isRegistrationClosed', 'updatedAt',
+                'festName', 'categoryName', 'organizationName'
+              ])
+            ) ||
+            // 2. Metadata update on published event
+            (
+              resource.data.status == 'published' &&
+              request.resource.data.status == 'published' &&
+              isValidEventPayload(request.resource.data) &&
+              request.resource.data.currentRegistrations == resource.data.currentRegistrations &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'name', 'description', 'categoryId', 'bannerUrl', 'venue',
+                'startTime', 'endTime', 'registrationDeadline', 'capacity',
+                'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
+                'customFormFields', 'isRegistrationClosed', 'updatedAt',
+                'festName', 'categoryName', 'organizationName'
+              ])
+            ) ||
+            // 3. Lifecycle Transition: draft -> published (requires parent fest to be published)
+            (
+              resource.data.status == 'draft' &&
+              request.resource.data.status == 'published' &&
+              exists(/databases/$(database)/documents/fests/$(resource.data.festId)) &&
+              get(/databases/$(database)/documents/fests/$(resource.data.festId)).data.status == 'published' &&
+              request.resource.data.festStatus == 'published' &&
+              isValidEventPayload(request.resource.data) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                'status', 'festStatus', 'updatedAt', 'name', 'description', 'categoryId', 'bannerUrl', 'venue',
+                'startTime', 'endTime', 'registrationDeadline', 'capacity',
+                'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
+                'customFormFields', 'isRegistrationClosed', 'festName', 'categoryName', 'organizationName'
+              ])
+            ) ||
+            // 4. Lifecycle Transition: published -> completed
+            (
+              resource.data.status == 'published' &&
+              request.resource.data.status == 'completed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'isRegistrationClosed'])
+            ) ||
+            // 5. Lifecycle Transition: published/draft -> cancelled
+            (
+              resource.data.status in ['published', 'draft'] &&
+              request.resource.data.status == 'cancelled' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'isRegistrationClosed'])
+            ) ||
+            // 6. Parent Fest status synchronization
+            (
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['festStatus', 'updatedAt']) &&
+              exists(/databases/$(database)/documents/fests/$(resource.data.festId)) &&
+              request.resource.data.festStatus == get(/databases/$(database)/documents/fests/$(resource.data.festId)).data.status
+            )
+          )
+        ) ||
         // Atomic capacity increment strictly during valid student registration
         (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentRegistrations']) &&
@@ -220,9 +423,22 @@ service cloud.firestore {
           getAfter(/databases/$(database)/documents/registrations/$(eventId + '_' + request.auth.uid)).data.status == 'cancelled'
         )
       );
+
+      // Draft event deletion: only draft events with 0 registrations can be deleted
       allow delete: if isSignedIn() && (
-        isAdmin() ||
-        isOrgMember(resource.data.organizationId)
+        (isAdmin() || isOrgMember(resource.data.organizationId)) &&
+        resource.data.status == 'draft' &&
+        (!('currentRegistrations' in resource.data) || resource.data.currentRegistrations == 0) &&
+        // RULE-LEVEL COUPLING (Part B2): Transaction must atomically decrement fest.eventCount:
+        (
+          !exists(/databases/$(database)/documents/fests/$(resource.data.festId)) ||
+          (
+            existsAfter(/databases/$(database)/documents/fests/$(resource.data.festId)) &&
+            getAfter(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount == (
+              get(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount - 1
+            )
+          )
+        )
       );
     }
 
@@ -265,7 +481,7 @@ service cloud.firestore {
             : 1)
         );
       allow update: if isSignedIn() && (
-        // Atomic Student Cancellation: Only permitted when status transitions from pending/confirmed to cancelled
+        // 1. Atomic Student Cancellation: Only permitted when status transitions from pending/confirmed to cancelled
         // and coupled with an atomic decrement of currentRegistrations on the event document.
         (
           resource.data.userId == request.auth.uid &&
@@ -276,9 +492,58 @@ service cloud.firestore {
           existsAfter(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
           getAfter(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations == (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations - 1)
         ) ||
-        // Organizer / Admin Management
-        isAdmin() ||
-        isOrgMember(resource.data.organizationId)
+        // 2. Organizer / Admin Operational Management
+        (
+          (isAdmin() || isOrgMember(resource.data.organizationId)) &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.eventId == resource.data.eventId &&
+          request.resource.data.festId == resource.data.festId &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.ticketCode == resource.data.ticketCode &&
+          request.resource.data.registeredAt == resource.data.registeredAt &&
+          (
+            // A. Check-in: confirmed/pending -> checked_in
+            (
+              resource.data.status in ['confirmed', 'pending'] &&
+              request.resource.data.status == 'checked_in' &&
+              request.resource.data.checkedInBy == request.auth.uid &&
+              request.resource.data.checkedInAt is string &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'checkedInAt', 'checkedInBy', 'updatedAt', 'notes'])
+            ) ||
+            // B. Approval: pending -> confirmed
+            (
+              resource.data.status == 'pending' &&
+              request.resource.data.status == 'confirmed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'notes'])
+            ) ||
+            // C. Completion: confirmed/checked_in -> completed
+            (
+              resource.data.status in ['confirmed', 'checked_in'] &&
+              request.resource.data.status == 'completed' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'notes'])
+            ) ||
+            // D. Waitlisted: pending/confirmed -> waitlisted
+            (
+              resource.data.status in ['pending', 'confirmed'] &&
+              request.resource.data.status == 'waitlisted' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'notes'])
+            ) ||
+            // E. Organizer Cancellation: pending/confirmed -> cancelled (coupled with capacity decrement)
+            (
+              resource.data.status in ['pending', 'confirmed'] &&
+              request.resource.data.status == 'cancelled' &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt', 'cancellationReason', 'updatedAt', 'notes']) &&
+              existsAfter(/databases/$(database)/documents/events/$(resource.data.eventId)) &&
+              getAfter(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations == (get(/databases/$(database)/documents/events/$(resource.data.eventId)).data.currentRegistrations - 1)
+            ) ||
+            // F. Operational notes update (status unchanged)
+            (
+              request.resource.data.status == resource.data.status &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notes', 'updatedAt'])
+            )
+          )
+        )
       );
       allow delete: if isAdmin() || isOrgOwner(resource.data.organizationId);
     }

@@ -4,7 +4,7 @@ import { LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 export const PublicLayout: React.FC = () => {
-  const { currentUser, isAuthenticated, isOrganizer, signOutUser } = useAuth();
+  const { currentUser, isAuthenticated, isOrganizer, isAdmin, signOutUser } = useAuth();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -55,10 +55,10 @@ export const PublicLayout: React.FC = () => {
             {isAuthenticated ? (
               <div className="flex items-center gap-3">
                 <Link
-                  to={isOrganizer ? '/organizer' : '/dashboard'}
+                  to={isAdmin ? '/admin' : isOrganizer ? '/organizer' : '/dashboard'}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1c1f26] hover:bg-[#252a34] text-white border border-[#2e3442] transition-colors"
                 >
-                  {isOrganizer ? 'Organizer Console' : 'Student Portal'}
+                  {isAdmin ? 'Admin Console' : isOrganizer ? 'Organizer Console' : 'Student Portal'}
                 </Link>
 
                 <div className="flex items-center gap-2 pl-2 border-l border-[#242730]">
@@ -125,11 +125,11 @@ export const PublicLayout: React.FC = () => {
               {isAuthenticated ? (
                 <>
                   <Link
-                    to={isOrganizer ? '/organizer' : '/dashboard'}
+                    to={isAdmin ? '/admin' : isOrganizer ? '/organizer' : '/dashboard'}
                     onClick={() => setMobileMenuOpen(false)}
                     className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#ff4f1a] text-white"
                   >
-                    {isOrganizer ? 'Open Organizer Console' : 'Go to Student Dashboard'}
+                    {isAdmin ? 'Open Admin Console' : isOrganizer ? 'Open Organizer Console' : 'Go to Student Dashboard'}
                   </Link>
                   <button
                     onClick={() => {

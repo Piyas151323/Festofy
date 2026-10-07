@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, getDoc, query, orderBy, where, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, where, runTransaction } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase/config';
 import { Organization, OrganizationMember, OrganizationStatus, CreateOrganizationRequestInput } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
@@ -166,7 +166,7 @@ export async function createOrganizationRequest(
     // Non-blocking if first-time query
   }
 
-  // 4. Atomic Document Creation via Transaction
+  // 4. Atomic Document Creation
   const orgPayload: Organization = {
     id: docId,
     name: trimmedName,
@@ -181,24 +181,8 @@ export async function createOrganizationRequest(
   };
 
   try {
-    await runTransaction(db, async (tx) => {
-      const docRef = doc(db, COLLECTION_NAME, docId);
-      const existingSnap = await tx.get(docRef);
-
-      if (existingSnap.exists()) {
-        const data = existingSnap.data() as Organization;
-        if (data.status === 'pending') {
-          throw new Error('You already have a pending application for this club name.');
-        }
-        if (data.status === 'approved') {
-          throw new Error('This club organization is already registered and approved.');
-        }
-      }
-
-      // Single write: NO membership document, NO userRole modification
-      tx.set(docRef, orgPayload);
-    });
-
+    const docRef = doc(db, COLLECTION_NAME, docId);
+    await setDoc(docRef, orgPayload);
     return orgPayload;
   } catch (error: any) {
     if (error.message && (error.message.includes('already have') || error.message.includes('already registered'))) {

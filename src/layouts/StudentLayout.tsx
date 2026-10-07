@@ -4,7 +4,7 @@ import { LayoutDashboard, Compass, CalendarCheck, Building2, LogOut, Menu, X, Ex
 import { useAuth } from '../hooks/useAuth';
 
 export const StudentLayout: React.FC = () => {
-  const { currentUser, signOutUser } = useAuth();
+  const { currentUser, signOutUser, role } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -80,6 +80,22 @@ export const StudentLayout: React.FC = () => {
           </div>
 
           <div className="hidden md:flex items-center gap-4">
+            {role === 'admin' && (
+              <Link
+                to="/admin"
+                className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 font-mono font-medium transition-colors"
+              >
+                Admin Console
+              </Link>
+            )}
+            {role === 'admin' && (
+              <Link
+                to="/organizer"
+                className="text-xs text-[#9da3b4] hover:text-white transition-colors"
+              >
+                Organizer Console
+              </Link>
+            )}
             <Link
               to="/fests"
               className="text-xs text-[#9da3b4] hover:text-white flex items-center gap-1"
@@ -141,6 +157,24 @@ export const StudentLayout: React.FC = () => {
                 </Link>
               );
             })}
+            {role === 'admin' && (
+              <div className="pt-2 border-t border-[#242730] flex flex-col gap-1.5">
+                <Link
+                  to="/admin"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-lg text-xs font-mono font-semibold bg-red-500/10 text-red-400 border border-red-500/30"
+                >
+                  Admin Console
+                </Link>
+                <Link
+                  to="/organizer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-lg text-xs text-[#9da3b4] hover:bg-[#1e222b]"
+                >
+                  Organizer Console
+                </Link>
+              </div>
+            )}
             <div className="pt-3 border-t border-[#242730] flex justify-between items-center text-xs text-[#9da3b4]">
               <Link to="/fests" className="hover:text-white">
                 Public Directory

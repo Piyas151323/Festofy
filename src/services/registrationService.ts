@@ -183,6 +183,12 @@ export async function submitAtomicRegistration(
           'This event is currently in draft or inactive status.'
         );
       }
+      if (eventData.festStatus && eventData.festStatus !== 'published') {
+        throw new RegistrationError(
+          'REGISTRATION_CLOSED',
+          'The host festival for this event is not active or published.'
+        );
+      }
       if (eventData.isRegistrationClosed) {
         throw new RegistrationError(
           'REGISTRATION_CLOSED',
@@ -190,13 +196,21 @@ export async function submitAtomicRegistration(
         );
       }
 
-      // 4. Validate Registration Deadline
+      // 4. Validate Registration Deadline & Start Time
       const nowTime = Date.now();
       const deadlineTime = new Date(eventData.registrationDeadline).getTime();
-      if (!isNaN(deadlineTime) && deadlineTime < nowTime) {
+      if (!isNaN(deadlineTime) && nowTime >= deadlineTime) {
         throw new RegistrationError(
           'REGISTRATION_CLOSED',
           `The registration deadline passed on ${new Date(eventData.registrationDeadline).toLocaleString()}.`
+        );
+      }
+
+      const startTime = new Date(eventData.startTime).getTime();
+      if (!isNaN(startTime) && nowTime >= startTime) {
+        throw new RegistrationError(
+          'REGISTRATION_CLOSED',
+          'This event has already started. New registrations are no longer accepted.'
         );
       }
 
@@ -737,5 +751,330 @@ export async function getOrganizationRegistrations(
   } catch (error) {
     console.warn('Could not fetch organization registrations:', error);
     return [];
+  }
+}
+
+/**
+ * Phase 6.1 Core: Approve a pending registration.
+ * Transitions strictly: pending -> confirmed.
+ * Capacity note: 'pending' registrations already consumed quota on creation,
+ * so approval does NOT double-increment event.currentRegistrations.
+ */
+export async function approveRegistration(
+  registrationId: string,
+  notes?: string
+): Promise<Registration> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to approve registrations.');
+  }
+
+  const regRef = doc(db, COLLECTION_NAME, registrationId);
+
+  try {
+    const updated = await runTransaction(db, async (transaction) => {
+      const regDoc = await transaction.get(regRef);
+      if (!regDoc.exists()) {
+        throw new Error('Registration record not found.');
+      }
+      const regData = regDoc.data() as Registration;
+
+      if (regData.status !== 'pending') {
+        throw new Error(
+          `Cannot approve registration with status "${regData.status}". Only pending registrations can be approved.`
+        );
+      }
+
+      // Verify caller is admin or org member
+      const roleRef = doc(db, 'userRoles', currentUser.uid);
+      const roleDoc = await transaction.get(roleRef);
+      const isAdmin = roleDoc.exists() && roleDoc.data()?.role === 'admin';
+
+      if (!isAdmin) {
+        const memberDocId = `${regData.organizationId}_${currentUser.uid}`;
+        const memberRef = doc(db, 'organizationMembers', memberDocId);
+        const memberDoc = await transaction.get(memberRef);
+        if (!memberDoc.exists()) {
+          throw new Error('You are not authorized to manage registrations for this organization.');
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const updates: any = {
+        status: 'confirmed',
+        updatedAt: nowIso
+      };
+      if (notes && notes.trim()) {
+        updates.notes = notes.trim();
+      }
+
+      transaction.update(regRef, updates);
+
+      return {
+        ...regData,
+        ...updates
+      };
+    });
+
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${registrationId}`);
+    throw error;
+  }
+}
+
+/**
+ * Phase 6.1 Core: Reject or decline a registration application.
+ * Transitions strictly: pending -> cancelled (or confirmed -> cancelled by organizer).
+ * Atomically decrements the associated event's currentRegistrations counter to release capacity.
+ */
+export async function rejectRegistration(
+  registrationId: string,
+  reason?: string
+): Promise<Registration> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to reject registrations.');
+  }
+
+  const regRef = doc(db, COLLECTION_NAME, registrationId);
+
+  try {
+    const updated = await runTransaction(db, async (transaction) => {
+      const regDoc = await transaction.get(regRef);
+      if (!regDoc.exists()) {
+        throw new Error('Registration record not found.');
+      }
+      const regData = regDoc.data() as Registration;
+
+      if (regData.status !== 'pending' && regData.status !== 'confirmed') {
+        throw new Error(
+          `Cannot reject registration with status "${regData.status}". Only pending or confirmed registrations can be declined.`
+        );
+      }
+
+      // Verify caller is admin or org member
+      const roleRef = doc(db, 'userRoles', currentUser.uid);
+      const roleDoc = await transaction.get(roleRef);
+      const isAdmin = roleDoc.exists() && roleDoc.data()?.role === 'admin';
+
+      if (!isAdmin) {
+        const memberDocId = `${regData.organizationId}_${currentUser.uid}`;
+        const memberRef = doc(db, 'organizationMembers', memberDocId);
+        const memberDoc = await transaction.get(memberRef);
+        if (!memberDoc.exists()) {
+          throw new Error('You are not authorized to manage registrations for this organization.');
+        }
+      }
+
+      // Read event to decrement capacity counter
+      const eventRef = doc(db, 'events', regData.eventId);
+      const eventDoc = await transaction.get(eventRef);
+      if (!eventDoc.exists()) {
+        throw new Error('Associated event not found.');
+      }
+      const eventData = eventDoc.data() as EventItem;
+
+      const currentCount = typeof eventData.currentRegistrations === 'number' ? eventData.currentRegistrations : 0;
+      const newCount = Math.max(0, currentCount - 1);
+
+      const nowIso = new Date().toISOString();
+      const trimmedReason = reason?.trim() || 'Application declined by event organizers.';
+
+      const updates: any = {
+        status: 'cancelled',
+        cancelledAt: nowIso,
+        cancellationReason: trimmedReason,
+        updatedAt: nowIso
+      };
+
+      transaction.update(regRef, updates);
+      transaction.update(eventRef, {
+        currentRegistrations: newCount
+      });
+
+      return {
+        ...regData,
+        ...updates
+      };
+    });
+
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${registrationId}`);
+    throw error;
+  }
+}
+
+/**
+ * Phase 6.2 Core: Check-in a confirmed participant at the venue gate.
+ * Transitions strictly: confirmed -> checked_in (or pending -> checked_in where allowed).
+ * Prevents double check-in and records checkedInBy and checkedInAt atomically.
+ * Does NOT alter event capacity.
+ */
+export async function checkInParticipant(
+  registrationId: string,
+  notes?: string
+): Promise<Registration> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to check in participants.');
+  }
+
+  const regRef = doc(db, COLLECTION_NAME, registrationId);
+
+  try {
+    const updated = await runTransaction(db, async (transaction) => {
+      const regDoc = await transaction.get(regRef);
+      if (!regDoc.exists()) {
+        throw new Error('Registration record not found.');
+      }
+      const regData = regDoc.data() as Registration;
+
+      if (regData.status === 'checked_in') {
+        const time = regData.checkedInAt ? new Date(regData.checkedInAt).toLocaleTimeString() : 'earlier';
+        throw new Error(`Participant has already been checked in (${time}).`);
+      }
+
+      if (regData.status === 'cancelled') {
+        throw new Error('Cannot check in a cancelled registration.');
+      }
+
+      if (regData.status !== 'confirmed' && regData.status !== 'pending') {
+        throw new Error(`Cannot check in a registration with status "${regData.status}".`);
+      }
+
+      // Verify caller is admin or org member
+      const roleRef = doc(db, 'userRoles', currentUser.uid);
+      const roleDoc = await transaction.get(roleRef);
+      const isAdmin = roleDoc.exists() && roleDoc.data()?.role === 'admin';
+
+      if (!isAdmin) {
+        const memberDocId = `${regData.organizationId}_${currentUser.uid}`;
+        const memberRef = doc(db, 'organizationMembers', memberDocId);
+        const memberDoc = await transaction.get(memberRef);
+        if (!memberDoc.exists()) {
+          throw new Error('You are not authorized to check in participants for this organization.');
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const updates: any = {
+        status: 'checked_in',
+        checkedInAt: nowIso,
+        checkedInBy: currentUser.uid,
+        updatedAt: nowIso
+      };
+      if (notes && notes.trim()) {
+        updates.notes = notes.trim();
+      }
+
+      transaction.update(regRef, updates);
+
+      return {
+        ...regData,
+        ...updates
+      };
+    });
+
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${registrationId}`);
+    throw error;
+  }
+}
+
+/**
+ * Phase 6.2 Core: Mark an event registration as completed after participation.
+ * Transitions strictly: confirmed/checked_in -> completed.
+ */
+export async function markRegistrationCompleted(
+  registrationId: string,
+  notes?: string
+): Promise<Registration> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to mark registrations completed.');
+  }
+
+  const regRef = doc(db, COLLECTION_NAME, registrationId);
+
+  try {
+    const updated = await runTransaction(db, async (transaction) => {
+      const regDoc = await transaction.get(regRef);
+      if (!regDoc.exists()) {
+        throw new Error('Registration record not found.');
+      }
+      const regData = regDoc.data() as Registration;
+
+      if (regData.status !== 'confirmed' && regData.status !== 'checked_in') {
+        throw new Error(
+          `Cannot mark registration as completed from status "${regData.status}". Expected confirmed or checked_in.`
+        );
+      }
+
+      // Verify caller is admin or org member
+      const roleRef = doc(db, 'userRoles', currentUser.uid);
+      const roleDoc = await transaction.get(roleRef);
+      const isAdmin = roleDoc.exists() && roleDoc.data()?.role === 'admin';
+
+      if (!isAdmin) {
+        const memberDocId = `${regData.organizationId}_${currentUser.uid}`;
+        const memberRef = doc(db, 'organizationMembers', memberDocId);
+        const memberDoc = await transaction.get(memberRef);
+        if (!memberDoc.exists()) {
+          throw new Error('You are not authorized to manage registrations for this organization.');
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const updates: any = {
+        status: 'completed',
+        updatedAt: nowIso
+      };
+      if (notes && notes.trim()) {
+        updates.notes = notes.trim();
+      }
+
+      transaction.update(regRef, updates);
+
+      return {
+        ...regData,
+        ...updates
+      };
+    });
+
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${registrationId}`);
+    throw error;
+  }
+}
+
+/**
+ * Phase 6.2 Core: Query registration by Ticket Code within an organization.
+ * Used for ticket scanner lookups and fast gate check-in.
+ */
+export async function getRegistrationByTicketCode(
+  ticketCode: string,
+  organizationId: string
+): Promise<Registration | null> {
+  try {
+    const normalizedCode = ticketCode.trim().toUpperCase();
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where('organizationId', '==', organizationId),
+      where('ticketCode', '==', normalizedCode)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const docSnap = snap.docs[0];
+    return {
+      id: docSnap.id,
+      ...docSnap.data()
+    } as Registration;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, `${COLLECTION_NAME}?code=${ticketCode}`);
+    return null;
   }
 }

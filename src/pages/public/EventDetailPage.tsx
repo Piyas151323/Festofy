@@ -69,6 +69,35 @@ export const EventDetailPage: React.FC = () => {
   if (loading) return <DetailSkeleton />;
   if (error || !event) return <ErrorState message={error || 'Event not found.'} />;
 
+  // Canonical Public Visibility Policy (Phase 5.2.2):
+  // Event must have status === 'published' AND festStatus === 'published'
+  const isParentFestPublished = fest ? fest.status === 'published' : true;
+  const isPubliclyVisible = event.status === 'published' && event.festStatus === 'published' && isParentFestPublished;
+
+  if (!isPubliclyVisible) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mx-auto">
+          <Lock className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <h2 className="font-heading text-lg font-bold text-white">Event Not Publicly Available</h2>
+          <p className="text-xs text-[#9da3b4] leading-relaxed">
+            This event is currently private or not published. Direct URL navigation cannot access unpublished content.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link
+            to="/events"
+            className="px-4 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs font-semibold text-zinc-300 hover:text-white"
+          >
+            Browse Public Events
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const isCompleted = event.status === 'completed';
   const isPast = isCompleted;
   const isCancelled = event.status === 'cancelled';

@@ -26,9 +26,22 @@ export const FestDetailPage: React.FC = () => {
         setError(null);
         const fData = await getFestById(festId);
         if (!fData) {
-          setError('Festival not found in Firestore.');
+          setError('Festival not found.');
           return;
         }
+
+        // Public visibility gate: Only published or completed fests can be viewed publicly
+        if (fData.status !== 'published' && fData.status !== 'completed') {
+          if (fData.status === 'draft') {
+            setError('This festival is currently in draft status and has not been published for public discovery.');
+          } else if (fData.status === 'archived') {
+            setError('This festival has been archived and is no longer available on the public directory.');
+          } else {
+            setError('This festival is not available for public viewing.');
+          }
+          return;
+        }
+
         setFest(fData);
 
         const [orgData, eventsData] = await Promise.all([

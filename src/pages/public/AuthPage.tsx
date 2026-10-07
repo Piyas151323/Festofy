@@ -44,10 +44,44 @@ export const AuthPage: React.FC = () => {
       }
       navigate(redirectPath);
     } catch (err: any) {
-      console.error('Authentication Error:', err);
+      const isOpNotAllowed =
+        err?.code === 'auth/operation-not-allowed' ||
+        err?.message?.includes('auth/operation-not-allowed') ||
+        err?.message?.includes('operation-not-allowed');
+
+      const isExpectedAuthNotice = [
+        'auth/invalid-credential',
+        'auth/wrong-password',
+        'auth/user-not-found',
+        'auth/invalid-email',
+        'auth/email-already-in-use',
+        'auth/weak-password',
+        'auth/user-disabled',
+        'auth/too-many-requests'
+      ].includes(err?.code) || (err?.message && (
+        err.message.includes('auth/invalid-credential') ||
+        err.message.includes('auth/wrong-password') ||
+        err.message.includes('auth/user-not-found') ||
+        err.message.includes('auth/invalid-email') ||
+        err.message.includes('auth/email-already-in-use') ||
+        err.message.includes('auth/weak-password')
+      ));
+
+      if (isOpNotAllowed) {
+        console.warn('Firebase Email/Password provider is disabled. Informing user to use Google Sign-In.');
+      } else if (isExpectedAuthNotice) {
+        console.warn('Authentication validation notice:', err?.code || err?.message);
+      } else {
+        console.error('Authentication Error:', err);
+      }
+
       let message = err.message || 'Authentication failed. Please verify your credentials.';
-      if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password')) {
-        message = 'Invalid email or password.';
+      if (isOpNotAllowed) {
+        message = 'Email & password sign-in is disabled for this project. Please continue with Google using the button above.';
+      } else if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
+        message = mode === 'signin'
+          ? 'Invalid email or password. If you do not have an account yet, please create one or sign in with Google.'
+          : 'Unable to authenticate. Please verify your email and password.';
       } else if (message.includes('auth/email-already-in-use')) {
         message = 'An account with this email already exists. Please sign in instead.';
       } else if (message.includes('auth/weak-password')) {
@@ -68,8 +102,16 @@ export const AuthPage: React.FC = () => {
       await signInWithGoogle();
       navigate(redirectPath);
     } catch (err: any) {
-      console.error('Google Auth Error:', err);
-      setErrorMsg(err.message || 'Google Sign-in failed. Please try again.');
+      if (
+        err?.code === 'auth/popup-closed-by-user' ||
+        err?.code === 'auth/cancelled-popup-request'
+      ) {
+        console.warn('Google Sign-in closed or cancelled by user.');
+        setErrorMsg('Google Sign-in was cancelled. Please try again.');
+      } else {
+        console.error('Google Auth Error:', err);
+        setErrorMsg(err.message || 'Google Sign-in failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -130,14 +172,21 @@ export const AuthPage: React.FC = () => {
           </div>
 
           {/* Google Sign In Button */}
-          <div>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] px-1 text-[#9da3b4]">
+              <span>Primary Authentication</span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#ff4f1a] bg-[#ff4f1a]/10 px-2 py-0.5 rounded-full border border-[#ff4f1a]/20">
+                <Sparkles className="w-3 h-3" />
+                Recommended
+              </span>
+            </div>
             <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-2.5 px-4 rounded-xl text-xs font-semibold bg-[#1e222b] hover:bg-[#282d39] text-white border border-[#2e3442] transition-colors disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-xl text-xs font-semibold bg-[#1e222b] hover:bg-[#282d39] text-white border border-[#ff4f1a]/40 hover:border-[#ff4f1a] transition-all shadow-md shadow-black/40 disabled:opacity-50 cursor-pointer group"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
+              <svg className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
                 <path
                   fill="#4285F4"
                   d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -168,9 +217,35 @@ export const AuthPage: React.FC = () => {
 
           {/* Error notice */}
           {errorMsg && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-red-950/40 border border-red-900/50 text-red-200 text-xs">
-              <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
-              <span>{errorMsg}</span>
+            <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-900/50 text-xs space-y-2.5">
+              <div className="flex items-start gap-2 text-red-200">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+                <span className="leading-relaxed">{errorMsg}</span>
+              </div>
+              {mode === 'signin' && errorMsg.includes('Create Account') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('signup');
+                    setErrorMsg(null);
+                  }}
+                  className="w-full py-2 px-3 rounded-lg bg-[#2e3442] hover:bg-[#383f50] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <User className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                  <span>Switch to Create Account</span>
+                </button>
+              )}
+              {errorMsg.includes('Google') && (
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                  className="w-full py-2 px-3 rounded-lg bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Sign in with Google now</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -238,6 +313,14 @@ export const AuthPage: React.FC = () => {
         <div className="text-center p-3 rounded-xl bg-[#121316] border border-[#242730] text-[11px] text-[#656c80] flex items-center justify-center gap-2">
           <Shield className="w-3.5 h-3.5 text-[#ff4f1a]" />
           <span>Festofy Student Account: Explore competitions, manage entry passes, and represent your campus.</span>
+        </div>
+
+        {/* Link to Admin Login */}
+        <div className="text-center text-xs text-[#656c80]">
+          Are you a platform administrator?{' '}
+          <Link to="/admin/login" className="text-[#ff4f1a] hover:underline font-semibold">
+            Admin Console Sign In &rarr;
+          </Link>
         </div>
       </div>
     </div>

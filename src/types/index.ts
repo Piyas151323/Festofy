@@ -64,6 +64,27 @@ export interface Fest {
   // Denormalized/populated fields for UI conveniences
   organizationName?: string;
   organizationLogo?: string;
+  eventCount?: number;
+}
+
+export interface CreateFestInput {
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  bannerUrl?: string;
+  organizationName?: string;
+  organizationLogo?: string;
+}
+
+export interface UpdateFestInput {
+  name?: string;
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  bannerUrl?: string;
+  organizationName?: string;
+  organizationLogo?: string;
 }
 
 export interface EventCategory {
@@ -90,6 +111,7 @@ export interface EventItem {
   registrationDeadline: string;
   capacity: number;
   status: EventStatus;
+  festStatus?: FestStatus;
   createdAt: string;
   updatedAt: string;
   // Denormalized/populated for display
@@ -98,6 +120,42 @@ export interface EventItem {
   organizationName?: string;
   // Registration Architecture fields
   currentRegistrations?: number;
+  registrationType?: 'individual' | 'team' | 'both';
+  minTeamSize?: number;
+  maxTeamSize?: number;
+  requiresApproval?: boolean;
+  customFormFields?: EventFormField[];
+  isRegistrationClosed?: boolean;
+}
+
+export interface CreateEventInput {
+  festId: string;
+  categoryId: string;
+  name: string;
+  description: string;
+  bannerUrl?: string;
+  venue: string;
+  startTime: string;
+  endTime: string;
+  registrationDeadline: string;
+  capacity: number;
+  registrationType?: 'individual' | 'team' | 'both';
+  minTeamSize?: number;
+  maxTeamSize?: number;
+  requiresApproval?: boolean;
+  customFormFields?: EventFormField[];
+}
+
+export interface UpdateEventInput {
+  categoryId?: string;
+  name?: string;
+  description?: string;
+  bannerUrl?: string;
+  venue?: string;
+  startTime?: string;
+  endTime?: string;
+  registrationDeadline?: string;
+  capacity?: number;
   registrationType?: 'individual' | 'team' | 'both';
   minTeamSize?: number;
   maxTeamSize?: number;

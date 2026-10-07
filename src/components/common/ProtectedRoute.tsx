@@ -3,15 +3,18 @@ import { Navigate, useLocation, Link } from 'react-router-dom';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRoleType } from '../../types';
+import { AdminLoginPage } from '../../pages/admin/AdminLoginPage';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   allowedRoles?: UserRoleType[];
+  adminAuth?: boolean;
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
-  allowedRoles
+  allowedRoles,
+  adminAuth
 }) => {
   const { role, loading, isAuthenticated } = useAuth();
   const location = useLocation();
@@ -25,8 +28,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
+  const isAdminRoute = adminAuth || (allowedRoles?.includes('admin') && allowedRoles.length === 1);
+
   if (!isAuthenticated) {
-    // Redirect to auth with return url
+    if (isAdminRoute) {
+      // Unauthenticated user on /admin routes sees dedicated Admin Login page
+      return <AdminLoginPage redirectPath={location.pathname} />;
+    }
+    // Redirect to general student/organizer auth with return url
     return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
@@ -42,21 +51,21 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         </h3>
         <p className="text-xs text-[#9da3b4] leading-relaxed">
           Your authenticated role is <span className="font-semibold text-white uppercase font-mono">{role}</span>.
-          This console area is restricted to approved festival organizers and administrators. If you submitted a club application, your organization may still be awaiting administrative review.
+          This console area is restricted to approved platform administrators. If you are an organizer or student, please return to your respective portal.
         </p>
 
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-2.5">
           <Link
-            to="/dashboard"
+            to={role === 'organizer' ? '/organizer' : '/dashboard'}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1e222b] hover:bg-[#252a34] text-xs font-semibold text-white border border-[#2e3442] transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> Return to Student Portal
+            <ArrowLeft className="w-3.5 h-3.5" /> Return to {role === 'organizer' ? 'Organizer' : 'Student'} Portal
           </Link>
           <Link
-            to="/dashboard/organizations"
+            to="/events"
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors shadow-sm"
           >
-            Club Applications
+            Public Directory
           </Link>
         </div>
       </div>

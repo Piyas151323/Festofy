@@ -187,13 +187,23 @@ const OrganizerLayoutInner: React.FC = () => {
             </button>
           </div>
 
-          <div className="pt-2 border-t border-[#242730] flex justify-between items-center text-[11px] text-[#9da3b4]">
-            <Link to="/events" className="hover:text-white flex items-center gap-1 transition-colors">
-              <ArrowLeft className="w-3 h-3 text-[#ff4f1a]" /> Back to Events
-            </Link>
-            <Link to="/dashboard" className="hover:text-white transition-colors">
-              Student View
-            </Link>
+          <div className="pt-2 border-t border-[#242730] flex flex-col gap-1.5 text-[11px] text-[#9da3b4]">
+            {role === 'admin' && (
+              <div className="pb-1.5 border-b border-[#242730] flex items-center justify-between">
+                <span className="font-mono text-[10px] text-zinc-500 uppercase">Platform</span>
+                <Link to="/admin" className="text-red-400 hover:text-red-300 font-mono font-semibold transition-colors">
+                  Admin Console →
+                </Link>
+              </div>
+            )}
+            <div className="flex justify-between items-center">
+              <Link to="/events" className="hover:text-white flex items-center gap-1 transition-colors">
+                <ArrowLeft className="w-3 h-3 text-[#ff4f1a]" /> Back to Events
+              </Link>
+              <Link to="/dashboard" className="hover:text-white transition-colors">
+                Student View
+              </Link>
+            </div>
           </div>
         </div>
       </aside>
@@ -309,6 +319,15 @@ const OrganizerLayoutInner: React.FC = () => {
               </div>
 
               <div className="pt-4 border-t border-[#242730] space-y-3">
+                {role === 'admin' && (
+                  <Link
+                    to="/admin"
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="block text-xs text-red-400 hover:text-red-300 font-mono font-semibold"
+                  >
+                    Admin Console →
+                  </Link>
+                )}
                 <Link
                   to="/events"
                   onClick={() => setMobileDrawerOpen(false)}

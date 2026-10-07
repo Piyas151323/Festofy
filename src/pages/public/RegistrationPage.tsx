@@ -76,12 +76,15 @@ export const RegistrationPage: React.FC = () => {
 
   // Check event registration availability
   const isPastDeadline =
-    new Date(event.registrationDeadline).getTime() < Date.now();
+    new Date(event.registrationDeadline).getTime() <= Date.now();
+  const isStarted =
+    new Date(event.startTime).getTime() <= Date.now();
   const isClosed =
     event.isRegistrationClosed ||
     isPastDeadline ||
-    event.status === 'completed' ||
-    event.status === 'cancelled';
+    isStarted ||
+    event.status !== 'published' ||
+    event.festStatus !== 'published';
 
   if (isClosed) {
     let reasonTitle = 'Registration Closed';

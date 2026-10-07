@@ -131,8 +131,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithGoogle = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error('Google Sign-in failed:', error);
+    } catch (error: any) {
+      if (
+        error?.code === 'auth/popup-closed-by-user' ||
+        error?.code === 'auth/cancelled-popup-request'
+      ) {
+        console.warn('Google Sign-in popup closed by user.');
+      } else {
+        console.error('Google Sign-in failed:', error);
+      }
       throw error;
     }
   };
@@ -140,8 +147,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signInWithEmail = async (email: string, pass: string) => {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-    } catch (error) {
-      console.error('Email sign-in failed:', error);
+    } catch (error: any) {
+      if (error?.code === 'auth/operation-not-allowed' || error?.message?.includes('auth/operation-not-allowed')) {
+        console.warn('Firebase Email/Password provider is disabled. Directing to Google Sign-In.');
+        const customError = new Error('Email & password sign-in is disabled for this project. Please sign in using Google.');
+        (customError as any).code = 'auth/operation-not-allowed';
+        throw customError;
+      }
+
+      const isExpectedAuthNotice = [
+        'auth/invalid-credential',
+        'auth/wrong-password',
+        'auth/user-not-found',
+        'auth/invalid-email',
+        'auth/user-disabled',
+        'auth/too-many-requests'
+      ].includes(error?.code) || (error?.message && (
+        error.message.includes('auth/invalid-credential') ||
+        error.message.includes('auth/wrong-password') ||
+        error.message.includes('auth/user-not-found') ||
+        error.message.includes('auth/invalid-email')
+      ));
+
+      if (isExpectedAuthNotice) {
+        console.warn('Sign-in validation notice:', error?.code || error?.message);
+      } else {
+        console.error('Email sign-in failed:', error);
+      }
       throw error;
     }
   };
@@ -170,8 +202,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }).catch(err => handleFirestoreError(err, OperationType.WRITE, `userRoles/${cred.user.uid}`))
         ]);
       }
-    } catch (error) {
-      console.error('Email sign-up failed:', error);
+    } catch (error: any) {
+      if (error?.code === 'auth/operation-not-allowed' || error?.message?.includes('auth/operation-not-allowed')) {
+        console.warn('Firebase Email/Password provider is disabled. Directing to Google Sign-In.');
+        const customError = new Error('Email & password registration is disabled for this project. Please sign in using Google.');
+        (customError as any).code = 'auth/operation-not-allowed';
+        throw customError;
+      }
+
+      const isExpectedAuthNotice = [
+        'auth/email-already-in-use',
+        'auth/invalid-email',
+        'auth/weak-password',
+        'auth/too-many-requests'
+      ].includes(error?.code) || (error?.message && (
+        error.message.includes('auth/email-already-in-use') ||
+        error.message.includes('auth/invalid-email') ||
+        error.message.includes('auth/weak-password')
+      ));
+
+      if (isExpectedAuthNotice) {
+        console.warn('Sign-up validation notice:', error?.code || error?.message);
+      } else {
+        console.error('Email sign-up failed:', error);
+      }
       throw error;
     }
   };

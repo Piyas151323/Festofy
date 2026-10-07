@@ -31,7 +31,13 @@ import { StudentOrgRequestsPage } from './pages/student/StudentOrgRequestsPage';
 // Organizer Pages
 import { OrganizerConsolePage } from './pages/organizer/OrganizerConsolePage';
 import { OrganizerFestsPage } from './pages/organizer/OrganizerFestsPage';
+import { OrganizerCreateFestPage } from './pages/organizer/OrganizerCreateFestPage';
+import { OrganizerFestDetailPage } from './pages/organizer/OrganizerFestDetailPage';
+import { OrganizerEditFestPage } from './pages/organizer/OrganizerEditFestPage';
 import { OrganizerEventsPage } from './pages/organizer/OrganizerEventsPage';
+import { OrganizerCreateEventPage } from './pages/organizer/OrganizerCreateEventPage';
+import { OrganizerEventDetailPage } from './pages/organizer/OrganizerEventDetailPage';
+import { OrganizerEditEventPage } from './pages/organizer/OrganizerEditEventPage';
 import { OrganizerParticipantsPage } from './pages/organizer/OrganizerParticipantsPage';
 import { OrganizerAnalyticsPage } from './pages/organizer/OrganizerAnalyticsPage';
 
@@ -40,6 +46,7 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
 import { AdminOrganizationRequestsPage } from './pages/admin/AdminOrganizationRequestsPage';
 import { AdminOrganizationRequestDetailPage } from './pages/admin/AdminOrganizationRequestDetailPage';
+import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 
 export default function App() {
   return (
@@ -97,7 +104,13 @@ export default function App() {
           >
             <Route index element={<OrganizerConsolePage />} />
             <Route path="fests" element={<OrganizerFestsPage />} />
+            <Route path="fests/new" element={<OrganizerCreateFestPage />} />
+            <Route path="fests/:festId" element={<OrganizerFestDetailPage />} />
+            <Route path="fests/:festId/edit" element={<OrganizerEditFestPage />} />
             <Route path="events" element={<OrganizerEventsPage />} />
+            <Route path="events/new" element={<OrganizerCreateEventPage />} />
+            <Route path="events/:eventId" element={<OrganizerEventDetailPage />} />
+            <Route path="events/:eventId/edit" element={<OrganizerEditEventPage />} />
             <Route path="participants" element={<OrganizerParticipantsPage />} />
             <Route path="analytics" element={<OrganizerAnalyticsPage />} />
           </Route>
@@ -106,7 +119,7 @@ export default function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
+              <ProtectedRoute allowedRoles={['admin']} adminAuth={true}>
                 <AdminLayout />
               </ProtectedRoute>
             }
@@ -115,6 +128,9 @@ export default function App() {
             <Route path="organization-requests" element={<AdminOrganizationRequestsPage />} />
             <Route path="organization-requests/:organizationId" element={<AdminOrganizationRequestDetailPage />} />
           </Route>
+
+          {/* Explicit Admin Login Route */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
 
           {/* Catch-all fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
