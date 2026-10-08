@@ -25,10 +25,10 @@ export const CardSkeleton: React.FC<{ count?: number }> = ({ count = 3 }) => {
   );
 };
 
-export const DetailSkeleton: React.FC = () => {
+export const DetailSkeleton: React.FC<{ wide?: boolean }> = ({ wide = false }) => {
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-pulse p-6">
-      <div className="h-72 w-full bg-[#1e222b] rounded-2xl" />
+    <div className={`${wide ? 'max-w-7xl px-4 sm:px-6 lg:px-8 py-6' : 'max-w-4xl p-6'} mx-auto space-y-6 animate-pulse`}>
+      <div className={`${wide ? 'h-48 sm:h-64 lg:h-72' : 'h-72'} w-full bg-[#1e222b] rounded-2xl`} />
       <div className="space-y-3">
         <div className="h-8 bg-[#1e222b] rounded w-2/3" />
         <div className="h-4 bg-[#1e222b] rounded w-1/3" />

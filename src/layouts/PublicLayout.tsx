@@ -221,9 +221,9 @@ export const PublicLayout: React.FC = () => {
       </main>
 
       {/* Public Footer */}
-      <footer className="border-t border-[#242730] bg-[#0c0d0e] py-12 mt-20">
+      <footer className="border-t border-[#242730] bg-[#0c0d0e] py-10 mt-10 sm:mt-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             {/* Col 1 */}
             <div className="md:col-span-2 space-y-4">
               <div className="flex items-center gap-2">
@@ -290,7 +290,7 @@ export const PublicLayout: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#656c80]">
+          <div className="pt-6 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#656c80]">
             <div>
               © 2026 Festofy. Built for Student Technology Competitions.
             </div>

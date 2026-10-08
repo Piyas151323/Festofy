@@ -91,9 +91,9 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
   const isCompleted = event.status === 'completed';
 
   return (
-    <div className="group flex flex-col rounded-2xl border border-[#242730] bg-[#14161a] hover:border-[#383d4c] transition-all duration-200 overflow-hidden shadow-sm hover:shadow-lg hover:shadow-black/50">
+    <div className="group flex flex-col h-full rounded-2xl border border-[#242730] bg-[#14161a] hover:border-[#383d4c] transition-all duration-200 overflow-hidden shadow-sm hover:shadow-lg hover:shadow-black/50">
       {/* Event Header image or header tag */}
-      <div className="relative h-40 sm:h-44 w-full overflow-hidden bg-[#181a20]">
+      <div className="relative h-36 sm:h-40 w-full overflow-hidden bg-[#181a20]">
         {event.bannerUrl ? (
           <img
             src={event.bannerUrl}
@@ -132,7 +132,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         </div>
       </div>
 
-      <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between space-y-4">
+      <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between gap-3">
         <div>
           {/* Fest & Org breadcrumb */}
           <div className="text-xs text-[#9da3b4] mb-1.5 truncate">
@@ -170,7 +170,7 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
         {/* Action button */}
         <div className="pt-3.5 border-t border-[#242730] flex items-center justify-between">
           <span className="text-[11px] text-[#656c80] font-mono">
-            {isCompleted ? 'Finalized' : 'Registration Open'}
+            {isCompleted ? 'Finalized' : deadlineInfo.isClosed ? 'Registration Closed' : 'Registration Open'}
           </span>
           <Link
             to={`/events/${event.id}`}
