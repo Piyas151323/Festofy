@@ -15,11 +15,13 @@ import React, {
 type Props = {
   word: string;
   above?: React.ReactNode;      // sits above the word, fades out first
-  below?: React.ReactNode;      // sits below the word, fades out first
+  /** Sits below the word, fades out first. Can be a function to get the stepInside() helper. */
+  below?: React.ReactNode | ((api: { stepInside: () => void }) => React.ReactNode);
   scene?: React.ReactNode;      // visible through the letters
   children: React.ReactNode;    // revealed content
   fallback: React.ReactNode;    // static version (reduced motion / init failure)
   overlayColor?: string;
+  /** Optional: draw the word in a flat colour that fades into the scene as you scroll. */
   textColor?: string;
   scrollLengthVh?: number;
   defaultIndex?: number;
@@ -77,8 +79,8 @@ export const GlyphPortal: React.FC<Props> = (props) => {
 
 const PortalStage: React.FC<Props & { onError: () => void }> = ({
   word, above, below, scene, children, onError,
-  overlayColor = '#090a0b', textColor = '#f4f5f7',
-  scrollLengthVh = 320, defaultIndex = 0, topOffset = '0px', scrollContainer,
+  overlayColor = '#090a0b', textColor,
+  scrollLengthVh = 320, defaultIndex = 3, topOffset = '0px', scrollContainer,
 }) => {
   const letters = useMemo(() => Array.from(word), [word]);
   const maskId = 'gp' + useId().replace(/[^a-zA-Z0-9]/g, '');
@@ -104,7 +106,7 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
 
   const slotsRef = useRef(slots);
   const selectedRef = useRef(selected);
-  const geomRef = useRef({ vw: 1000, vh: 600 });
+  const geomRef = useRef({ vw: 1000, vh: 600, top: 0 });
   slotsRef.current = slots;
   selectedRef.current = selected;
 
@@ -112,45 +114,54 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
     const section = sectionRef.current, stage = stageRef.current;
     if (!section || !stage) return;
     const total = Math.max(1, section.offsetHeight - stage.offsetHeight);
-    const p = clamp(-section.getBoundingClientRect().top / total);
+    const { vw, vh, top } = geomRef.current;
+    const p = clamp((top - section.getBoundingClientRect().top) / total);
 
     const slot = slotsRef.current[selectedRef.current] ?? slotsRef.current[0];
     const cx = slot.x + slot.w / 2;
     const cy = BASE_Y - FONT * 0.36;
-    const { vw, vh } = geomRef.current;
-    const maxScale = 2 * Math.max(vw / Math.max(slot.w, 1), vh / (FONT * 0.7));
+    // Zoom far enough that a letter's stroke (~28% of its width) covers the viewport.
+    const maxScale = Math.max(vw / (slot.w * 0.28), vh / (FONT * 0.5));
 
-    const t = ease(clamp((p - 0.06) / 0.58));
+    const t = ease(clamp((p - 0.05) / 0.6));
     const s = Math.pow(maxScale, t);
+    const rot = -3.4 * ease(clamp((p - 0.03) / 0.35)); // slight counter-clockwise tilt
     const tx = cx + (VB_W / 2 - cx) * t;
     const ty = cy + (VB_H / 2 - cy) * t;
-    const tr = `translate(${tx} ${ty}) scale(${s}) translate(${-cx} ${-cy})`;
+    const tr = `translate(${tx} ${ty}) rotate(${rot}) scale(${s}) translate(${-cx} ${-cy})`;
     maskGRef.current?.setAttribute('transform', tr);
     whiteGRef.current?.setAttribute('transform', tr);
 
-    const overlayOpacity = String(1 - ease(clamp((p - 0.45) / 0.2)));
+    const overlayOpacity = String(1 - ease(clamp((p - 0.55) / 0.15)));
     if (whiteGRef.current) whiteGRef.current.style.opacity = String(1 - clamp(p / 0.12));
     if (overlayRef.current) overlayRef.current.style.opacity = overlayOpacity;
     if (glowRef.current) glowRef.current.style.opacity = overlayOpacity;
-    if (dimRef.current) dimRef.current.style.opacity = String(0.92 * ease(clamp((p - 0.5) / 0.25)));
-    if (introRef.current) introRef.current.style.opacity = String(1 - clamp(p / 0.1));
+    if (dimRef.current) dimRef.current.style.opacity = String(0.9 * ease(clamp((p - 0.58) / 0.2)));
+    if (introRef.current) {
+      introRef.current.style.opacity = String(1 - clamp(p / 0.07));
+      introRef.current.style.visibility = p < 0.07 ? 'visible' : 'hidden';
+    }
 
-    const c = ease(clamp((p - 0.74) / 0.14));
+    const c = ease(clamp((p - 0.78) / 0.13));
     const content = contentRef.current;
     if (content) {
       content.style.opacity = String(c);
-      content.style.transform = `translateY(${(1 - c) * 24}px)`;
+      content.style.transform = `translateY(${(1 - c) * 28}px)`;
       content.style.visibility = c > 0 ? 'visible' : 'hidden';
       content.style.pointerEvents = c > 0.5 ? 'auto' : 'none';
     }
-    if (hitRef.current) hitRef.current.style.visibility = p < 0.1 ? 'visible' : 'hidden';
+    if (hitRef.current) hitRef.current.style.visibility = p < 0.07 ? 'visible' : 'hidden';
   }, []);
 
   const measureGeom = useCallback(() => {
     const svg = svgRef.current, stage = stageRef.current;
     if (!svg || !stage) return;
     const unit = svg.getBoundingClientRect().width / VB_W || 1;
-    geomRef.current = { vw: stage.clientWidth / unit, vh: stage.clientHeight / unit };
+    geomRef.current = {
+      vw: stage.clientWidth / unit,
+      vh: stage.clientHeight / unit,
+      top: parseFloat(getComputedStyle(stage).top) || 0,
+    };
   }, []);
 
   const measureSlots = useCallback(() => {
@@ -166,6 +177,16 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
       onError();
     }
   }, [letters, onError]);
+
+  const stepInside = useCallback(() => {
+    const section = sectionRef.current, stage = stageRef.current;
+    if (!section || !stage) return;
+    const total = Math.max(1, section.offsetHeight - stage.offsetHeight);
+    const { top } = geomRef.current;
+    const delta = section.getBoundingClientRect().top - top + total * 0.9;
+    const target: HTMLElement | Window = scrollContainer ?? window;
+    target.scrollBy({ top: delta, behavior: 'smooth' });
+  }, [scrollContainer]);
 
   useLayoutEffect(() => {
     let cancelled = false;
@@ -242,9 +263,11 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
                   ref={overlayRef} x={-BIG} y={-BIG} width={bigW} height={bigH}
                   fill={overlayColor} mask={`url(#${maskId})`}
                 />
-                <g ref={whiteGRef}>
-                  <text {...textProps} fill={textColor}>{word}</text>
-                </g>
+                {textColor && (
+                  <g ref={whiteGRef}>
+                    <text {...textProps} fill={textColor}>{word}</text>
+                  </g>
+                )}
               </svg>
 
               {/* Letter selection targets (keyboard + touch) */}
@@ -256,16 +279,18 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
                     aria-label={`Zoom into letter ${ch}`}
                     aria-pressed={i === selected}
                     onClick={() => setSelected(i)}
-                    className="absolute rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ff4f1a]"
+                    className="group absolute cursor-pointer rounded-md bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#ff4f1a]"
                     style={{
                       left: `${(slots[i]?.x ?? 0) / 10}%`,
                       width: `${(slots[i]?.w ?? 0) / 10}%`,
                       top: '17%', height: '62%', minWidth: 28,
                     }}
                   >
-                    {i === selected && (
-                      <span className="pointer-events-none absolute -bottom-2 left-1/4 right-1/4 h-0.5 rounded bg-[#ff4f1a]" />
-                    )}
+                    <span
+                      className={`pointer-events-none absolute -bottom-2 left-1/4 right-1/4 h-0.5 rounded bg-[#ff4f1a] transition-opacity ${
+                        i === selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
+                      }`}
+                    />
                   </button>
                 ))}
               </div>
@@ -299,7 +324,7 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
               className="absolute inset-x-0 flex justify-center px-4 text-center"
               style={{ top: 'calc(50% + var(--gw) * 0.125)' }}
             >
-              {below}
+              {typeof below === 'function' ? below({ stepInside }) : below}
             </div>
           </div>
 
