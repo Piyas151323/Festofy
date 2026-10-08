@@ -29,7 +29,8 @@ import {
   rejectRegistration,
   checkInParticipant,
   markRegistrationCompleted,
-  getRegistrationByTicketCode
+  getRegistrationByTicketCode,
+  updateRegistrationNotes
 } from '../../services/registrationService';
 import { Registration, RegistrationStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -45,6 +46,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [festFilter, setFestFilter] = useState<string>('all');
   const [eventFilter, setEventFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [checkInFilter, setCheckInFilter] = useState<string>('all');
@@ -60,6 +62,8 @@ export const OrganizerParticipantsPage: React.FC = () => {
   // Modal / Confirm States
   const [rejectingReg, setRejectingReg] = useState<Registration | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [editingNotesReg, setEditingNotesReg] = useState<Registration | null>(null);
+  const [currentNotes, setCurrentNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
   const fetchRegistrations = async () => {
@@ -96,20 +100,37 @@ export const OrganizerParticipantsPage: React.FC = () => {
     }
   }, [actionSuccess]);
 
-  // Unique events for filter dropdown
-  const uniqueEvents = useMemo(() => {
+  // Unique festivals for filter dropdown
+  const uniqueFests = useMemo(() => {
     const map = new Map<string, string>();
     registrations.forEach((r) => {
-      if (r.eventId && r.eventName) {
-        map.set(r.eventId, r.eventName);
+      if (r.festId && r.festName) {
+        map.set(r.festId, r.festName);
       }
     });
     return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
   }, [registrations]);
 
+  // Unique events for filter dropdown (cascading with festFilter)
+  const uniqueEvents = useMemo(() => {
+    const map = new Map<string, string>();
+    registrations.forEach((r) => {
+      if (festFilter !== 'all' && r.festId !== festFilter) return;
+      if (r.eventId && r.eventName) {
+        map.set(r.eventId, r.eventName);
+      }
+    });
+    return Array.from(map.entries()).map(([id, name]) => ({ id, name }));
+  }, [registrations, festFilter]);
+
   // Filtered registrations
   const filteredRegistrations = useMemo(() => {
     return registrations.filter((r) => {
+      // Fest filter
+      if (festFilter !== 'all' && r.festId !== festFilter) {
+        return false;
+      }
+
       // Status filter
       if (statusFilter !== 'all' && r.status !== statusFilter) {
         return false;
@@ -143,6 +164,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
         const teamName = r.teamName?.toLowerCase() || '';
         const ticketCode = r.ticketCode?.toLowerCase() || '';
         const eventName = r.eventName?.toLowerCase() || '';
+        const festName = r.festName?.toLowerCase() || '';
         const institution = r.institution?.toLowerCase() || '';
 
         const memberMatch = r.teamMembers?.some(
@@ -161,6 +183,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
           !teamName.includes(query) &&
           !ticketCode.includes(query) &&
           !eventName.includes(query) &&
+          !festName.includes(query) &&
           !institution.includes(query) &&
           !memberMatch
         ) {
@@ -170,7 +193,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
 
       return true;
     });
-  }, [registrations, statusFilter, eventFilter, typeFilter, checkInFilter, searchQuery]);
+  }, [registrations, festFilter, statusFilter, eventFilter, typeFilter, checkInFilter, searchQuery]);
 
   // Key stats
   const stats = useMemo(() => {
@@ -181,8 +204,12 @@ export const OrganizerParticipantsPage: React.FC = () => {
     const waitlisted = registrations.filter((r) => r.status === 'waitlisted').length;
     const cancelled = registrations.filter((r) => r.status === 'cancelled').length;
     const completed = registrations.filter((r) => r.status === 'completed').length;
+    const checkInRate =
+      confirmed + checkedIn > 0
+        ? Math.round((checkedIn / (confirmed + checkedIn)) * 100)
+        : 0;
 
-    return { total, confirmed, checkedIn, pending, waitlisted, cancelled, completed };
+    return { total, confirmed, checkedIn, pending, waitlisted, cancelled, completed, checkInRate };
   }, [registrations]);
 
   const handleCopyTicket = (code: string) => {
@@ -219,7 +246,8 @@ export const OrganizerParticipantsPage: React.FC = () => {
       'Team Name',
       'Team Members Count',
       'Registered At',
-      'Checked In At'
+      'Checked In At',
+      'Notes'
     ];
 
     const rows = filteredRegistrations.map((r) => [
@@ -236,7 +264,8 @@ export const OrganizerParticipantsPage: React.FC = () => {
       sanitizeCsvValue(r.teamName),
       sanitizeCsvValue(r.teamMembers?.length || 0),
       sanitizeCsvValue(r.registeredAt),
-      sanitizeCsvValue(r.checkedInAt || 'Not Checked In')
+      sanitizeCsvValue(r.checkedInAt || 'Not Checked In'),
+      sanitizeCsvValue(r.notes || '')
     ]);
 
     const csvContent =
@@ -333,6 +362,29 @@ export const OrganizerParticipantsPage: React.FC = () => {
     } catch (err: any) {
       console.warn('Notice complete failed:', err);
       setError(err.message || 'Failed to mark registration completed.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!editingNotesReg) return;
+    try {
+      setActionLoading(true);
+      setError(null);
+      const updated = await updateRegistrationNotes(editingNotesReg.id, currentNotes);
+      setRegistrations((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+      if (ticketLookupResult?.id === updated.id) {
+        setTicketLookupResult(updated);
+      }
+      setActionSuccess('Operational note saved successfully.');
+      setEditingNotesReg(null);
+      setCurrentNotes('');
+    } catch (err: any) {
+      console.warn('Notice notes update failed:', err);
+      setError(err?.message || 'Failed to update operational note.');
     } finally {
       setActionLoading(false);
     }
@@ -558,7 +610,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div className="p-3.5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-1">
           <div className="text-[10px] font-mono text-[#656c80] uppercase">Total Entries</div>
           <div className="font-heading text-xl font-bold text-white">{stats.total}</div>
@@ -569,7 +621,10 @@ export const OrganizerParticipantsPage: React.FC = () => {
         </div>
         <div className="p-3.5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-1">
           <div className="text-[10px] font-mono text-cyan-400 uppercase">Checked In</div>
-          <div className="font-heading text-xl font-bold text-cyan-400">{stats.checkedIn}</div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="font-heading text-xl font-bold text-cyan-400">{stats.checkedIn}</span>
+            <span className="text-[10px] text-cyan-400/80 font-mono">({stats.checkInRate}%)</span>
+          </div>
         </div>
         <div className="p-3.5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-1">
           <div className="text-[10px] font-mono text-amber-400 uppercase">Pending Review</div>
@@ -582,6 +637,10 @@ export const OrganizerParticipantsPage: React.FC = () => {
         <div className="p-3.5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-1">
           <div className="text-[10px] font-mono text-zinc-500 uppercase">Cancelled</div>
           <div className="font-heading text-xl font-bold text-zinc-400">{stats.cancelled}</div>
+        </div>
+        <div className="p-3.5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-1">
+          <div className="text-[10px] font-mono text-blue-400 uppercase">Gate Progress</div>
+          <div className="font-heading text-xl font-bold text-blue-400">{stats.checkInRate}%</div>
         </div>
       </div>
 
@@ -599,6 +658,25 @@ export const OrganizerParticipantsPage: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Festival Select */}
+          {uniqueFests.length > 0 && (
+            <select
+              value={festFilter}
+              onChange={(e) => {
+                setFestFilter(e.target.value);
+                setEventFilter('all');
+              }}
+              className="px-3 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white focus:outline-none focus:border-[#ff4f1a] max-w-[170px] truncate"
+            >
+              <option value="all">All Festivals</option>
+              {uniqueFests.map((fest) => (
+                <option key={fest.id} value={fest.id}>
+                  {fest.name}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Status Select */}
           <select
             value={statusFilter}
@@ -895,12 +973,22 @@ export const OrganizerParticipantsPage: React.FC = () => {
                                   </div>
                                 )}
 
-                                {reg.notes && (
-                                  <div className="mt-2 pt-2 border-t border-[#242730] text-[11px]">
+                                <div className="mt-2 pt-2 border-t border-[#242730] flex items-center justify-between text-[11px]">
+                                  <div>
                                     <span className="text-[#ff4f1a] font-semibold block">Organizer Notes:</span>
-                                    <span className="text-zinc-300">{reg.notes}</span>
+                                    <span className="text-zinc-300">{reg.notes || 'None'}</span>
                                   </div>
-                                )}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setEditingNotesReg(reg);
+                                      setCurrentNotes(reg.notes || '');
+                                    }}
+                                    className="px-2 py-0.5 rounded bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] text-[10px] text-zinc-300 hover:text-white transition-colors"
+                                  >
+                                    {reg.notes ? 'Edit Note' : 'Add Note'}
+                                  </button>
+                                </div>
                               </div>
 
                               {/* Right Column: Team Roster or Form Responses */}
@@ -1124,6 +1212,70 @@ export const OrganizerParticipantsPage: React.FC = () => {
                 className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-md"
               >
                 {actionLoading ? 'Processing...' : 'Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Organizer Notes Modal */}
+      {editingNotesReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white font-bold text-sm">
+                <FileSpreadsheet className="w-4 h-4 text-[#ff4f1a]" />
+                <span>Operational Notes</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingNotesReg(null)}
+                className="text-[#656c80] hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#9da3b4]">
+              Internal organizer note for{' '}
+              <strong className="text-white">
+                {editingNotesReg.studentName || editingNotesReg.teamName}
+              </strong>{' '}
+              ({editingNotesReg.ticketCode}).
+            </p>
+
+            <div>
+              <label className="text-[11px] font-mono text-[#656c80] uppercase block mb-1">
+                Note Details (Max 1000 characters)
+              </label>
+              <textarea
+                value={currentNotes}
+                onChange={(e) => setCurrentNotes(e.target.value)}
+                maxLength={1000}
+                rows={4}
+                placeholder="e.g. VIP front-row seating assigned, parental consent verified, dietary requirement noted..."
+                className="w-full p-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
+              />
+              <div className="text-right text-[10px] text-[#656c80] font-mono mt-1">
+                {currentNotes.length}/1000
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingNotesReg(null)}
+                className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#242730] text-xs font-semibold text-zinc-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveNotes}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white shadow-md shadow-[#ff4f1a]/20"
+              >
+                {actionLoading ? 'Saving...' : 'Save Note'}
               </button>
             </div>
           </div>

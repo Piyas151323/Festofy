@@ -1078,3 +1078,64 @@ export async function getRegistrationByTicketCode(
     return null;
   }
 }
+
+/**
+ * Phase 6.1 / 6.2 Core: Update operational notes on an existing registration.
+ * Scoped strictly to authorized organizers of the hosting organization or admins.
+ * Preserves registration status, capacity, and all immutable identifiers.
+ */
+export async function updateRegistrationNotes(
+  registrationId: string,
+  notes: string
+): Promise<Registration> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to manage operational notes.');
+  }
+
+  const regRef = doc(db, COLLECTION_NAME, registrationId);
+
+  try {
+    const updated = await runTransaction(db, async (transaction) => {
+      const regDoc = await transaction.get(regRef);
+      if (!regDoc.exists()) {
+        throw new Error('Registration record not found.');
+      }
+      const regData = regDoc.data() as Registration;
+
+      // Verify caller is admin or org member
+      const roleRef = doc(db, 'userRoles', currentUser.uid);
+      const roleDoc = await transaction.get(roleRef);
+      const isAdmin = roleDoc.exists() && roleDoc.data()?.role === 'admin';
+
+      if (!isAdmin) {
+        const memberDocId = `${regData.organizationId}_${currentUser.uid}`;
+        const memberRef = doc(db, 'organizationMembers', memberDocId);
+        const memberDoc = await transaction.get(memberRef);
+        if (!memberDoc.exists()) {
+          throw new Error('You are not authorized to update notes for this organization.');
+        }
+      }
+
+      const nowIso = new Date().toISOString();
+      const sanitizedNotes = notes.trim().slice(0, 1000);
+
+      const updates: any = {
+        notes: sanitizedNotes,
+        updatedAt: nowIso
+      };
+
+      transaction.update(regRef, updates);
+
+      return {
+        ...regData,
+        ...updates
+      };
+    });
+
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${registrationId}`);
+    throw error;
+  }
+}
