@@ -109,7 +109,7 @@ export const AdminLayout: React.FC = () => {
                 <div
                   key={item.label}
                   className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-zinc-500 cursor-not-allowed select-none"
-                  title="Coming in future phases"
+                  title="Upcoming feature"
                 >
                   <div className="flex items-center gap-3">
                     <Icon className="w-4 h-4 text-zinc-600" />
@@ -144,19 +144,28 @@ export const AdminLayout: React.FC = () => {
 
         {/* Portal Switching & Sign Out */}
         <div className="p-3 border-t border-[#242730] space-y-1">
+          <div className="px-2 py-1 text-[10px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
+            Cross-Portal Access
+          </div>
           <Link
             to="/organizer"
             className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#181a20] transition-colors"
           >
-            <span className="truncate">Organizer Portal</span>
-            <ExternalLink className="w-3.5 h-3.5 text-[#656c80]" />
+            <div className="flex flex-col">
+              <span className="font-semibold text-white">Organizer Console</span>
+              <span className="text-[10px] text-[#656c80]">Manage fests, events & clubs</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-[#ff4f1a]" />
           </Link>
           <Link
             to="/dashboard"
             className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#181a20] transition-colors"
           >
-            <span className="truncate">Student Portal</span>
-            <ExternalLink className="w-3.5 h-3.5 text-[#656c80]" />
+            <div className="flex flex-col">
+              <span className="font-semibold text-white">Student Portal</span>
+              <span className="text-[10px] text-[#656c80]">View entry passes & events</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 text-[#ff4f1a]" />
           </Link>
           <Link
             to="/events"
@@ -221,21 +230,42 @@ export const AdminLayout: React.FC = () => {
                 </Link>
               );
             })}
-            <div className="pt-2 border-t border-[#242730] flex justify-between items-center text-xs">
-              <Link
-                to="/dashboard"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-[#9da3b4] hover:text-white"
-              >
-                Student Portal
-              </Link>
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="text-red-400 font-semibold"
-              >
-                Sign Out
-              </button>
+            <div className="pt-2 border-t border-[#242730] flex flex-col gap-2">
+              <div className="text-[10px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
+                Switch Portal
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Link
+                  to="/organizer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl bg-[#17191e] border border-[#272b35] text-white text-center font-medium hover:bg-[#20232a]"
+                >
+                  Organizer Console
+                </Link>
+                <Link
+                  to="/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="px-3 py-2 rounded-xl bg-[#17191e] border border-[#272b35] text-white text-center font-medium hover:bg-[#20232a]"
+                >
+                  Student Portal
+                </Link>
+              </div>
+              <div className="pt-2 flex justify-between items-center text-xs">
+                <Link
+                  to="/events"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="text-[#9da3b4] hover:text-white"
+                >
+                  Public Directory
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="text-red-400 font-semibold"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         )}

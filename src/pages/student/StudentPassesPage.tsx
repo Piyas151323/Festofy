@@ -1,6 +1,6 @@
 import React from 'react';
 import { Ticket, QrCode, Shield, ArrowRight } from 'lucide-react';
-import { EmptyState } from '../../components/common/EmptyState';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export const StudentPassesPage: React.FC = () => {
@@ -17,9 +17,9 @@ export const StudentPassesPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-6 space-y-6">
-        {/* Pass Preview Mockup */}
-        <div className="max-w-md mx-auto p-6 rounded-2xl bg-gradient-to-br from-[#191b20] to-[#121316] border border-[#2e3442] shadow-xl relative overflow-hidden space-y-4">
+      <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 space-y-6">
+        {/* Pass Preview Card */}
+        <div className="max-w-md mx-auto p-6 rounded-2xl bg-gradient-to-br from-[#191b20] to-[#121316] border border-[#2e3442] shadow-xl relative overflow-hidden space-y-5">
           <div className="flex justify-between items-center pb-3 border-b border-[#242730]">
             <div>
               <span className="text-[10px] font-mono text-[#ff4f1a] uppercase font-bold tracking-wider">
@@ -36,25 +36,39 @@ export const StudentPassesPage: React.FC = () => {
               <span className="text-white font-medium">{currentUser?.displayName || 'Student User'}</span>
             </div>
             <div className="flex justify-between text-[#9da3b4]">
-              <span>Security Tier:</span>
-              <span className="text-white font-medium">Verified Student</span>
+              <span>Email:</span>
+              <span className="text-white font-medium truncate max-w-[200px]">{currentUser?.email || ''}</span>
             </div>
             <div className="flex justify-between text-[#9da3b4]">
-              <span>Phase Status:</span>
-              <span className="text-emerald-400 font-mono">Phase 1 Foundation Ready</span>
+              <span>Security Tier:</span>
+              <span className="text-white font-medium">Verified Campus Student</span>
+            </div>
+            <div className="flex justify-between text-[#9da3b4]">
+              <span>Credential Status:</span>
+              <span className="text-emerald-400 font-mono font-medium">Active & Valid</span>
             </div>
           </div>
 
           <div className="pt-4 border-t border-dashed border-[#242730] flex flex-col items-center justify-center py-4 bg-black/30 rounded-xl space-y-2">
-            <QrCode className="w-20 h-20 text-[#656c80]" />
-            <span className="text-[10px] font-mono text-[#656c80]">
-              Dynamic QR generation activates in Phase 2
+            <QrCode className="w-16 h-16 text-[#9da3b4]" />
+            <span className="text-[11px] text-[#9da3b4] text-center max-w-xs">
+              Present your event ticket code at the campus registration desk for instant check-in.
             </span>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              to="/dashboard/registrations"
+              className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center justify-center gap-1.5 shadow-md shadow-[#ff4f1a]/20"
+            >
+              <span>View Registered Event Tickets</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
         </div>
 
-        <p className="text-center text-xs text-[#656c80]">
-          Passes are dynamically issued when you register for festivals and verified during on-site check-in.
+        <p className="text-center text-xs text-[#656c80] max-w-md mx-auto">
+          Individual ticket codes are uniquely generated upon registration and verified by organizers at on-site check-in desks.
         </p>
       </div>
     </div>

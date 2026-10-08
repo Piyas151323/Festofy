@@ -18,6 +18,7 @@ import { useOrganizer } from '../../context/OrganizerContext';
 import { createEvent, getEventCategories } from '../../services/eventService';
 import { getOrganizationFests } from '../../services/festService';
 import { Fest, EventCategory, EventFormField, FormFieldType } from '../../types';
+import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 
 export const OrganizerCreateEventPage: React.FC = () => {
   const navigate = useNavigate();
@@ -82,7 +83,7 @@ export const OrganizerCreateEventPage: React.FC = () => {
           setFestId(festList[0].id);
         }
       } catch (err) {
-        console.error('Failed to load event creation metadata:', err);
+        console.warn('Notice loading event creation metadata:', err);
         setErrorMsg('Unable to load festivals or categories. Please reload the page.');
       } finally {
         setLoadingMeta(false);
@@ -230,7 +231,7 @@ export const OrganizerCreateEventPage: React.FC = () => {
 
       navigate(`/organizer/events/${created.id}`);
     } catch (err: any) {
-      console.error('Event creation error:', err);
+      console.warn('Notice creating event:', err?.message || err);
       setErrorMsg(err.message || 'Failed to create event document.');
     } finally {
       setSubmitting(false);
@@ -412,16 +413,13 @@ export const OrganizerCreateEventPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Banner URL (Optional)
-              </label>
-              <input
-                type="url"
+            <div className="sm:col-span-2 pt-2">
+              <DirectImageUpload
                 value={bannerUrl}
-                onChange={(e) => setBannerUrl(e.target.value)}
-                placeholder="https://example.com/poster.jpg"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a]"
+                onChange={setBannerUrl}
+                label="Event Promotional Poster / Banner"
+                helperText="Upload event poster directly (JPG, PNG, WebP) or pick a curated student event theme"
+                aspectRatio="banner"
               />
             </div>
           </div>

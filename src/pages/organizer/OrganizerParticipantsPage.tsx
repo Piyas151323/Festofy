@@ -75,7 +75,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       const data = await getOrganizationRegistrations(activeOrganization.id);
       setRegistrations(data || []);
     } catch (err: any) {
-      console.error('Failed to load participants:', err);
+      console.warn('Notice loading participants manifest:', err?.message || err);
       setError('Unable to fetch participants manifest. Please check your network.');
     } finally {
       setLoading(false);
@@ -268,7 +268,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       }
       setActionSuccess(`Application for "${reg.studentName || reg.teamName}" approved successfully.`);
     } catch (err: any) {
-      console.error('Approve failed:', err);
+      console.warn('Notice approve failed:', err);
       setError(err.message || 'Failed to approve registration.');
     } finally {
       setActionLoading(false);
@@ -291,7 +291,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       setRejectingReg(null);
       setRejectReason('');
     } catch (err: any) {
-      console.error('Reject failed:', err);
+      console.warn('Notice reject failed:', err);
       setError(err.message || 'Failed to reject registration.');
     } finally {
       setActionLoading(false);
@@ -311,7 +311,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       }
       setActionSuccess(`Checked in "${reg.studentName || reg.teamName}" successfully!`);
     } catch (err: any) {
-      console.error('Check-in failed:', err);
+      console.warn('Notice check-in failed:', err);
       setError(err.message || 'Check-in failed.');
     } finally {
       setActionLoading(false);
@@ -331,7 +331,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
       }
       setActionSuccess(`Marked registration for "${reg.studentName || reg.teamName}" as completed.`);
     } catch (err: any) {
-      console.error('Complete failed:', err);
+      console.warn('Notice complete failed:', err);
       setError(err.message || 'Failed to mark registration completed.');
     } finally {
       setActionLoading(false);

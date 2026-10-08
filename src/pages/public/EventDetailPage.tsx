@@ -57,8 +57,8 @@ export const EventDetailPage: React.FC = () => {
         setFest(festData);
         setOrg(orgData);
       } catch (err: any) {
-        console.error('Error loading event detail:', err);
-        setError(err.message || 'Failed to load event details.');
+        console.warn('Notice loading event detail:', err?.message || err);
+        setError('Unable to load event details. Please verify your connection and try again.');
       } finally {
         setLoading(false);
       }
@@ -69,7 +69,7 @@ export const EventDetailPage: React.FC = () => {
   if (loading) return <DetailSkeleton />;
   if (error || !event) return <ErrorState message={error || 'Event not found.'} />;
 
-  // Canonical Public Visibility Policy (Phase 5.2.2):
+  // Canonical Public Visibility Policy:
   // Event must have status === 'published' AND festStatus === 'published'
   const isParentFestPublished = fest ? fest.status === 'published' : true;
   const isPubliclyVisible = event.status === 'published' && event.festStatus === 'published' && isParentFestPublished;

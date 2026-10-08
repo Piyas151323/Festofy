@@ -15,6 +15,7 @@ import {
 import { useOrganizer } from '../../context/OrganizerContext';
 import { getEventById, updateEvent, getEventCategories } from '../../services/eventService';
 import { EventItem, EventCategory, EventFormField, FormFieldType } from '../../types';
+import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 
 export const OrganizerEditEventPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
@@ -105,7 +106,7 @@ export const OrganizerEditEventPage: React.FC = () => {
           setRegistrationDeadline(new Date(evtData.registrationDeadline).toISOString().slice(0, 16));
         }
       } catch (err: any) {
-        console.error('Failed to load event for edit:', err);
+        console.warn('Notice loading event for edit:', err?.message || err);
         setErrorMsg(err.message || 'Unable to retrieve event record.');
       } finally {
         setLoading(false);
@@ -238,7 +239,7 @@ export const OrganizerEditEventPage: React.FC = () => {
         navigate(`/organizer/events/${eventId}`);
       }, 1000);
     } catch (err: any) {
-      console.error('Update event error:', err);
+      console.warn('Notice updating event:', err?.message || err);
       setErrorMsg(err.message || 'Failed to update event.');
     } finally {
       setSaving(false);
@@ -380,15 +381,13 @@ export const OrganizerEditEventPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Banner URL (Optional)
-              </label>
-              <input
-                type="url"
+            <div className="sm:col-span-2 pt-2">
+              <DirectImageUpload
                 value={bannerUrl}
-                onChange={(e) => setBannerUrl(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white focus:outline-none focus:border-[#ff4f1a]"
+                onChange={setBannerUrl}
+                label="Event Promotional Poster / Banner"
+                helperText="Upload event poster directly (JPG, PNG, WebP) or pick a curated student event theme"
+                aspectRatio="banner"
               />
             </div>
           </div>

@@ -44,7 +44,7 @@ export const AdminDashboardPage: React.FC = () => {
       setStats(statsData);
       setPendingRequests(pendingData.slice(0, 5));
     } catch (err: any) {
-      console.error('Failed to load admin dashboard data:', err);
+      console.warn('Notice loading admin dashboard data:', err?.message || err);
       setError('Unable to load administrative overview telemetry. Please check your connection.');
     } finally {
       setLoading(false);
@@ -62,7 +62,7 @@ export const AdminDashboardPage: React.FC = () => {
         <div>
           <div className="text-xs font-mono text-red-500 uppercase tracking-wider flex items-center gap-2 mb-1">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span>PLATFORM ROOT TELEMETRY</span>
+            <span>PLATFORM GOVERNANCE</span>
           </div>
           <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
             Main Admin Console

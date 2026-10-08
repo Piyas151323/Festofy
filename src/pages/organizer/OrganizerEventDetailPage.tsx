@@ -73,7 +73,7 @@ export const OrganizerEventDetailPage: React.FC = () => {
         setFest(festData);
       }
     } catch (err: any) {
-      console.error('Failed to load event detail:', err);
+      console.warn('Notice loading event detail:', err?.message || err);
       setErrorMsg(err.message || 'Unable to retrieve event information.');
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ export const OrganizerEventDetailPage: React.FC = () => {
         return;
       }
     } catch (err: any) {
-      console.error('Lifecycle execution error:', err);
+      console.warn('Notice lifecycle execution:', err?.message || err);
       setErrorMsg(err.message || 'Failed to update event state.');
     } finally {
       setActionLoading(false);

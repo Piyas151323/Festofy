@@ -46,8 +46,8 @@ export const RegistrationPage: React.FC = () => {
           setFest(festData);
         }
       } catch (err: any) {
-        console.error('Failed to load event for registration:', err);
-        setError(err.message || 'Failed to load event details.');
+        console.warn('Notice loading event for registration:', err?.message || err);
+        setError('Unable to load registration details. Please verify your connection and try again.');
       } finally {
         setLoading(false);
       }

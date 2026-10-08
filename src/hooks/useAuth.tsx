@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(profileData);
           setRole(assignedRole);
         } catch (err) {
-          console.error('Failed to resolve authenticated user profile/role:', err);
+          console.warn('Profile/role resolution notice:', err);
           setCurrentUser({
             uid: firebaseUser.uid,
             displayName: firebaseUser.displayName || 'User',
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ) {
         console.warn('Google Sign-in popup closed by user.');
       } else {
-        console.error('Google Sign-in failed:', error);
+        console.warn('Google Sign-in notice:', error?.code || error?.message);
       }
       throw error;
     }
@@ -155,25 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw customError;
       }
 
-      const isExpectedAuthNotice = [
-        'auth/invalid-credential',
-        'auth/wrong-password',
-        'auth/user-not-found',
-        'auth/invalid-email',
-        'auth/user-disabled',
-        'auth/too-many-requests'
-      ].includes(error?.code) || (error?.message && (
-        error.message.includes('auth/invalid-credential') ||
-        error.message.includes('auth/wrong-password') ||
-        error.message.includes('auth/user-not-found') ||
-        error.message.includes('auth/invalid-email')
-      ));
-
-      if (isExpectedAuthNotice) {
-        console.warn('Sign-in validation notice:', error?.code || error?.message);
-      } else {
-        console.error('Email sign-in failed:', error);
-      }
+      console.warn('Authentication notice:', error?.code || error?.message);
       throw error;
     }
   };
@@ -210,22 +192,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw customError;
       }
 
-      const isExpectedAuthNotice = [
-        'auth/email-already-in-use',
-        'auth/invalid-email',
-        'auth/weak-password',
-        'auth/too-many-requests'
-      ].includes(error?.code) || (error?.message && (
-        error.message.includes('auth/email-already-in-use') ||
-        error.message.includes('auth/invalid-email') ||
-        error.message.includes('auth/weak-password')
-      ));
-
-      if (isExpectedAuthNotice) {
-        console.warn('Sign-up validation notice:', error?.code || error?.message);
-      } else {
-        console.error('Email sign-up failed:', error);
-      }
+      console.warn('Registration notice:', error?.code || error?.message);
       throw error;
     }
   };
@@ -234,7 +201,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       await signOut(auth);
     } catch (error) {
-      console.error('Sign-out failed:', error);
+      console.warn('Sign-out notice:', error);
       throw error;
     }
   };

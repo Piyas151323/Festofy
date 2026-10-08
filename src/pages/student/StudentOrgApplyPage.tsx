@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../hooks/useAuth';
 import { createOrganizationRequest } from '../../services/organizationService';
 import { Organization } from '../../types';
+import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 
 export const StudentOrgApplyPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -74,7 +75,7 @@ export const StudentOrgApplyPage: React.FC = () => {
 
       setSubmittedOrg(newOrg);
     } catch (err: any) {
-      console.error('Failed to submit organization application:', err);
+      console.warn('Notice submitting organization application:', err?.message || err);
       setErrorMsg(err.message || 'Unable to submit application. Please verify your details and try again.');
     } finally {
       setIsSubmitting(false);
@@ -265,25 +266,14 @@ export const StudentOrgApplyPage: React.FC = () => {
             />
           </div>
 
-          {/* Logo URL */}
-          <div className="space-y-1.5">
-            <label htmlFor="org-logo" className="text-xs font-semibold text-white flex items-center gap-1.5">
-              <Image className="w-3.5 h-3.5 text-[#ff4f1a]" />
-              <span>Club Logo Image URL (Optional)</span>
-            </label>
-            <input
-              id="org-logo"
-              type="url"
-              maxLength={500}
-              placeholder="https://example.com/logo.png"
-              value={logoUrl}
-              onChange={(e) => setLogoUrl(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
-            />
-            <p className="text-[11px] text-[#656c80]">
-              Direct web address to your club's emblem or logo image.
-            </p>
-          </div>
+          {/* Club Logo (Direct Upload, Presets, or Link) */}
+          <DirectImageUpload
+            value={logoUrl}
+            onChange={setLogoUrl}
+            label="Club / Organization Emblem or Logo"
+            helperText="Direct image upload (PNG, JPG, SVG, WebP) or select an organization insignia"
+            aspectRatio="logo"
+          />
 
           {/* Form Actions */}
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-[#242730]">

@@ -69,7 +69,7 @@ export const StudentRegistrationDetailPage: React.FC = () => {
 
       setRegistration(data);
     } catch (err) {
-      console.error('Failed to load registration details:', err);
+      console.warn('Notice loading registration details:', err);
       // Generic defense-in-depth error message
       setError('Registration not found');
     } finally {
@@ -112,7 +112,7 @@ export const StudentRegistrationDetailPage: React.FC = () => {
       setSuccessBanner(res.message);
       setShowCancelModal(false);
     } catch (err: any) {
-      console.error('Cancellation failed:', err);
+      console.warn('Notice cancelling registration:', err);
       if (err instanceof CancellationError) {
         setCancelError(err.message);
       } else {

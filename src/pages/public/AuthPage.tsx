@@ -72,7 +72,7 @@ export const AuthPage: React.FC = () => {
       } else if (isExpectedAuthNotice) {
         console.warn('Authentication validation notice:', err?.code || err?.message);
       } else {
-        console.error('Authentication Error:', err);
+        console.warn('Authentication Error Notice:', err?.code || err?.message);
       }
 
       let message = err.message || 'Authentication failed. Please verify your credentials.';
@@ -80,7 +80,7 @@ export const AuthPage: React.FC = () => {
         message = 'Email & password sign-in is disabled for this project. Please continue with Google using the button above.';
       } else if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
         message = mode === 'signin'
-          ? 'Invalid email or password. If you do not have an account yet, please create one or sign in with Google.'
+          ? 'Invalid email or password. You can click the Demo Account buttons below to sign in instantly.'
           : 'Unable to authenticate. Please verify your email and password.';
       } else if (message.includes('auth/email-already-in-use')) {
         message = 'An account with this email already exists. Please sign in instead.';
@@ -93,6 +93,20 @@ export const AuthPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleUseStudentDemo = () => {
+    setMode('signin');
+    setEmail('student@festofy.demo');
+    setPassword('FestofyStudentDemo2026!');
+    setErrorMsg(null);
+  };
+
+  const handleUseOrganizerDemo = () => {
+    setMode('signin');
+    setEmail('organizer@festofy.demo');
+    setPassword('FestofyOrganizerDemo2026!');
+    setErrorMsg(null);
   };
 
   const handleGoogleSignIn = async () => {
@@ -109,7 +123,7 @@ export const AuthPage: React.FC = () => {
         console.warn('Google Sign-in closed or cancelled by user.');
         setErrorMsg('Google Sign-in was cancelled. Please try again.');
       } else {
-        console.error('Google Auth Error:', err);
+        console.warn('Google Auth notice:', err?.code || err?.message);
         setErrorMsg(err.message || 'Google Sign-in failed. Please try again.');
       }
     } finally {
@@ -307,6 +321,39 @@ export const AuthPage: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Quick Demo Credentials */}
+          <div className="pt-4 border-t border-[#242730] space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] text-[#9da3b4]">
+              <span className="font-mono uppercase font-semibold text-[10px] text-[#656c80]">Demo Credentials</span>
+              <span className="text-[10px] text-[#ff4f1a] font-mono">1-Click Fill</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={handleUseStudentDemo}
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
+                  <User className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                  <span>Student Demo</span>
+                </div>
+                <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">student@festofy.demo</div>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleUseOrganizerDemo}
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
+                  <Sparkles className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                  <span>Organizer Demo</span>
+                </div>
+                <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">organizer@festofy.demo</div>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Security and Account Guarantee Notice */}

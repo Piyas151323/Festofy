@@ -58,7 +58,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       setOrg(res.organization);
       setRequester(res.requesterProfile || null);
     } catch (err: any) {
-      console.error('Failed to load organization request:', err);
+      console.warn('Notice loading organization request:', err?.message || err);
       setError('Unable to load application details.');
     } finally {
       setLoading(false);
@@ -79,7 +79,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       setShowApproveModal(false);
       await loadData();
     } catch (err: any) {
-      console.error('Approval failed:', err);
+      console.warn('Notice approving organization:', err?.message || err);
       setActionErrorMessage(err.message || 'Approval operation failed.');
     } finally {
       setIsProcessing(false);
@@ -96,7 +96,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       setShowRejectModal(false);
       await loadData();
     } catch (err: any) {
-      console.error('Rejection failed:', err);
+      console.warn('Notice rejecting organization:', err?.message || err);
       setActionErrorMessage(err.message || 'Rejection operation failed.');
     } finally {
       setIsProcessing(false);

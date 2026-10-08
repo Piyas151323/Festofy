@@ -79,7 +79,7 @@ export const OrganizerFestDetailPage: React.FC = () => {
       setEventCount(typeof data.eventCount === 'number' ? data.eventCount : count);
       setFestEvents(eventsList || []);
     } catch (err: any) {
-      console.error('Failed to load festival detail:', err);
+      console.warn('Notice loading festival detail:', err?.message || err);
       setErrorMsg(err.message || 'Unable to retrieve festival records.');
     } finally {
       setLoading(false);

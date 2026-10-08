@@ -53,13 +53,36 @@ export const PublicLayout: React.FC = () => {
           {/* Action CTA / User Profile */}
           <div className="hidden md:flex items-center gap-4">
             {isAuthenticated ? (
-              <div className="flex items-center gap-3">
-                <Link
-                  to={isAdmin ? '/admin' : isOrganizer ? '/organizer' : '/dashboard'}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1c1f26] hover:bg-[#252a34] text-white border border-[#2e3442] transition-colors"
-                >
-                  {isAdmin ? 'Admin Console' : isOrganizer ? 'Organizer Console' : 'Student Portal'}
-                </Link>
+              <div className="flex items-center gap-2.5">
+                {isAdmin ? (
+                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#14161a] border border-[#272b35]">
+                    <Link
+                      to="/admin"
+                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors shadow-sm"
+                    >
+                      Admin
+                    </Link>
+                    <Link
+                      to="/organizer"
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#1f232c] transition-colors"
+                    >
+                      Organizer
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#1f232c] transition-colors"
+                    >
+                      Student
+                    </Link>
+                  </div>
+                ) : (
+                  <Link
+                    to={isOrganizer ? '/organizer' : '/dashboard'}
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1c1f26] hover:bg-[#252a34] text-white border border-[#2e3442] transition-colors"
+                  >
+                    {isOrganizer ? 'Organizer Console' : 'Student Portal'}
+                  </Link>
+                )}
 
                 <div className="flex items-center gap-2 pl-2 border-l border-[#242730]">
                   <div className="w-7 h-7 rounded-full bg-[#ff4f1a]/20 text-[#ff4f1a] flex items-center justify-center text-xs font-bold border border-[#ff4f1a]/30">
@@ -124,13 +147,41 @@ export const PublicLayout: React.FC = () => {
             <div className="pt-3 border-t border-[#242730] space-y-2">
               {isAuthenticated ? (
                 <>
-                  <Link
-                    to={isAdmin ? '/admin' : isOrganizer ? '/organizer' : '/dashboard'}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#ff4f1a] text-white"
-                  >
-                    {isAdmin ? 'Open Admin Console' : isOrganizer ? 'Open Organizer Console' : 'Go to Student Dashboard'}
-                  </Link>
+                  {isAdmin ? (
+                    <div className="space-y-1.5">
+                      <Link
+                        to="/admin"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white"
+                      >
+                        Open Admin Console
+                      </Link>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Link
+                          to="/organizer"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block text-center py-2 rounded-lg text-xs font-semibold bg-[#1c1f26] text-white border border-[#2e3442]"
+                        >
+                          Organizer Console
+                        </Link>
+                        <Link
+                          to="/dashboard"
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="block text-center py-2 rounded-lg text-xs font-semibold bg-[#1c1f26] text-white border border-[#2e3442]"
+                        >
+                          Student Portal
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    <Link
+                      to={isOrganizer ? '/organizer' : '/dashboard'}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#ff4f1a] text-white"
+                    >
+                      {isOrganizer ? 'Open Organizer Console' : 'Go to Student Dashboard'}
+                    </Link>
+                  )}
                   <button
                     onClick={() => {
                       signOutUser();
@@ -223,14 +274,18 @@ export const PublicLayout: React.FC = () => {
             {/* Col 3 */}
             <div>
               <h4 className="text-xs font-semibold text-white uppercase tracking-wider mb-4">
-                Architecture
+                Organizations
               </h4>
               <p className="text-xs text-[#9da3b4] leading-relaxed mb-3">
-                Phase 1 Foundation powered by Google Cloud Firestore & Firebase Auth.
+                Register your campus club, publish competitions, and manage festival logistics in a dedicated operations console.
               </p>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#191b20] border border-[#2e3442] text-[11px] text-[#9da3b4]">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                <span>Zero Mock Data — Firestore Connected</span>
+              <div className="flex flex-col gap-2 text-xs text-[#9da3b4]">
+                <Link to="/auth" className="text-[#ff4f1a] hover:text-[#ff6838] font-medium transition-colors">
+                  Join Festofy as Organizer &rarr;
+                </Link>
+                <Link to="/admin/login" className="text-[#656c80] hover:text-[#9da3b4] text-[11px] transition-colors">
+                  Platform Admin Sign In
+                </Link>
               </div>
             </div>
           </div>

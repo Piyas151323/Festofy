@@ -46,7 +46,7 @@ export const OrganizerAnalyticsPage: React.FC = () => {
       setEvents(eData || []);
       setRegistrations(rData || []);
     } catch (err) {
-      console.error('Failed to load analytics data:', err);
+      console.warn('Notice loading analytics data:', err);
     } finally {
       setLoading(false);
     }

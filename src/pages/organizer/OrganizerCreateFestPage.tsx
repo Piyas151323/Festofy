@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { createFest } from '../../services/festService';
+import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 
 export const OrganizerCreateFestPage: React.FC = () => {
   const navigate = useNavigate();
@@ -102,7 +103,7 @@ export const OrganizerCreateFestPage: React.FC = () => {
 
       navigate(`/organizer/fests/${newFest.id}`);
     } catch (err: any) {
-      console.error('Failed to create festival:', err);
+      console.warn('Notice creating festival:', err?.message || err);
       setErrorMsg(err.message || 'Unable to create festival. Please verify inputs and try again.');
     } finally {
       setLoading(false);
@@ -239,27 +240,14 @@ export const OrganizerCreateFestPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Banner URL (Optional) */}
-        <div className="space-y-1.5">
-          <label htmlFor="fest-banner" className="block text-xs font-semibold text-zinc-300">
-            Promotional Banner Image URL <span className="text-zinc-500 font-normal">(Optional)</span>
-          </label>
-          <div className="relative">
-            <Image className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              id="fest-banner"
-              type="url"
-              maxLength={500}
-              placeholder="https://example.com/fest-banner.jpg"
-              value={bannerUrl}
-              onChange={(e) => setBannerUrl(e.target.value)}
-              className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors font-mono"
-            />
-          </div>
-          <span className="text-[11px] text-[#656c80]">
-            Direct link to an image banner (JPG, PNG, WebP)
-          </span>
-        </div>
+        {/* Festival Banner (Direct Upload, Presets, or Link) */}
+        <DirectImageUpload
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          label="Promotional Banner Image"
+          helperText="Direct image upload (JPG, PNG, WebP) or curated festival poster preset for student discovery"
+          aspectRatio="banner"
+        />
 
         {/* Initial Status Callout */}
         <div className="p-4 rounded-xl bg-[#191b20]/60 border border-[#2e3442] flex items-start gap-3 text-xs text-[#9da3b4]">

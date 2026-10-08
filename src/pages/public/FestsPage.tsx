@@ -21,8 +21,8 @@ export const FestsPage: React.FC = () => {
         const data = await getPublishedFests();
         setFests(data);
       } catch (err: any) {
-        console.error('Failed to load festivals:', err);
-        setError(err.message || 'Error fetching festivals from Firestore');
+        console.warn('Notice loading festivals:', err?.message || err);
+        setError('Unable to load festival directory. Please check your connection and try again.');
       } finally {
         setLoading(false);
       }

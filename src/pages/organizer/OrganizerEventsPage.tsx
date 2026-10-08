@@ -67,7 +67,7 @@ export const OrganizerEventsPage: React.FC = () => {
       setEvents(eventsData || []);
       setFests(festsData || []);
     } catch (err: any) {
-      console.error('Failed to load organization events:', err);
+      console.warn('Notice loading organization events:', err?.message || err);
       setErrorMsg(err.message || 'Unable to retrieve organization events.');
     } finally {
       setLoading(false);

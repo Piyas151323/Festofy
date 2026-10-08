@@ -52,8 +52,8 @@ export const FestDetailPage: React.FC = () => {
         setOrg(orgData);
         setEvents(eventsData);
       } catch (err: any) {
-        console.error('Error fetching fest detail:', err);
-        setError(err.message || 'Failed to load festival details.');
+        console.warn('Notice loading festival detail:', err?.message || err);
+        setError('Unable to load festival details. Please verify your connection and try again.');
       } finally {
         setLoading(false);
       }

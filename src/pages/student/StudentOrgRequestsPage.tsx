@@ -35,7 +35,7 @@ export const StudentOrgRequestsPage: React.FC = () => {
       const data = await getMyOrganizationRequests(currentUser.uid);
       setRequests(data);
     } catch (err) {
-      console.error('Failed to load organization requests:', err);
+      console.warn('Organization requests notice:', err);
     } finally {
       setLoading(false);
     }

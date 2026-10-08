@@ -39,8 +39,9 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
-  // If role check specified and current authenticated role is insufficient
-  if (allowedRoles && !allowedRoles.includes(role)) {
+  // If role check specified and current authenticated role is insufficient.
+  // Platform administrators have superuser oversight across student, organizer, and admin routes.
+  if (allowedRoles && !allowedRoles.includes(role) && role !== 'admin') {
     return (
       <div className="max-w-md mx-auto my-16 p-8 rounded-2xl border border-[#242730] bg-[#14161a] text-center space-y-4 shadow-xl">
         <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center">
@@ -51,7 +52,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         </h3>
         <p className="text-xs text-[#9da3b4] leading-relaxed">
           Your authenticated role is <span className="font-semibold text-white uppercase font-mono">{role}</span>.
-          This console area is restricted to approved platform administrators. If you are an organizer or student, please return to your respective portal.
+          This console area requires <span className="text-[#ff4f1a] font-mono">{allowedRoles.join(' or ')}</span> access privileges.
         </p>
 
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-2.5">

@@ -57,7 +57,7 @@ export const OrganizerFestsPage: React.FC = () => {
       const data = await getOrganizationFests(activeOrganization.id);
       setFests(data || []);
     } catch (err: any) {
-      console.error('Failed to load organization fests:', err);
+      console.warn('Notice loading organization fests:', err?.message || err);
       setErrorMsg(err.message || 'Unable to retrieve festivals for this organization.');
     } finally {
       setLoading(false);

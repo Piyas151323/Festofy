@@ -33,7 +33,7 @@ export const AdminOrganizationRequestsPage: React.FC = () => {
       const data = await getAdminOrganizationRequests('all');
       setRequests(data);
     } catch (err: any) {
-      console.error('Failed to load organization requests:', err);
+      console.warn('Notice loading organization requests:', err?.message || err);
       setError('Unable to load organization applications. Please check your connection.');
     } finally {
       setLoading(false);

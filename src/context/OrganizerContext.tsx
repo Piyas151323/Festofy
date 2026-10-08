@@ -54,7 +54,7 @@ export const OrganizerProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sessionStorage.removeItem(ACTIVE_ORG_STORAGE_KEY);
       }
     } catch (err: any) {
-      console.error('Failed to load organizer organizations:', err);
+      console.warn('Failed to load organizer organizations notice:', err?.message || err);
       setError('Unable to load authorized organizations. Please check your connection.');
       setOrganizations([]);
       setActiveOrganizationState(null);

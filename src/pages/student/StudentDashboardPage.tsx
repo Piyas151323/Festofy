@@ -23,7 +23,7 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 import { formatDateTime } from '../../utils/dateUtils';
 
 export const StudentDashboardPage: React.FC = () => {
-  const { currentUser, loading: authLoading } = useAuth();
+  const { currentUser, loading: authLoading, role, isAdmin } = useAuth();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export const StudentDashboardPage: React.FC = () => {
       const data = await getStudentRegistrations(currentUser.uid);
       setRegistrations(data);
     } catch (err) {
-      console.error('Failed to load student registrations for dashboard:', err);
+      console.warn('Dashboard registrations notice:', err);
       setError("Couldn't load your registrations.");
     } finally {
       setLoading(false);
@@ -144,6 +144,34 @@ export const StudentDashboardPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Platform Admin Superuser Notice Banner */}
+      {isAdmin && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-[#181a22] to-[#121316] border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-mono text-[10px] uppercase font-bold shrink-0">
+              Admin View
+            </span>
+            <span className="text-[#d1d5db]">
+              Platform administrator privileges active. You have full oversight across Student, Organizer, and Admin portals.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/admin"
+              className="text-xs text-red-400 hover:text-red-300 font-mono font-medium underline transition-colors"
+            >
+              Admin Console →
+            </Link>
+            <Link
+              to="/organizer"
+              className="text-xs text-[#9da3b4] hover:text-white font-medium ml-2 transition-colors"
+            >
+              Organizer Console →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header / Welcome Banner */}
       <section aria-labelledby="dashboard-welcome-heading">
         <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-sm">

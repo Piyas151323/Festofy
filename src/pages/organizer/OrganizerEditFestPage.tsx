@@ -14,6 +14,7 @@ import {
 import { useOrganizer } from '../../context/OrganizerContext';
 import { getFestById, updateFest } from '../../services/festService';
 import { Fest } from '../../types';
+import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 
 export const OrganizerEditFestPage: React.FC = () => {
   const { festId } = useParams<{ festId: string }>();
@@ -69,7 +70,7 @@ export const OrganizerEditFestPage: React.FC = () => {
         setEndDate(formatForInput(data.endDate));
         setBannerUrl(data.bannerUrl || '');
       } catch (err: any) {
-        console.error('Failed to load festival for editing:', err);
+        console.warn('Notice loading festival for editing:', err?.message || err);
         setErrorMsg(err.message || 'Unable to retrieve festival details.');
       } finally {
         setInitialLoading(false);
@@ -145,7 +146,7 @@ export const OrganizerEditFestPage: React.FC = () => {
 
       navigate(`/organizer/fests/${festId}`);
     } catch (err: any) {
-      console.error('Failed to update festival:', err);
+      console.warn('Notice updating festival:', err?.message || err);
       setErrorMsg(err.message || 'Unable to save festival modifications.');
     } finally {
       setLoading(false);
@@ -322,25 +323,14 @@ export const OrganizerEditFestPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Banner URL */}
-        <div className="space-y-1.5">
-          <label htmlFor="edit-banner-url" className="block text-xs font-semibold text-zinc-300">
-            Promotional Banner Image URL <span className="text-zinc-500 font-normal">(Optional)</span>
-          </label>
-          <div className="relative">
-            <Image className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              id="edit-banner-url"
-              type="url"
-              disabled={isLocked}
-              maxLength={500}
-              placeholder="https://example.com/banner.jpg"
-              value={bannerUrl}
-              onChange={(e) => setBannerUrl(e.target.value)}
-              className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors font-mono disabled:opacity-50"
-            />
-          </div>
-        </div>
+        {/* Festival Banner (Direct Upload, Presets, or Link) */}
+        <DirectImageUpload
+          value={bannerUrl}
+          onChange={setBannerUrl}
+          label="Promotional Banner Image"
+          helperText="Direct image upload (JPG, PNG, WebP) or curated festival poster preset for student discovery"
+          aspectRatio="banner"
+        />
 
         {/* Action Buttons */}
         <div className="pt-4 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-end gap-3">

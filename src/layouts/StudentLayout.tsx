@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Compass, CalendarCheck, Building2, LogOut, Menu, X, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, Compass, CalendarCheck, Building2, LogOut, Menu, X, ExternalLink, Ticket } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 export const StudentLayout: React.FC = () => {
@@ -27,6 +27,12 @@ export const StudentLayout: React.FC = () => {
       path: '/dashboard/registrations',
       icon: CalendarCheck,
       isActive: (pathname: string) => pathname.startsWith('/dashboard/registrations')
+    },
+    {
+      label: 'Passes',
+      path: '/dashboard/passes',
+      icon: Ticket,
+      isActive: (pathname: string) => pathname === '/dashboard/passes'
     },
     {
       label: 'Club Requests',

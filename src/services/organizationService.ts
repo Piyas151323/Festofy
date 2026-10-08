@@ -62,6 +62,12 @@ export async function getUserOrganizations(
   isAdmin: boolean = false
 ): Promise<Organization[]> {
   try {
+    // Platform administrators have superuser oversight across all registered organizations
+    if (isAdmin) {
+      const allOrgs = await getOrganizations();
+      return allOrgs || [];
+    }
+
     const membersQuery = query(
       collection(db, MEMBERS_COLLECTION),
       where('userId', '==', userId)
@@ -74,12 +80,6 @@ export async function getUserOrganizations(
         orgIds.map((id) => getOrganizationById(id))
       );
       return orgDocs.filter((o): o is Organization => o !== null);
-    }
-
-    // Platform administrators without direct membership fallback to all active organizations
-    if (isAdmin) {
-      const allOrgs = await getOrganizations();
-      return allOrgs || [];
     }
 
     return [];

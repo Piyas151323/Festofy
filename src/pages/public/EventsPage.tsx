@@ -26,8 +26,8 @@ export const EventsPage: React.FC = () => {
         setEvents(evts);
         setCategories(cats);
       } catch (err: any) {
-        console.error('Failed to load events:', err);
-        setError(err.message || 'Error loading events from Firestore');
+        console.warn('Notice loading events directory:', err?.message || err);
+        setError('Unable to load event competitions. Please check your connection and try again.');
       } finally {
         setLoading(false);
       }

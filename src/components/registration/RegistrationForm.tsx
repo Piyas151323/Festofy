@@ -281,7 +281,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         state: { justRegistered: true }
       });
     } catch (err: any) {
-      console.error('Registration submission failed:', err);
+      console.warn('Registration submission notice:', err?.message || err);
       setSubmissionError(err.message || 'Registration submission failed. Please review your details.');
     } finally {
       setIsSubmitting(false);

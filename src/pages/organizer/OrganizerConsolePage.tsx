@@ -18,6 +18,7 @@ import {
   CalendarCheck
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
+import { useAuth } from '../../hooks/useAuth';
 import { getOrganizationFests } from '../../services/festService';
 import { getOrganizationEvents } from '../../services/eventService';
 import { getOrganizationRegistrations } from '../../services/registrationService';
@@ -27,6 +28,7 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 
 export const OrganizerConsolePage: React.FC = () => {
   const { activeOrganization, loading: orgLoading, error: orgError, refetchOrganizations } = useOrganizer();
+  const { role, isAdmin } = useAuth();
 
   const [fests, setFests] = useState<Fest[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -57,7 +59,7 @@ export const OrganizerConsolePage: React.FC = () => {
       setEvents(eData || []);
       setRegistrations(rData || []);
     } catch (err: any) {
-      console.error('Error fetching organizer dashboard data:', err);
+      console.warn('Notice fetching organizer dashboard data:', err?.message || err);
       setFetchError('Unable to load organization workspace data. Please verify your connection.');
     } finally {
       setLoading(false);
@@ -131,6 +133,39 @@ export const OrganizerConsolePage: React.FC = () => {
 
   // 2. No Organization Linked State
   if (!activeOrganization) {
+    if (isAdmin) {
+      return (
+        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 sm:p-12 text-center space-y-4 max-w-2xl mx-auto my-12">
+          <div className="w-14 h-14 rounded-2xl bg-red-600/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
+            <Building2 className="w-7 h-7" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-mono uppercase font-semibold">
+              Platform Administrator Oversight
+            </div>
+            <h2 className="font-heading text-xl font-bold text-white">No Active Organizations</h2>
+            <p className="text-xs text-[#9da3b4] leading-relaxed">
+              You are logged in with root administrator privileges. There are no approved club workspaces registered yet, or applications are currently pending review.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/admin/organization-requests"
+              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors shadow-sm"
+            >
+              Review Organization Requests
+            </Link>
+            <Link
+              to="/admin"
+              className="px-5 py-2.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors"
+            >
+              Admin Dashboard
+            </Link>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 sm:p-12 text-center space-y-4 max-w-2xl mx-auto my-12">
         <div className="w-14 h-14 rounded-2xl bg-[#191b20] border border-[#2e3442] text-amber-400 flex items-center justify-center mx-auto">
@@ -163,6 +198,34 @@ export const OrganizerConsolePage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      {/* Admin Superuser Notification Banner */}
+      {isAdmin && (
+        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-[#181a22] to-[#121316] border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-mono text-[10px] uppercase font-bold shrink-0">
+              Admin Mode
+            </span>
+            <span className="text-[#d1d5db]">
+              Platform administrator privileges active. Managing workspace for <span className="text-white font-semibold">{activeOrganization.name}</span>.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Link
+              to="/admin"
+              className="text-xs text-red-400 hover:text-red-300 font-mono font-medium underline transition-colors"
+            >
+              Admin Console →
+            </Link>
+            <Link
+              to="/dashboard"
+              className="text-xs text-[#9da3b4] hover:text-white font-medium ml-2 transition-colors"
+            >
+              Student Portal →
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header / Workspace Cockpit */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
         <div className="space-y-1">

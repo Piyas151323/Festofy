@@ -42,7 +42,7 @@ export const StudentRegistrationsPage: React.FC = () => {
       const data = await getStudentRegistrations(currentUser.uid);
       setRegistrations(data);
     } catch (err: any) {
-      console.error('Failed to load student registrations:', err);
+      console.warn('Student registrations notice:', err?.message || err);
       setError("Couldn't load your registrations.");
     } finally {
       setLoading(false);

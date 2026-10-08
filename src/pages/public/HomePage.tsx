@@ -31,9 +31,9 @@ export const HomePage: React.FC = () => {
           setEvents(eventsData.slice(0, 6));
         }
       } catch (err: any) {
-        console.error('Error loading homepage data from Firestore:', err);
+        console.warn('Notice loading homepage data:', err?.message || err);
         if (mounted) {
-          setError(err?.message || 'Failed to fetch live festival data from Firestore.');
+          setError('Unable to load live festivals right now. Please refresh to try again.');
         }
       } finally {
         if (mounted) setLoading(false);
@@ -61,49 +61,49 @@ export const HomePage: React.FC = () => {
           </div>
 
           {/* Large Title */}
-          <h1 className="font-heading text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight text-white leading-none">
+          <h1 className="font-heading text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white leading-none">
             FESTOFY
           </h1>
 
           {/* Tagline */}
-          <div className="text-xl sm:text-2xl lg:text-3xl font-heading font-medium text-[#f4f5f7]">
+          <div className="text-lg sm:text-2xl lg:text-3xl font-heading font-medium text-[#f4f5f7]">
             Plan. Discover. Participate.
           </div>
 
           {/* Supporting Copy */}
-          <p className="max-w-2xl mx-auto text-sm sm:text-base text-[#9da3b4] leading-relaxed">
+          <p className="max-w-2xl mx-auto text-xs sm:text-sm md:text-base text-[#9da3b4] leading-relaxed">
             One home for festivals, events, registrations and participants — built for the clubs that run them and the students who show up.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 pt-2 sm:pt-4">
             <Link
               to="/fests"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-all duration-200 shadow-lg shadow-[#ff4f1a]/20 flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-3 rounded-xl font-semibold text-xs sm:text-sm text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-all duration-200 shadow-lg shadow-[#ff4f1a]/20 flex items-center justify-center gap-2"
             >
               Explore Fests <ArrowRight className="w-4 h-4" />
             </Link>
             <Link
               to="/events"
-              className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-semibold text-sm text-[#f4f5f7] bg-[#14161a] hover:bg-[#1e222b] border border-[#2e3442] transition-colors flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-3 rounded-xl font-semibold text-xs sm:text-sm text-[#f4f5f7] bg-[#14161a] hover:bg-[#1e222b] border border-[#2e3442] transition-colors flex items-center justify-center gap-2"
             >
               View Events
             </Link>
           </div>
 
           {/* Meta metrics badge */}
-          <div className="pt-8 flex flex-wrap items-center justify-center gap-6 sm:gap-12 text-xs text-[#656c80] border-t border-[#242730]/60 max-w-2xl mx-auto">
+          <div className="pt-8 flex flex-wrap items-center justify-center gap-4 sm:gap-10 text-xs text-[#9da3b4] border-t border-[#242730]/60 max-w-2xl mx-auto">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              <span>Real Firestore Persistence</span>
+              <span>Verified Campus Clubs</span>
             </div>
             <div className="flex items-center gap-2">
               <Flame className="w-4 h-4 text-[#ff4f1a]" />
-              <span>Zero Mock Local State</span>
+              <span>Instant Digital Entry Passes</span>
             </div>
             <div className="flex items-center gap-2">
               <Trophy className="w-4 h-4 text-amber-400" />
-              <span>Built for Student Fests</span>
+              <span>Structured Competitions</span>
             </div>
           </div>
         </div>
@@ -228,7 +228,7 @@ export const HomePage: React.FC = () => {
               Register
             </h3>
             <p className="text-sm text-[#9da3b4] leading-relaxed">
-              Seamless participant registration with deadlines enforced by server-grade security rules. Student portal holds all your active registrations and digital passes.
+              Seamless participant registration with automated deadline enforcement. Student portal holds all your active registrations and digital passes.
             </p>
           </div>
 
