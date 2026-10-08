@@ -44,3 +44,19 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #323744;
 }
+
+/* Navigation drawer motion (restrained; disabled for reduced-motion users) */
+@keyframes nav-slide-in {
+  from { transform: translateX(100%); }
+  to { transform: none; }
+}
+@keyframes nav-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.nav-drawer-panel { animation: nav-slide-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.nav-drawer-backdrop { animation: nav-fade-in 200ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-drawer-panel, .nav-drawer-backdrop { animation: none; }
+  [data-nav-root], [data-nav-root] * { transition-duration: 0.01ms !important; }
+}

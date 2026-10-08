@@ -1,219 +1,144 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LogOut, Menu, X } from 'lucide-react';
+import { CalendarDays, Compass, GraduationCap, ShieldCheck, Terminal } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { AppTopBar } from '../components/navigation/AppTopBar';
+import { BrandLogo } from '../components/navigation/BrandLogo';
+import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
+import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
+import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
+import { FOCUS_RING, NavEntry } from '../components/navigation/navUtils';
+
+const navLinks: NavEntry[] = [
+  { label: 'Fests', to: '/fests', icon: CalendarDays },
+  { label: 'Events', to: '/events', icon: Compass }
+];
 
 export const PublicLayout: React.FC = () => {
   const { currentUser, isAuthenticated, isOrganizer, isAdmin, signOutUser } = useAuth();
-  const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const close = () => setMenuOpen(false);
 
-  const navLinks = [
-    { label: 'Fests', path: '/fests' },
-    { label: 'Events', path: '/events' },
-  ];
+  // Destinations are unchanged: admins reach all three consoles, organizers
+  // their console, everyone else the Student Portal.
+  const adminLink: NavEntry = { label: 'Admin Console', to: '/admin', icon: ShieldCheck };
+  const organizerLink: NavEntry = { label: 'Organizer Console', to: '/organizer', icon: Terminal };
+  const studentLink: NavEntry = { label: 'Student Portal', to: '/dashboard', icon: GraduationCap };
+  const primaryPortal = isAdmin ? adminLink : isOrganizer ? organizerLink : studentLink;
+  const otherPortals = isAdmin ? [organizerLink, studentLink] : [];
+  const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : 'Student';
+
+  const PrimaryIcon = primaryPortal.icon;
+  const portalButton = (
+    <Link
+      to={primaryPortal.to}
+      className={`inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition-colors ${FOCUS_RING} ${
+        isAdmin
+          ? 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20'
+          : 'border-[#2e3442] bg-[#1c1f26] text-white hover:bg-[#252a34]'
+      }`}
+    >
+      <PrimaryIcon className="hidden h-4 w-4 lg:block" aria-hidden="true" />
+      {primaryPortal.label}
+    </Link>
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
-      {/* Main Public Header */}
-      <header className="sticky top-0 z-40 bg-[#090a0b]/90 backdrop-blur-md border-b border-[#242730]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          {/* Brand */}
-          <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#ff4f1a] to-[#ff6838] flex items-center justify-center font-heading font-black text-white text-base shadow-sm">
-              F
-            </div>
-            <div className="flex flex-col">
-              <span className="font-heading font-extrabold text-xl tracking-tight text-white group-hover:text-[#ff4f1a] transition-colors">
-                FESTOFY
-              </span>
-            </div>
-          </Link>
-
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
-            {navLinks.map((link) => {
-              const active = location.pathname === link.path;
-              return (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`transition-colors py-1 ${
-                    active
-                      ? 'text-[#ff4f1a] font-semibold border-b-2 border-[#ff4f1a]'
-                      : 'text-[#9da3b4] hover:text-white'
-                  }`}
-                >
-                  {link.label}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* Action CTA / User Profile */}
-          <div className="hidden md:flex items-center gap-4">
-            {isAuthenticated ? (
-              <div className="flex items-center gap-2.5">
-                {isAdmin ? (
-                  <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[#14161a] border border-[#272b35]">
-                    <Link
-                      to="/admin"
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors shadow-sm"
-                    >
-                      Admin
-                    </Link>
-                    <Link
-                      to="/organizer"
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#1f232c] transition-colors"
-                    >
-                      Organizer
-                    </Link>
-                    <Link
-                      to="/dashboard"
-                      className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#9da3b4] hover:text-white hover:bg-[#1f232c] transition-colors"
-                    >
-                      Student
-                    </Link>
-                  </div>
-                ) : (
-                  <Link
-                    to={isOrganizer ? '/organizer' : '/dashboard'}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-[#1c1f26] hover:bg-[#252a34] text-white border border-[#2e3442] transition-colors"
-                  >
-                    {isOrganizer ? 'Organizer Console' : 'Student Portal'}
-                  </Link>
-                )}
-
-                <div className="flex items-center gap-2 pl-2 border-l border-[#242730]">
-                  <div className="w-7 h-7 rounded-full bg-[#ff4f1a]/20 text-[#ff4f1a] flex items-center justify-center text-xs font-bold border border-[#ff4f1a]/30">
-                    {currentUser?.displayName?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <span className="text-xs text-[#9da3b4] max-w-[100px] truncate">
-                    {currentUser?.displayName}
-                  </span>
-                  <button
-                    onClick={() => signOutUser()}
-                    className="p-1.5 text-[#656c80] hover:text-white rounded-md hover:bg-[#1c1f26] cursor-pointer"
-                    title="Sign Out"
-                  >
-                    <LogOut className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <Link
-                  to="/auth"
-                  className="text-sm font-medium text-[#9da3b4] hover:text-white transition-colors"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/auth?mode=signup"
-                  className="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-all duration-200 shadow-sm shadow-[#ff4f1a]/20"
-                >
-                  Get started
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Mobile menu trigger */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-[#9da3b4] hover:text-white hover:bg-[#191b20]"
-              aria-label="Toggle Navigation"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile dropdown */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-b border-[#242730] bg-[#121316] px-4 pt-2 pb-6 space-y-3">
-            {navLinks.map((link) => (
+      <AppTopBar
+        placement="center"
+        from="md"
+        brand={<BrandLogo to="/" />}
+        nav={navLinks.map((l) => (
+          <TopNavLink key={l.to} item={l} pathname={pathname} />
+        ))}
+        actions={
+          isAuthenticated ? (
+            <>
+              {portalButton}
+              <AccountMenu
+                user={currentUser}
+                fallbackName="User"
+                roleLabel={roleLabel}
+                items={otherPortals}
+                onSignOut={() => signOutUser()}
+              />
+            </>
+          ) : (
+            <>
               <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block py-2 text-base font-medium text-[#9da3b4] hover:text-white"
+                to="/auth"
+                className={`inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
               >
-                {link.label}
+                Sign in
               </Link>
-            ))}
+              <Link
+                to="/auth?mode=signup"
+                className={`inline-flex h-9 items-center rounded-lg bg-[#ff4f1a] px-4 text-[13px] font-semibold text-white transition-colors hover:bg-[#ff6838] ${FOCUS_RING}`}
+              >
+                Get started
+              </Link>
+            </>
+          )
+        }
+        trigger={
+          <MenuButton open={menuOpen} onClick={() => setMenuOpen(true)} controls="public-drawer" label="Open navigation menu" />
+        }
+      />
 
-            <div className="pt-3 border-t border-[#242730] space-y-2">
-              {isAuthenticated ? (
-                <>
-                  {isAdmin ? (
-                    <div className="space-y-1.5">
-                      <Link
-                        to="/admin"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-red-600 text-white"
-                      >
-                        Open Admin Console
-                      </Link>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Link
-                          to="/organizer"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="block text-center py-2 rounded-lg text-xs font-semibold bg-[#1c1f26] text-white border border-[#2e3442]"
-                        >
-                          Organizer Console
-                        </Link>
-                        <Link
-                          to="/dashboard"
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="block text-center py-2 rounded-lg text-xs font-semibold bg-[#1c1f26] text-white border border-[#2e3442]"
-                        >
-                          Student Portal
-                        </Link>
-                      </div>
-                    </div>
-                  ) : (
-                    <Link
-                      to={isOrganizer ? '/organizer' : '/dashboard'}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#ff4f1a] text-white"
-                    >
-                      {isOrganizer ? 'Open Organizer Console' : 'Go to Student Dashboard'}
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      signOutUser();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="block w-full text-center py-2 text-sm text-[#9da3b4] hover:text-white"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <Link
-                    to="/auth"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#191b20] text-white border border-[#2e3442]"
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to="/auth?mode=signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center py-2.5 rounded-lg text-sm font-semibold bg-[#ff4f1a] text-white"
-                  >
-                    Get Started
-                  </Link>
-                </>
-              )}
+      <MobileDrawer
+        id="public-drawer"
+        open={menuOpen}
+        onClose={close}
+        label="Site navigation"
+        closeAt={768}
+        header={<BrandLogo to="/" onClick={close} />}
+        footer={
+          isAuthenticated ? (
+            <DrawerAccount
+              user={currentUser}
+              fallbackName="User"
+              roleLabel={roleLabel}
+              onSignOut={async () => {
+                close();
+                await signOutUser();
+              }}
+            />
+          ) : (
+            <div className="grid gap-2">
+              <Link
+                to="/auth?mode=signup"
+                onClick={close}
+                className={`flex min-h-11 items-center justify-center rounded-lg bg-[#ff4f1a] text-[13px] font-semibold text-white transition-colors hover:bg-[#ff6838] ${FOCUS_RING}`}
+              >
+                Get started
+              </Link>
+              <Link
+                to="/auth"
+                onClick={close}
+                className={`flex min-h-11 items-center justify-center rounded-lg border border-[#2e3442] text-[13px] font-semibold text-white transition-colors hover:bg-white/5 ${FOCUS_RING}`}
+              >
+                Sign in
+              </Link>
             </div>
-          </div>
-        )}
-      </header>
+          )
+        }
+      >
+        <nav aria-label="Primary">
+          <NavGroupList
+            pathname={pathname}
+            size="lg"
+            onNavigate={close}
+            groups={[
+              { label: 'Browse', items: navLinks },
+              ...(isAuthenticated
+                ? [{ label: 'Your portals', items: [primaryPortal, ...otherPortals] }]
+                : [])
+            ]}
+          />
+        </nav>
+      </MobileDrawer>
 
       {/* Page Content */}
       <main className="flex-1">

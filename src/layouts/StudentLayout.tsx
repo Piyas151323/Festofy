@@ -1,200 +1,120 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Compass, CalendarCheck, Building2, LogOut, Menu, X, ExternalLink, Ticket } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Compass,
+  CalendarCheck,
+  Building2,
+  Ticket,
+  CalendarDays,
+  ShieldCheck,
+  Terminal
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { AppTopBar } from '../components/navigation/AppTopBar';
+import { BrandLogo } from '../components/navigation/BrandLogo';
+import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
+import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
+import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
+import { FOCUS_RING, NavEntry, NavGroup } from '../components/navigation/navUtils';
+
+const studentNavItems: NavEntry[] = [
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+  { label: 'Explore Events', to: '/events', icon: Compass },
+  { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
+  { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
+  { label: 'Club Requests', to: '/dashboard/organizations', icon: Building2 }
+];
 
 export const StudentLayout: React.FC = () => {
   const { currentUser, signOutUser, role } = useAuth();
-  const location = useLocation();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const close = () => setMenuOpen(false);
 
-  const studentNavItems = [
-    {
-      label: 'Dashboard',
-      path: '/dashboard',
-      icon: LayoutDashboard,
-      isActive: (pathname: string) => pathname === '/dashboard'
-    },
-    {
-      label: 'Explore Events',
-      path: '/events',
-      icon: Compass,
-      isActive: (pathname: string) => pathname.startsWith('/events')
-    },
-    {
-      label: 'My Registrations',
-      path: '/dashboard/registrations',
-      icon: CalendarCheck,
-      isActive: (pathname: string) => pathname.startsWith('/dashboard/registrations')
-    },
-    {
-      label: 'Passes',
-      path: '/dashboard/passes',
-      icon: Ticket,
-      isActive: (pathname: string) => pathname === '/dashboard/passes'
-    },
-    {
-      label: 'Club Requests',
-      path: '/dashboard/organizations',
-      icon: Building2,
-      isActive: (pathname: string) => pathname.startsWith('/dashboard/organizations')
-    },
-  ];
+  const isAdmin = role === 'admin';
+  const roleLabel = isAdmin ? 'Admin' : role === 'organizer' ? 'Organizer' : 'Student';
 
   const handleSignOut = async () => {
     await signOutUser();
     navigate('/');
   };
 
+  const fests: NavEntry = { label: 'Browse Fests', to: '/fests', icon: CalendarDays };
+  const adminLinks: NavEntry[] = [
+    { label: 'Admin Console', to: '/admin', icon: ShieldCheck },
+    { label: 'Organizer Console', to: '/organizer', icon: Terminal }
+  ];
+
+  const drawerGroups: NavGroup[] = [
+    { label: 'Student portal', items: studentNavItems },
+    { label: 'Discover', items: [fests] },
+    ...(isAdmin ? [{ label: 'Switch console', items: adminLinks }] : [])
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
-      {/* Student Header */}
-      <header className="sticky top-0 z-30 bg-[#121316] border-b border-[#242730]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-lg bg-[#ff4f1a] flex items-center justify-center font-heading font-black text-white text-base">
-                F
-              </div>
-              <span className="font-heading font-bold text-lg text-white">
-                FESTOFY <span className="text-xs px-2 py-0.5 ml-1 rounded bg-[#ff4f1a]/20 text-[#ff4f1a] font-mono">STUDENT</span>
-              </span>
-            </Link>
-
-            {/* Desktop Nav */}
-            <nav className="hidden md:flex items-center gap-1 pl-4 border-l border-[#242730]">
-              {studentNavItems.map((item) => {
-                const Icon = item.icon;
-                const active = item.isActive(location.pathname);
-                return (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-[#1e222b] text-white font-semibold'
-                        : 'text-[#9da3b4] hover:text-white hover:bg-[#191b20]'
-                    }`}
-                  >
-                    <Icon className={`w-4 h-4 ${active ? 'text-[#ff4f1a]' : 'text-[#656c80]'}`} />
-                    {item.label}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-
-          <div className="hidden md:flex items-center gap-4">
-            {role === 'admin' && (
-              <Link
-                to="/admin"
-                className="text-xs px-2.5 py-1 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 hover:bg-red-500/20 font-mono font-medium transition-colors"
-              >
-                Admin Console
-              </Link>
-            )}
-            {role === 'admin' && (
-              <Link
-                to="/organizer"
-                className="text-xs text-[#9da3b4] hover:text-white transition-colors"
-              >
-                Organizer Console
-              </Link>
-            )}
+      <AppTopBar
+        placement="start"
+        from="lg"
+        tone="bg-[#0d0e11]/95"
+        brand={<BrandLogo to="/" label="Student" />}
+        nav={
+          <>
+            <span aria-hidden="true" className="mx-2 h-5 w-px bg-[#242730]" />
+            {studentNavItems.map((item) => (
+              <TopNavLink key={item.to} item={item} pathname={pathname} showIcon />
+            ))}
+          </>
+        }
+        actions={
+          <>
             <Link
-              to="/fests"
-              className="text-xs text-[#9da3b4] hover:text-white flex items-center gap-1"
+              to={fests.to}
+              className={`inline-flex h-9 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
             >
-              Browse Fests <ExternalLink className="w-3 h-3" />
+              {fests.label}
             </Link>
+            <AccountMenu
+              user={currentUser}
+              fallbackName="Student"
+              roleLabel={roleLabel}
+              items={isAdmin ? adminLinks : []}
+              onSignOut={handleSignOut}
+            />
+          </>
+        }
+        trigger={
+          <MenuButton open={menuOpen} onClick={() => setMenuOpen(true)} controls="student-drawer" label="Open student menu" />
+        }
+      />
 
-            {/* User Details */}
-            <div className="flex items-center gap-3 pl-3 border-l border-[#242730]">
-              <div className="w-8 h-8 rounded-full bg-[#1e222b] border border-[#2e3442] flex items-center justify-center text-xs font-bold text-[#ff4f1a]">
-                {currentUser?.displayName?.[0]?.toUpperCase() || 'S'}
-              </div>
-              <div className="flex flex-col text-left">
-                <span className="text-xs font-medium text-white truncate max-w-[120px]">
-                  {currentUser?.displayName || 'Student'}
-                </span>
-                <span className="text-[10px] text-[#656c80] truncate max-w-[120px]">
-                  {currentUser?.email}
-                </span>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="p-1.5 text-[#656c80] hover:text-white rounded hover:bg-[#1e222b] cursor-pointer"
-                title="Sign Out"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+      <MobileDrawer
+        id="student-drawer"
+        open={menuOpen}
+        onClose={close}
+        label="Student menu"
+        closeAt={1024}
+        header={<BrandLogo to="/" label="Student" onClick={close} />}
+        footer={
+          <DrawerAccount
+            user={currentUser}
+            fallbackName="Student"
+            roleLabel={roleLabel}
+            onSignOut={async () => {
+              close();
+              await handleSignOut();
+            }}
+          />
+        }
+      >
+        <nav aria-label="Student">
+          <NavGroupList groups={drawerGroups} pathname={pathname} size="lg" onNavigate={close} />
+        </nav>
+      </MobileDrawer>
 
-          {/* Mobile menu toggle */}
-          <div className="flex md:hidden items-center gap-2">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-[#9da3b4] hover:text-white"
-            >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Mobile Nav */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-b border-[#242730] bg-[#14161a] p-4 space-y-2">
-            {studentNavItems.map((item) => {
-              const Icon = item.icon;
-              const active = item.isActive(location.pathname);
-              return (
-                <Link
-                  key={item.path}
-                  to={item.path}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium ${
-                    active ? 'bg-[#ff4f1a] text-white' : 'text-[#9da3b4] hover:bg-[#1e222b]'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-            {role === 'admin' && (
-              <div className="pt-2 border-t border-[#242730] flex flex-col gap-1.5">
-                <Link
-                  to="/admin"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-lg text-xs font-mono font-semibold bg-red-500/10 text-red-400 border border-red-500/30"
-                >
-                  Admin Console
-                </Link>
-                <Link
-                  to="/organizer"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="px-3 py-2 rounded-lg text-xs text-[#9da3b4] hover:bg-[#1e222b]"
-                >
-                  Organizer Console
-                </Link>
-              </div>
-            )}
-            <div className="pt-3 border-t border-[#242730] flex justify-between items-center text-xs text-[#9da3b4]">
-              <Link to="/fests" className="hover:text-white">
-                Public Directory
-              </Link>
-              <button onClick={handleSignOut} className="text-red-400 hover:text-red-300">
-                Sign Out
-              </button>
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Main Student Portal Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <Outlet />
       </main>
     </div>
