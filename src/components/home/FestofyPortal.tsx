@@ -1,21 +1,18 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Compass, UserCheck, BarChart2 } from 'lucide-react';
+import { ArrowDownRight, ArrowRight } from 'lucide-react';
 import { GlyphPortal } from '../ui/glyph-portal';
 
 const FEATURES = [
   {
-    icon: Compass,
     title: 'Discover Campus Events',
     body: 'Find festivals, competitions, workshops, and other campus activities in one place.',
   },
   {
-    icon: UserCheck,
     title: 'Register and Participate',
     body: 'Explore event details, complete registrations, and keep track of upcoming activities.',
   },
   {
-    icon: BarChart2,
     title: 'Organize with Confidence',
     body: 'Give student organizations a structured way to manage events and participant registrations.',
   },
@@ -28,33 +25,45 @@ const Eyebrow: React.FC = () => (
   </div>
 );
 
-const Supporting: React.FC = () => (
-  <div className="max-w-2xl space-y-3 sm:space-y-4">
+const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) => (
+  <div className="flex max-w-2xl flex-col items-center space-y-3 sm:space-y-4">
     <div className="font-heading text-lg font-medium text-[#f4f5f7] sm:text-2xl lg:text-3xl">
       Plan. Discover. Participate.
     </div>
     <p className="text-xs leading-relaxed text-[#9da3b4] sm:text-sm md:text-base">
       One home for festivals, events, registrations and participants, built for the clubs that run them and the students who show up.
     </p>
+    {onStepInside && (
+      <button
+        type="button"
+        onClick={onStepInside}
+        className="pointer-events-auto mt-1 inline-flex items-center gap-2 rounded-xl bg-[#ff4f1a] px-6 py-3 text-xs font-semibold text-white shadow-lg shadow-[#ff4f1a]/20 transition-colors hover:bg-[#ff6838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
+      >
+        Step inside <ArrowDownRight className="h-4 w-4" />
+      </button>
+    )}
   </div>
 );
 
-const Features: React.FC = () => (
-  <div className="w-full max-w-5xl">
-    <div className="grid grid-cols-1 divide-y divide-[#242730] md:grid-cols-3 md:divide-x md:divide-y-0">
-      {FEATURES.map(({ icon: Icon, title, body }) => (
-        <div key={title} className="flex gap-4 py-3.5 md:flex-col md:px-8 md:py-2">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#ff4f1a]/10 text-[#ff4f1a] md:h-12 md:w-12">
-            <Icon className="h-5 w-5 md:h-6 md:w-6" />
+const Features: React.FC<{ showHeading?: boolean }> = ({ showHeading = true }) => (
+  <div className="w-full max-w-5xl text-left">
+    {showHeading && (
+      <h2 className="font-heading max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
+        One home for every campus event.
+      </h2>
+    )}
+    <div className={`grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-10 ${showHeading ? 'mt-6 md:mt-12' : ''}`}>
+      {FEATURES.map(({ title, body }, i) => (
+        <div key={title} className="border-t border-[#ff4f1a]/40 pt-3 md:pt-4">
+          <div className="flex items-baseline gap-3">
+            <span className="text-[11px] font-semibold text-[#ff4f1a]">0{i + 1}</span>
+            <h3 className="font-heading text-base font-semibold text-white md:text-lg">{title}</h3>
           </div>
-          <div className="space-y-1 md:space-y-2">
-            <h3 className="font-heading text-base font-bold text-white md:text-xl">{title}</h3>
-            <p className="text-xs leading-relaxed text-[#9da3b4] md:text-sm">{body}</p>
-          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#9da3b4] md:mt-2 md:text-sm">{body}</p>
         </div>
       ))}
     </div>
-    <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4 md:mt-10">
+    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:gap-4 md:mt-10">
       <Link
         to="/fests"
         className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ff4f1a] px-7 py-3 text-xs font-semibold text-white shadow-lg shadow-[#ff4f1a]/20 transition-all duration-200 hover:bg-[#ff6838] sm:w-auto sm:text-sm"
@@ -83,7 +92,9 @@ const StaticHero: React.FC = () => (
       <div className="flex justify-center">
         <Supporting />
       </div>
-      <Features />
+      <div className="flex justify-center">
+        <Features showHeading={false} />
+      </div>
     </div>
   </section>
 );
@@ -93,17 +104,22 @@ export const FestofyPortal: React.FC = () => (
     word="FESTOFY"
     topOffset="4rem" /* PublicLayout header is sticky, h-16 */
     above={<Eyebrow />}
-    below={<Supporting />}
+    below={({ stepInside }) => <Supporting onStepInside={stepInside} />}
     fallback={<StaticHero />}
     scene={
       <>
+        {/* Letters show this gradient: light top-left, deeper bottom-right */}
         <div
           className="absolute inset-0"
-          style={{ background: 'linear-gradient(115deg,#ff4f1a 0%,#e8431a 40%,#a3260a 75%,#ff4f1a 100%)' }}
+          style={{ background: 'linear-gradient(120deg,#ff7a3d 0%,#ff4f1a 35%,#d63a12 68%,#8f2209 100%)' }}
         />
+        {/* Soft lighting patches, like the original */}
         <div
           className="absolute inset-0"
-          style={{ background: 'radial-gradient(60% 80% at 50% 40%, rgba(255,170,120,.35), transparent 70%)' }}
+          style={{
+            background:
+              'radial-gradient(45% 70% at 22% 25%, rgba(255,190,140,.35), transparent 70%), radial-gradient(40% 60% at 78% 70%, rgba(120,20,5,.45), transparent 70%)',
+          }}
         />
       </>
     }
