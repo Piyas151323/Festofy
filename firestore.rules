@@ -17,11 +17,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Authoritative Admin: Verified role in userRoles collection.
+    // Authoritative Admin: Verified role in userRoles collection or bootstrapped runtime admin email.
     function isAdmin() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/userRoles/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && (
+        (exists(/databases/$(database)/documents/userRoles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/userRoles/$(request.auth.uid)).data.role == 'admin') ||
+        (request.auth.token.email == 'hippopotamus.type@gmail.com' && request.auth.token.email_verified == true)
+      );
     }
 
     function isOrgMember(orgId) {
@@ -103,7 +105,8 @@ service cloud.firestore {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
       allow create: if (isOwner(userId) &&
-        request.resource.data.role == 'student' &&
+        (request.resource.data.role == 'student' ||
+         (request.auth.token.email == 'hippopotamus.type@gmail.com' && request.auth.token.email_verified == true && request.resource.data.role == 'admin')) &&
         request.resource.data.keys().hasAll(['role', 'createdAt', 'updatedAt'])) ||
         isAdmin();
       allow update, delete: if isAdmin();

@@ -20,10 +20,7 @@ import {
   CreditCard,
   FileText,
   BookmarkPlus,
-  Phone,
-  Edit2,
-  Layers,
-  CheckCircle2
+  Phone
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { createEvent, getEventCategories } from '../../services/eventService';
@@ -32,9 +29,6 @@ import { AVAILABLE_INTERESTS } from '../../services/userService';
 import { Fest, EventCategory, EventFormField, FormFieldType, ParticipantCategoryConfig, VisitorAccessType } from '../../types';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 import { TemplateSelectorModal } from '../../components/registration/TemplateSelectorModal';
-import { FormFieldEditorModal } from '../../components/registration/FormFieldEditorModal';
-import { LiveFormPreview } from '../../components/registration/LiveFormPreview';
-import { getDefaultParticipantQuestions } from '../../services/templateService';
 import { validatePhoneNumber } from '../../utils/phoneUtils';
 import { PageHeader } from '../../components/common/PageHeader';
 
@@ -98,11 +92,10 @@ export const OrganizerCreateEventPage: React.FC = () => {
 
   // Custom Form Fields & Templates
   const [customFields, setCustomFields] = useState<EventFormField[]>([]);
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+  const [newFieldType, setNewFieldType] = useState<FormFieldType>('text');
+  const [newFieldRequired, setNewFieldRequired] = useState(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-  const [isFieldEditorOpen, setIsFieldEditorOpen] = useState(false);
-  const [fieldToEdit, setFieldToEdit] = useState<EventFormField | null>(null);
-  const [fieldToEditIndex, setFieldToEditIndex] = useState<number | null>(null);
-  const [formTab, setFormTab] = useState<'fields' | 'preview'>('fields');
 
   useEffect(() => {
     async function fetchMetadata() {
@@ -221,40 +214,18 @@ export const OrganizerCreateEventPage: React.FC = () => {
     });
   };
 
-  const handleOpenAddField = () => {
-    setFieldToEdit(null);
-    setFieldToEditIndex(null);
-    setIsFieldEditorOpen(true);
-  };
-
-  const handleOpenEditField = (field: EventFormField, index: number) => {
-    setFieldToEdit(field);
-    setFieldToEditIndex(index);
-    setIsFieldEditorOpen(true);
-  };
-
-  const handleSaveField = (savedField: EventFormField) => {
-    if (fieldToEditIndex !== null && fieldToEditIndex >= 0) {
-      setCustomFields(prev => {
-        const copy = [...prev];
-        copy[fieldToEditIndex] = savedField;
-        return copy;
-      });
-    } else {
-      setCustomFields(prev => [...prev, savedField]);
-    }
-    setIsFieldEditorOpen(false);
-    setFieldToEdit(null);
-    setFieldToEditIndex(null);
-  };
-
-  const handleLoadDefaultQuestions = () => {
-    const defaults = getDefaultParticipantQuestions().map((f, idx) => ({
-      ...f,
-      id: `field_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
-      ...(f.options ? { options: [...f.options] } : {})
-    }));
-    setCustomFields(defaults);
+  const handleAddCustomField = () => {
+    if (!newFieldLabel.trim()) return;
+    const field: EventFormField = {
+      id: `field_${Date.now()}`,
+      label: newFieldLabel.trim(),
+      type: newFieldType,
+      required: newFieldRequired
+    };
+    setCustomFields(prev => [...prev, field]);
+    setNewFieldLabel('');
+    setNewFieldType('text');
+    setNewFieldRequired(false);
   };
 
   const handleRemoveCustomField = (id: string) => {
@@ -1107,36 +1078,15 @@ export const OrganizerCreateEventPage: React.FC = () => {
               <span>6. Registration Info Questions ({customFields.length})</span>
             </div>
 
-            {/* Template & Builder Action Buttons */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* Template Action Buttons */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsTemplateModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-500 text-xs font-semibold text-[#ff4f1a] transition-all cursor-pointer shadow-sm"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Use Saved Template</span>
-              </button>
-
-              {customFields.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsTemplateModalOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
-                  title="Save current event questions as a reusable template"
-                >
-                  <BookmarkPlus className="w-3.5 h-3.5 text-zinc-400" />
-                  <span>Save as Template</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={handleOpenAddField}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white transition-all shadow-sm cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add Question</span>
+                <span>Form Templates</span>
               </button>
             </div>
           </div>
@@ -1145,173 +1095,126 @@ export const OrganizerCreateEventPage: React.FC = () => {
             Configure questions for students to answer upon registering. You can select a reusable template, customize the questions for this event without affecting the template, and reorder questions as needed.
           </p>
 
-          {/* Builder / Preview Tabs */}
-          {customFields.length > 0 && (
-            <div className="flex items-center justify-between border-b border-[#242730] pb-2 pt-1">
-              <div className="flex items-center gap-1 bg-[#191b20] p-1 rounded-xl border border-[#242730] text-xs">
-                <button
-                  type="button"
-                  onClick={() => setFormTab('fields')}
-                  className={`px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer ${
-                    formTab === 'fields'
-                      ? 'bg-zinc-800 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
+          {/* List existing custom fields with Reordering */}
+          {customFields.length > 0 ? (
+            <div className="space-y-2">
+              {customFields.map((field, idx) => (
+                <div
+                  key={field.id}
+                  className="p-3.5 rounded-xl bg-[#191b20] border border-[#2e3442] flex items-center justify-between text-xs"
                 >
-                  Questions List ({customFields.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormTab('preview')}
-                  className={`px-3 py-1 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                    formTab === 'preview'
-                      ? 'bg-zinc-800 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  <Eye className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Live Form Preview</span>
-                </button>
-              </div>
+                  <div className="flex items-center gap-3">
+                    {/* Reorder Buttons */}
+                    <div className="flex flex-col gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => handleMoveFieldUp(idx)}
+                        disabled={idx === 0}
+                        title="Move question up"
+                        className="p-0.5 text-zinc-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                      >
+                        <ArrowUp className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleMoveFieldDown(idx)}
+                        disabled={idx === customFields.length - 1}
+                        title="Move question down"
+                        className="p-0.5 text-zinc-500 hover:text-white disabled:opacity-20 cursor-pointer"
+                      >
+                        <ArrowDown className="w-3 h-3" />
+                      </button>
+                    </div>
 
-              <span className="text-[11px] text-zinc-500 font-mono hidden sm:inline">
-                Independent copy for this event
-              </span>
+                    <span className="font-mono text-zinc-500 text-[11px]">#{idx + 1}</span>
+                    <span className="font-semibold text-white">{field.label}</span>
+                    <span className="px-2 py-0.5 rounded bg-[#14161a] text-zinc-400 font-mono text-[10px]">
+                      {field.type}
+                    </span>
+                    {field.required && (
+                      <span className="text-[10px] text-[#ff4f1a] font-bold">Required</span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCustomField(field.id)}
+                    className="p-1 text-zinc-500 hover:text-rose-400 transition-colors cursor-pointer"
+                    title="Delete question"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-[#191b20]/60 border border-[#242730] text-center space-y-2">
+              <FileText className="w-6 h-6 text-zinc-600 mx-auto" />
+              <p className="text-xs text-[#9da3b4]">
+                Standard participant profile details (Full name, Email, Phone, Institution, Class/Grade) are collected automatically.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsTemplateModalOpen(true)}
+                className="text-xs text-[#ff4f1a] font-semibold hover:underline inline-flex items-center gap-1"
+              >
+                <Sparkles className="w-3 h-3" /> Load questions from a template
+              </button>
             </div>
           )}
 
-          {formTab === 'fields' ? (
-            <>
-              {/* List existing custom fields with Reordering */}
-              {customFields.length > 0 ? (
-                <div className="space-y-2.5">
-                  {customFields.map((field, idx) => (
-                    <div
-                      key={field.id}
-                      className="p-3.5 rounded-xl bg-[#191b20] border border-[#2e3442] flex items-center justify-between text-xs transition-colors hover:border-zinc-600"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {/* Reorder Buttons */}
-                        <div className="flex flex-col gap-0.5">
-                          <button
-                            type="button"
-                            onClick={() => handleMoveFieldUp(idx)}
-                            disabled={idx === 0}
-                            title="Move question up"
-                            className="p-0.5 text-zinc-500 hover:text-white disabled:opacity-20 cursor-pointer"
-                          >
-                            <ArrowUp className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleMoveFieldDown(idx)}
-                            disabled={idx === customFields.length - 1}
-                            title="Move question down"
-                            className="p-0.5 text-zinc-500 hover:text-white disabled:opacity-20 cursor-pointer"
-                          >
-                            <ArrowDown className="w-3 h-3" />
-                          </button>
-                        </div>
+          {/* Add custom field inputs */}
+          <div className="p-4 rounded-xl bg-[#191b20] border border-[#2e3442] space-y-3">
+            <span className="text-[10px] uppercase font-mono text-[#656c80] block">
+              Add New Question Specifically for this Event:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="sm:col-span-2">
+                <input
+                  type="text"
+                  value={newFieldLabel}
+                  onChange={(e) => setNewFieldLabel(e.target.value)}
+                  placeholder="Question label (e.g., GitHub Profile URL, T-shirt size, Track choice)"
+                  className="w-full px-3 py-2 rounded-lg bg-[#14161a] border border-[#242730] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a]"
+                />
+              </div>
+              <div>
+                <select
+                  value={newFieldType}
+                  onChange={(e) => setNewFieldType(e.target.value as FormFieldType)}
+                  className="w-full px-3 py-2 rounded-lg bg-[#14161a] border border-[#242730] text-xs text-white focus:outline-none focus:border-[#ff4f1a]"
+                >
+                  <option value="text">Short Text</option>
+                  <option value="textarea">Paragraph</option>
+                  <option value="url">URL</option>
+                  <option value="email">Email</option>
+                  <option value="phone">Phone Number</option>
+                </select>
+              </div>
+            </div>
 
-                        <span className="font-mono text-zinc-500 text-[11px]">#{idx + 1}</span>
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newFieldRequired}
+                  onChange={(e) => setNewFieldRequired(e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-zinc-700 text-[#ff4f1a] focus:ring-0"
+                />
+                <span>Mandatory response</span>
+              </label>
 
-                        <div className="space-y-0.5 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-white truncate">{field.label}</span>
-                            <span className="px-2 py-0.5 rounded bg-[#14161a] text-zinc-400 font-mono text-[10px]">
-                              {field.type}
-                            </span>
-                            {field.required ? (
-                              <span className="text-[10px] text-[#ff4f1a] font-bold uppercase font-mono">
-                                Required
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-zinc-500 font-mono">Optional</span>
-                            )}
-                          </div>
-
-                          {field.options && field.options.length > 0 && (
-                            <div className="text-[10px] text-zinc-400 flex flex-wrap gap-1 pt-0.5">
-                              <span className="text-zinc-500">Choices:</span>
-                              {field.options.map((opt, oi) => (
-                                <span
-                                  key={oi}
-                                  className="px-1.5 py-0.2 rounded bg-[#14161a] border border-[#242730]"
-                                >
-                                  {opt}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditField(field, idx)}
-                          className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors cursor-pointer"
-                          title="Edit question settings"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCustomField(field.id)}
-                          className="p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors cursor-pointer"
-                          title="Delete question"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 rounded-2xl bg-[#191b20]/60 border border-[#242730] text-center space-y-3">
-                  <FileText className="w-8 h-8 text-zinc-600 mx-auto" />
-                  <div>
-                    <h5 className="font-heading text-xs font-bold text-white">
-                      No Event-Specific Questions Added Yet
-                    </h5>
-                    <p className="text-xs text-[#9da3b4] mt-1 max-w-md mx-auto">
-                      Standard student identification (Full name, Email, Phone, Institution, Class/Grade) is recorded automatically. Choose a template or create custom questions for this challenge.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      onClick={() => setIsTemplateModalOpen(true)}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white inline-flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Use Saved Template</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenAddField}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#1e222b] hover:bg-[#282d38] border border-[#2e3442] text-xs font-semibold text-zinc-200 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Add Custom Question</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleLoadDefaultQuestions}
-                      className="px-3.5 py-1.5 rounded-xl bg-[#1e222b] hover:bg-[#282d38] border border-[#2e3442] text-xs font-semibold text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
-                    >
-                      <span>Load Standard Questions</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <LiveFormPreview
-              fields={customFields}
-              title="Student Registration Form Preview"
-            />
-          )}
+              <button
+                type="button"
+                onClick={handleAddCustomField}
+                disabled={!newFieldLabel.trim()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-40"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Question</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* SUBMIT ACTIONS */}
@@ -1344,14 +1247,6 @@ export const OrganizerCreateEventPage: React.FC = () => {
           currentFieldsToSave={customFields}
         />
       )}
-
-      {/* Field Editor Modal for adding / editing custom questions */}
-      <FormFieldEditorModal
-        isOpen={isFieldEditorOpen}
-        onClose={() => setIsFieldEditorOpen(false)}
-        onSave={handleSaveField}
-        initialField={fieldToEdit}
-      />
     </div>
   );
 };
