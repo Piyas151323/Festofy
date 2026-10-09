@@ -319,6 +319,8 @@ function runPhase1VerificationSuite() {
 
   if (passed !== total) {
     process.exit(1);
+  } else {
+    process.exit(0);
   }
 }
 

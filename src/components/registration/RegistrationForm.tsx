@@ -37,158 +37,16 @@ import { formatDateTime } from '../../utils/dateUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import { submitAtomicRegistration } from '../../services/registrationService';
 import { DemoPaymentModal } from './DemoPaymentModal';
+import {
+  isRedundantProfileField,
+  getProfileValueForField,
+  isClassGradeField,
+  normalizeSelectOption
+} from '../../utils/formValidationUtils';
 
 interface RegistrationFormProps {
   event: EventItem;
   fest?: Fest | null;
-}
-
-/**
- * Helper to identify if an event custom field duplicates standard student profile information.
- * Standard profile fields: Name, Email, Phone, Institution, Class/Grade, Student ID / Roll.
- */
-function isRedundantProfileField(field: EventFormField): boolean {
-  const lbl = (field.label || '').trim().toLowerCase();
-  const id = (field.id || '').trim().toLowerCase();
-
-  // Full Name (excluding team name, project title, emergency contact name)
-  if (
-    (lbl.includes('name') &&
-      !lbl.includes('team') &&
-      !lbl.includes('project') &&
-      !lbl.includes('emergency') &&
-      !lbl.includes('parent') &&
-      !lbl.includes('guardian')) ||
-    id.includes('name')
-  ) {
-    return true;
-  }
-
-  // Email
-  if (lbl.includes('email') || field.type === 'email' || id.includes('email')) {
-    return true;
-  }
-
-  // Contact Phone Number (excluding emergency phone)
-  if (
-    ((lbl.includes('phone') || lbl.includes('contact') || lbl.includes('mobile')) &&
-      !lbl.includes('emergency') &&
-      !lbl.includes('parent') &&
-      !lbl.includes('guardian')) ||
-    (id.includes('phone') && !id.includes('emergency'))
-  ) {
-    return true;
-  }
-
-  // Institution / College / School / University
-  if (
-    lbl.includes('institution') ||
-    lbl.includes('college') ||
-    lbl.includes('school') ||
-    lbl.includes('university') ||
-    id.includes('inst')
-  ) {
-    return true;
-  }
-
-  // Class / Grade / Academic Year
-  if (
-    lbl.includes('class') ||
-    lbl.includes('grade') ||
-    lbl.includes('academic year') ||
-    id.includes('grade') ||
-    id.includes('class')
-  ) {
-    return true;
-  }
-
-  // Student ID / Roll Number
-  if (
-    lbl.includes('student id') ||
-    lbl.includes('roll number') ||
-    lbl.includes('institutional roll') ||
-    id.includes('roll') ||
-    id.includes('studentid')
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Extracts student profile value matching a redundant field so backend customResponses
- * remain fully populated for organizer exports and firestore validations.
- */
-function getProfileValueForField(
-  field: EventFormField,
-  data: {
-    studentName: string;
-    studentEmail: string;
-    studentPhone: string;
-    institution: string;
-    classGrade: string;
-    studentId: string;
-  }
-): string {
-  const lbl = (field.label || '').trim().toLowerCase();
-  const id = (field.id || '').trim().toLowerCase();
-
-  if (
-    (lbl.includes('name') &&
-      !lbl.includes('team') &&
-      !lbl.includes('project') &&
-      !lbl.includes('emergency') &&
-      !lbl.includes('parent') &&
-      !lbl.includes('guardian')) ||
-    id.includes('name')
-  ) {
-    return data.studentName;
-  }
-
-  if (lbl.includes('email') || field.type === 'email' || id.includes('email')) {
-    return data.studentEmail;
-  }
-
-  if (
-    ((lbl.includes('phone') || lbl.includes('contact') || lbl.includes('mobile')) &&
-      !lbl.includes('emergency')) ||
-    (id.includes('phone') && !id.includes('emergency'))
-  ) {
-    return data.studentPhone;
-  }
-
-  if (
-    lbl.includes('institution') ||
-    lbl.includes('college') ||
-    lbl.includes('school') ||
-    lbl.includes('university') ||
-    id.includes('inst')
-  ) {
-    return data.institution;
-  }
-
-  if (
-    lbl.includes('class') ||
-    lbl.includes('grade') ||
-    lbl.includes('academic year') ||
-    id.includes('grade') ||
-    id.includes('class')
-  ) {
-    return data.classGrade;
-  }
-
-  if (
-    lbl.includes('student id') ||
-    lbl.includes('roll number') ||
-    lbl.includes('institutional roll') ||
-    id.includes('roll') ||
-    id.includes('studentid')
-  ) {
-    return data.studentId;
-  }
-
-  return '';
 }
 
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest }) => {
@@ -357,13 +215,33 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     }
   }, [studentName, studentEmail, studentPhone, institution, studentId]);
 
-  // Filter out redundant profile questions so they never appear twice to the student
+  // Find if event has a specific class/grade questionnaire field configured
+  const classField = useMemo(() => {
+    return event.customFormFields?.find((f) => isClassGradeField(f));
+  }, [event.customFormFields]);
+
+  // Compute matched canonical tier option from saved student profile data
+  const classFieldMatchedOption = useMemo(() => {
+    if (!classField || !classField.options || classField.options.length === 0) return null;
+    const currentVal = customResponses[classField.id];
+    if (currentVal && classField.options.includes(String(currentVal))) {
+      return String(currentVal);
+    }
+    if (classGrade) {
+      return normalizeSelectOption(classGrade, classField.options, classField.label);
+    }
+    return null;
+  }, [classField, customResponses, classGrade]);
+
+  // Filter out redundant profile questions so they never appear twice to the student.
+  // Note: Class/grade questions with options are NEVER redundant.
   const eventSpecificFields = useMemo(() => {
     if (!event.customFormFields || event.customFormFields.length === 0) return [];
     return event.customFormFields.filter((f) => !isRedundantProfileField(f));
   }, [event.customFormFields]);
 
   // Prepopulate redundant questionnaire fields from student profile behind the scenes
+  // and smart-autofill event-specific fields (e.g. classGrade) when saved profile data matches
   useEffect(() => {
     if (event.customFormFields && event.customFormFields.length > 0) {
       setCustomResponses((prev) => {
@@ -382,6 +260,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
             if (val && updated[f.id] !== val) {
               updated[f.id] = val;
               changed = true;
+            }
+          } else {
+            // For visible event-specific fields, if currently empty, attempt smart autofill from profile
+            if (isClassGradeField(f) && classGrade) {
+              if (f.options && f.options.length > 0) {
+                const matched = normalizeSelectOption(classGrade, f.options, f.label);
+                if (matched && !updated[f.id]) {
+                  updated[f.id] = matched;
+                  changed = true;
+                }
+              } else if (!updated[f.id]) {
+                updated[f.id] = classGrade;
+                changed = true;
+              }
             }
           }
         });
@@ -487,35 +379,54 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     if (eventSpecificFields.length > 0) {
       eventSpecificFields.forEach((field) => {
         const val = customResponses[field.id];
+        const hasVal = val !== undefined && val !== null && val !== '' && (typeof val !== 'string' || val.trim().length > 0);
 
         if (field.required) {
-          if (val === undefined || val === null || val === '') {
-            newErrors.custom![field.id] = `${field.label} is required.`;
+          if (!hasVal) {
+            newErrors.custom![field.id] = `"${field.label}" is required. Please select or provide a response.`;
             hasError = true;
             return;
           }
-          if (field.type === 'checkbox' && Array.isArray(val) && val.length === 0) {
-            newErrors.custom![field.id] = `Please select at least one option for ${field.label}.`;
-            hasError = true;
-            return;
+          if (field.type === 'checkbox') {
+            if (Array.isArray(val) && val.length === 0) {
+              newErrors.custom![field.id] = `Please select at least one option for "${field.label}".`;
+              hasError = true;
+              return;
+            }
+            if (typeof val === 'boolean' && !val) {
+              newErrors.custom![field.id] = `You must accept the requirement: "${field.label}".`;
+              hasError = true;
+              return;
+            }
           }
-          if (field.type === 'checkbox' && typeof val === 'boolean' && !val) {
-            newErrors.custom![field.id] = 'You must accept/check this requirement.';
-            hasError = true;
-            return;
+        }
+
+        // Validate select / radio options against allowed list
+        if (hasVal && (field.type === 'select' || field.type === 'radio') && field.options && field.options.length > 0) {
+          const rawVal = typeof val === 'string' ? val.trim() : String(val);
+          if (!field.options.includes(rawVal)) {
+            const matched = normalizeSelectOption(rawVal, field.options, field.label);
+            if (matched) {
+              // Automatically resolve to the canonical option in state
+              setCustomResponses((prev) => ({ ...prev, [field.id]: matched }));
+            } else {
+              newErrors.custom![field.id] = `Please select a valid option for "${field.label}".`;
+              hasError = true;
+              return;
+            }
           }
         }
 
         // Format checks if filled
-        if (val && typeof val === 'string' && val.trim()) {
+        if (hasVal && typeof val === 'string' && val.trim()) {
           if (field.type === 'email' && !isValidEmail(val)) {
-            newErrors.custom![field.id] = 'Please enter a valid email address.';
+            newErrors.custom![field.id] = `Please enter a valid email address for "${field.label}".`;
             hasError = true;
           } else if (field.type === 'phone' && !isValidPhone(val)) {
-            newErrors.custom![field.id] = 'Please enter a valid phone number.';
+            newErrors.custom![field.id] = `Please enter a valid phone number for "${field.label}".`;
             hasError = true;
           } else if (field.type === 'url' && !isValidUrl(val)) {
-            newErrors.custom![field.id] = 'Please enter a valid URL (e.g. https://github.com/...).';
+            newErrors.custom![field.id] = `Please enter a valid URL (e.g. https://...) for "${field.label}".`;
             hasError = true;
           }
         }
@@ -529,6 +440,27 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     }
 
     setErrors(newErrors);
+
+    if (hasError) {
+      // Find first field with error and scroll to it smoothly
+      if (newErrors.studentName || newErrors.studentEmail || newErrors.studentPhone) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (newErrors.teamName || newErrors.teamSize || (newErrors.members && Object.keys(newErrors.members).length > 0)) {
+        const teamEl = document.getElementById('team-registration-section');
+        teamEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (newErrors.custom && Object.keys(newErrors.custom).length > 0) {
+        const firstFieldId = Object.keys(newErrors.custom).find(k => !!newErrors.custom![k]);
+        if (firstFieldId) {
+          const el = document.getElementById(`custom-field-${firstFieldId}`);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el?.focus();
+        }
+      } else if (newErrors.payment) {
+        const payEl = document.getElementById('payment-section');
+        payEl?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
     return !hasError;
   };
 
@@ -537,6 +469,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
       ...prev,
       [fieldId]: val
     }));
+
+    // If user selected or changed a class/grade field, keep classGrade state synchronized
+    const field = event.customFormFields?.find((f) => f.id === fieldId);
+    if (field && isClassGradeField(field) && typeof val === 'string' && val.trim()) {
+      setClassGrade(val.trim());
+    }
+
     if (errors.custom?.[fieldId]) {
       setErrors((prev) => ({
         ...prev,
@@ -557,6 +496,24 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
     try {
       setIsSubmitting(true);
+
+      // Ensure classGrade passed in registration snapshot aligns with any custom question answer
+      let resolvedClassGrade = classGrade;
+      if (classField) {
+        const customAnswer = customResponses[classField.id];
+        if (customAnswer && typeof customAnswer === 'string' && customAnswer.trim()) {
+          resolvedClassGrade = customAnswer.trim();
+        } else if (classField.options && classField.options.length > 0) {
+          const matched = normalizeSelectOption(classGrade, classField.options, classField.label);
+          if (matched) {
+            resolvedClassGrade = matched;
+          } else if (!classField.required) {
+            // If field is optional and profile does not match, omit invalid arbitrary string
+            resolvedClassGrade = '';
+          }
+        }
+      }
+
       const res = await submitAtomicRegistration({
         eventId: event.id,
         registrationType,
@@ -566,7 +523,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         institution,
         studentId,
         studentPhotoURL: studentPhotoURL || currentUser?.photoURL || '',
-        classGrade,
+        classGrade: resolvedClassGrade,
         participantCategory,
         appliedFee: effectiveFee,
         currency: 'BDT',
@@ -585,7 +542,37 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
       });
     } catch (err: any) {
       console.warn('Registration submission notice:', err?.message || err);
-      setSubmissionError(err.message || 'Registration submission failed. Please review your details.');
+      const msg = err.message || 'Registration submission failed. Please review your details.';
+      setSubmissionError(msg);
+
+      // If error indicates an invalid option for a custom field, highlight that specific field inline!
+      if (event.customFormFields) {
+        for (const f of event.customFormFields) {
+          const isTargetField =
+            msg.toLowerCase().includes(f.label.toLowerCase()) ||
+            msg.toLowerCase().includes(f.id.toLowerCase()) ||
+            (isClassGradeField(f) && (
+              msg.toLowerCase().includes('class') ||
+              msg.toLowerCase().includes('grade') ||
+              msg.toLowerCase().includes('academic year') ||
+              msg.toLowerCase().includes('academic standing')
+            ));
+
+          if (isTargetField) {
+            setErrors((prev) => ({
+              ...prev,
+              custom: {
+                ...prev.custom,
+                [f.id]: msg
+              }
+            }));
+            const el = document.getElementById(`custom-field-${f.id}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            el?.focus();
+            break;
+          }
+        }
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -595,6 +582,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   const missingRequiredFields: string[] = [];
   if (!studentName.trim()) missingRequiredFields.push('Full Name');
   if (!studentEmail.trim()) missingRequiredFields.push('Email Address');
+  if (classField?.required && !customResponses[classField.id] && !classFieldMatchedOption) {
+    missingRequiredFields.push(classField.label || 'Class / Grade / Academic Year');
+  }
 
   return (
     <div className="space-y-6">
@@ -793,15 +783,32 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Class / Academic Year</span>
                 <span className="font-medium text-white flex items-center gap-1.5 truncate">
                   <IdCard className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
-                  <span className="truncate">{classGrade || <span className="text-zinc-500 italic">Not specified in profile</span>}</span>
+                  <span className="truncate">
+                    {classField && customResponses[classField.id] ? (
+                      String(customResponses[classField.id])
+                    ) : classFieldMatchedOption ? (
+                      classFieldMatchedOption
+                    ) : classGrade ? (
+                      classGrade
+                    ) : (
+                      <span className="text-zinc-500 italic">Not specified in profile</span>
+                    )}
+                  </span>
                 </span>
               </div>
               <div>
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Profile Status</span>
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Active & Synced</span>
-                </span>
+                {classField?.required && !customResponses[classField.id] && !classFieldMatchedOption ? (
+                  <span className="text-amber-400 font-medium flex items-center gap-1">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>Select Tier Below</span>
+                  </span>
+                ) : (
+                  <span className="text-emerald-400 font-medium flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Active & Synced</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -813,10 +820,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <span className="font-bold text-amber-100 block">
-                    Missing Profile Information Required for Registration
+                    Missing or Actionable Profile Information for Registration
                   </span>
                   <p className="text-[11px] text-amber-200/90 leading-relaxed">
-                    Your student profile is missing: {missingRequiredFields.join(', ')}. Please update your profile or complete the missing fields below.
+                    This competition requires: {missingRequiredFields.join(', ')}. Please update your details below to continue.
                   </p>
                 </div>
               </div>
@@ -826,12 +833,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                   to={`/dashboard/profile?returnUrl=/events/${event.id}/register`}
                   className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors"
                 >
-                  Complete in Student Profile →
+                  Edit in Student Profile →
                 </Link>
               </div>
 
-              {/* Inline inputs for ONLY missing required fields */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-500/20">
+              {/* Inline inputs for missing required fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t border-amber-500/20">
                 {!studentName.trim() && (
                   <div className="space-y-1">
                     <label className="text-[11px] font-medium text-amber-100">Full Name *</label>
@@ -862,6 +869,26 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                       className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
                     />
                     {errors.studentEmail && <p className="text-[10px] text-red-400">{errors.studentEmail}</p>}
+                  </div>
+                )}
+                {classField?.required && !customResponses[classField.id] && !classFieldMatchedOption && classField.options && (
+                  <div className="space-y-1 sm:col-span-2 md:col-span-1">
+                    <label className="text-[11px] font-medium text-amber-100">{classField.label} *</label>
+                    <select
+                      value={customResponses[classField.id] || ''}
+                      onChange={(e) => handleCustomResponseChange(classField.id, e.target.value)}
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                    >
+                      <option value="">{classField.placeholder || '-- Select Academic Standing --'}</option>
+                      {classField.options.map((opt) => (
+                        <option key={opt} value={opt} className="bg-[#191b20] text-white">
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                    {errors.custom?.[classField.id] && (
+                      <p className="text-[10px] text-red-400">{errors.custom[classField.id]}</p>
+                    )}
                   </div>
                 )}
               </div>

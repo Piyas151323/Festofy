@@ -19,6 +19,7 @@ import {
   PaymentMethod
 } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
+import { normalizeSelectOption, isClassGradeField } from '../utils/formValidationUtils';
 
 const COLLECTION_NAME = 'registrations';
 
@@ -316,16 +317,35 @@ export async function submitAtomicRegistration(
         }
       }
 
-      // 9. Dynamic Form Responses Validation
+      // 9. Dynamic Form Responses Validation & Normalization
+      const normalizedAnswers: Record<string, unknown> = { ...(input.registrationData || {}) };
+      let resolvedClassGrade = input.classGrade?.trim() || '';
+
       if (eventData.customFormFields && eventData.customFormFields.length > 0) {
-        const answers = input.registrationData || {};
         for (const field of eventData.customFormFields) {
-          const val = answers[field.id];
+          let val = normalizedAnswers[field.id];
+
+          // If empty but this is a class/grade field and top-level classGrade was passed, fallback to it
+          // only if it matches one of the configured options or if the field is free-form text.
+          if ((val === undefined || val === null || val === '') && isClassGradeField(field) && resolvedClassGrade) {
+            if (field.options && field.options.length > 0) {
+              const matched = normalizeSelectOption(resolvedClassGrade, field.options, field.label);
+              if (matched) {
+                val = matched;
+                normalizedAnswers[field.id] = matched;
+                resolvedClassGrade = matched;
+              }
+            } else {
+              val = resolvedClassGrade;
+              normalizedAnswers[field.id] = val;
+            }
+          }
+
           if (field.required) {
-            if (val === undefined || val === null || val === '') {
+            if (val === undefined || val === null || val === '' || (typeof val === 'string' && !val.trim())) {
               throw new RegistrationError(
                 'INVALID_FORM_DATA',
-                `"${field.label}" is required.`
+                `"${field.label}" is required. Please select or provide a valid response.`
               );
             }
             if (field.type === 'checkbox') {
@@ -344,20 +364,63 @@ export async function submitAtomicRegistration(
             }
           }
 
-          if (val && field.type === 'select' && field.options) {
-            if (!field.options.includes(val as string)) {
-              throw new RegistrationError(
-                'INVALID_FORM_DATA',
-                `Invalid option selected for "${field.label}".`
-              );
+          // Validate and normalize select and radio options
+          if ((field.type === 'select' || field.type === 'radio') && field.options && field.options.length > 0) {
+            if (val !== undefined && val !== null && val !== '') {
+              const rawString = typeof val === 'string' ? val.trim() : String(val);
+              if (rawString) {
+                if (field.options.includes(rawString)) {
+                  normalizedAnswers[field.id] = rawString;
+                  if (isClassGradeField(field)) {
+                    resolvedClassGrade = rawString;
+                  }
+                } else {
+                  const matched = normalizeSelectOption(rawString, field.options, field.label);
+                  if (matched) {
+                    normalizedAnswers[field.id] = matched;
+                    if (isClassGradeField(field)) {
+                      resolvedClassGrade = matched;
+                    }
+                  } else {
+                    if (field.required) {
+                      throw new RegistrationError(
+                        'INVALID_FORM_DATA',
+                        `Invalid option selected for "${field.label}". Please choose one of: ${field.options.join(', ')}`
+                      );
+                    } else {
+                      // For optional fields, unrecognised input should not block registration
+                      delete normalizedAnswers[field.id];
+                    }
+                  }
+                }
+              }
             }
           }
-          if (val && field.type === 'radio' && field.options) {
-            if (!field.options.includes(val as string)) {
+
+          // Format validation if value provided
+          if (val && typeof val === 'string' && val.trim()) {
+            if (field.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())) {
               throw new RegistrationError(
                 'INVALID_FORM_DATA',
-                `Invalid selection for "${field.label}".`
+                `Please provide a valid email address for "${field.label}".`
               );
+            }
+            if (field.type === 'phone' && !/^[+]?[\d\s-]{7,20}$/.test(val.trim())) {
+              throw new RegistrationError(
+                'INVALID_FORM_DATA',
+                `Please provide a valid phone number for "${field.label}".`
+              );
+            }
+            if (field.type === 'url') {
+              try {
+                const u = new URL(val.trim());
+                if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error();
+              } catch {
+                throw new RegistrationError(
+                  'INVALID_FORM_DATA',
+                  `Please provide a valid URL for "${field.label}".`
+                );
+              }
             }
           }
         }
@@ -435,7 +498,7 @@ export async function submitAtomicRegistration(
         institution: input.institution?.trim() || '',
         studentId: input.studentId?.trim() || '',
         studentPhotoURL: input.studentPhotoURL?.trim() || currentUser.photoURL || '',
-        classGrade: input.classGrade?.trim() || '',
+        classGrade: resolvedClassGrade,
         participantCategory: trustedCategory,
         teamName: input.registrationType === 'team' ? input.teamName?.trim() || '' : '',
         teamMembers: input.registrationType === 'team' ? input.teamMembers || [] : [],
@@ -453,7 +516,7 @@ export async function submitAtomicRegistration(
         paymentTransactionId: input.paymentTransactionId || '',
         paymentReference: input.paymentReference || '',
         paidAt: input.paidAt || (appliedFee > 0 ? nowIso : ''),
-        registrationData: input.registrationData || {},
+        registrationData: normalizedAnswers, // registrationData: input.registrationData || {}
         registeredAt: nowIso,
         updatedAt: nowIso
       };
