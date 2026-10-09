@@ -5,15 +5,13 @@ import {
   Copy,
   Check,
   X,
-  Calendar,
   Clock,
   MapPin,
   Building2,
-  User,
-  Users,
   ShieldCheck,
-  QrCode,
-  Sparkles
+  ShieldAlert,
+  AlertTriangle,
+  AlertCircle
 } from 'lucide-react';
 import { Registration } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -56,23 +54,40 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
     window.print();
   };
 
-  const isConfirmed = registration.status === 'confirmed';
+  const isCancelled = registration.status === 'cancelled';
+  const isPending = registration.status === 'pending';
   const isCheckedIn = registration.status === 'checked_in';
+  const isConfirmed = registration.status === 'confirmed';
+  const isValidPass = isConfirmed || isCheckedIn;
   const isTeam = registration.registrationType === 'team';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-black/80 backdrop-blur-sm print:p-0 print:bg-white animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm print:p-0 print:bg-white animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pass-modal-title"
     >
-      <div className="relative w-full max-w-xl mx-auto my-8 print:my-0">
+      <div className="relative w-full max-w-xl mx-auto my-auto py-4 print:my-0 print:py-0">
         {/* Floating Actions outside the pass (hidden during printing) */}
         <div className="flex items-center justify-between mb-3 text-xs no-print">
           <div className="flex items-center gap-2 text-zinc-300">
-            <ShieldCheck className="w-4 h-4 text-[#ff4f1a]" />
-            <span className="font-semibold">Official Entry Credential</span>
+            {isValidPass ? (
+              <>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span className="font-semibold text-emerald-300">Official Entry Credential</span>
+              </>
+            ) : isCancelled ? (
+              <>
+                <ShieldAlert className="w-4 h-4 text-red-400" />
+                <span className="font-semibold text-red-400">Cancelled / Void Pass</span>
+              </>
+            ) : (
+              <>
+                <AlertTriangle className="w-4 h-4 text-amber-400" />
+                <span className="font-semibold text-amber-300">Pending Application (Not Valid for Entry)</span>
+              </>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -99,28 +114,69 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
 
         {/* Printable Pass Container */}
         <div className="printable-pass-credential rounded-3xl bg-gradient-to-b from-[#14161a] to-[#0d0e11] border-2 border-[#2e3442] text-white shadow-2xl overflow-hidden print:border-black print:text-black">
-          {/* Header Banner */}
-          <div className="bg-gradient-to-r from-[#ff4f1a] to-[#ff6838] p-4 sm:p-5 flex items-center justify-between print:bg-none print:border-b-2 print:border-black">
+          {/* Header Banner - Status Adaptive */}
+          <div
+            className={`p-4 sm:p-5 flex items-center justify-between print:bg-none print:border-b-2 print:border-black ${
+              isValidPass
+                ? 'bg-gradient-to-r from-[#ff4f1a] to-[#ff6838]'
+                : isCancelled
+                ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 border-b border-red-900/50'
+                : 'bg-gradient-to-r from-amber-600 to-amber-700'
+            }`}
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-black/20 backdrop-blur-md flex items-center justify-center text-white print:text-black">
+              <div className="w-10 h-10 rounded-xl bg-black/25 backdrop-blur-md flex items-center justify-center text-white print:text-black shrink-0">
                 <Ticket className="w-5 h-5" />
               </div>
-              <div>
-                <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-black/80 block print:text-black">
-                  FESTOFY VERIFIED ENTRY PASS
+              <div className="min-w-0">
+                <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-black/80 block truncate print:text-black">
+                  {isValidPass
+                    ? 'FESTOFY VERIFIED ENTRY PASS'
+                    : isCancelled
+                    ? 'VOID / CANCELLED PASS'
+                    : 'APPLICATION UNDER REVIEW'}
                 </span>
-                <h3 id="pass-modal-title" className="font-heading text-base sm:text-lg font-black text-white tracking-tight print:text-black">
+                <h3
+                  id="pass-modal-title"
+                  className="font-heading text-base sm:text-lg font-black text-white tracking-tight truncate print:text-black"
+                >
                   {registration.festName || 'Campus Festival'}
                 </h3>
               </div>
             </div>
 
-            <div className="text-right">
-              <span className="px-2.5 py-1 rounded-lg bg-black/30 backdrop-blur-md text-[10px] font-mono font-bold uppercase tracking-wider text-white border border-white/20 print:border-black print:text-black">
-                GATE PASS
+            <div className="text-right shrink-0">
+              <span
+                className={`px-2.5 py-1 rounded-lg backdrop-blur-md text-[10px] font-mono font-bold uppercase tracking-wider text-white border print:border-black print:text-black ${
+                  isValidPass
+                    ? 'bg-black/30 border-white/20'
+                    : isCancelled
+                    ? 'bg-red-950/70 text-red-200 border-red-700'
+                    : 'bg-amber-950/70 text-amber-200 border-amber-700'
+                }`}
+              >
+                {isValidPass ? 'GATE PASS' : isCancelled ? 'VOID' : 'PENDING'}
               </span>
             </div>
           </div>
+
+          {/* Ineligible Warning Callout if Cancelled or Pending */}
+          {!isValidPass && (
+            <div
+              className={`p-3 text-xs flex items-center gap-2 border-b print:border-black ${
+                isCancelled
+                  ? 'bg-red-950/40 text-red-300 border-red-900/50 print:bg-gray-100 print:text-black'
+                  : 'bg-amber-950/40 text-amber-300 border-amber-900/50 print:bg-gray-100 print:text-black'
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-current" />
+              <span>
+                {isCancelled
+                  ? 'This registration was cancelled and cannot be presented for gate admission.'
+                  : 'This application is pending organizer approval and does not yet authorize event entry.'}
+              </span>
+            </div>
+          )}
 
           {/* Event & Schedule Details */}
           <div className="p-5 sm:p-6 space-y-5">
@@ -211,16 +267,27 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
                 )}
               </div>
 
-              {/* Right Column: QR Code Box */}
-              <div className="flex flex-col items-center justify-center p-3 rounded-2xl bg-white text-black border border-zinc-200 shadow-md">
+              {/* Right Column: QR Code Box with Scannable Standard Payload */}
+              <div
+                className={`relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white text-black border shadow-md ${
+                  isCancelled ? 'opacity-60 border-red-300' : 'border-zinc-200'
+                }`}
+              >
                 <QRCodeSVG
                   value={`${registration.ticketCode}::${registration.id}`}
                   size={135}
                   className="mx-auto"
                 />
                 <span className="text-[9px] font-mono tracking-wider uppercase text-zinc-600 mt-1 font-bold">
-                  SCAN AT GATE
+                  {isValidPass ? 'SCAN AT GATE' : isCancelled ? 'PASS CANCELLED' : 'PENDING APPROVAL'}
                 </span>
+                {isCancelled && (
+                  <div className="absolute inset-0 bg-red-950/20 rounded-2xl flex items-center justify-center">
+                    <span className="px-2 py-0.5 rounded bg-red-600 text-white font-mono text-[10px] font-bold uppercase rotate-[-12deg]">
+                      VOID
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -230,7 +297,11 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
                 <span className="text-[10px] font-mono uppercase text-[#656c80] tracking-wider block print:text-gray-600">
                   Official Verification Code
                 </span>
-                <div className="print-ticket-code font-mono text-2xl sm:text-3xl font-black tracking-widest text-[#ff4f1a] print:text-black flex items-center gap-2">
+                <div
+                  className={`print-ticket-code font-mono text-2xl sm:text-3xl font-black tracking-widest flex items-center gap-2 print:text-black ${
+                    isCancelled ? 'text-zinc-500 line-through' : 'text-[#ff4f1a]'
+                  }`}
+                >
                   <span>{registration.ticketCode}</span>
                   <button
                     type="button"
@@ -254,17 +325,17 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
                 <RegistrationStatusBadge status={registration.status} />
                 {isCheckedIn && registration.checkedInAt && (
                   <span className="text-[10px] text-cyan-400 font-mono print:text-black">
-                    Verified at gate
+                    Verified at gate desk
                   </span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Micro Footer Notice */}
-          <div className="bg-[#101114] px-6 py-2.5 border-t border-[#242730] text-[10px] text-[#656c80] flex items-center justify-between print:bg-white print:text-gray-600 print:border-gray-400">
-            <span>Festofy Fast-Track Gate Verification</span>
-            <span className="font-mono">ID: {registration.id.slice(0, 16)}</span>
+          {/* Micro Footer Notice & Security Disclaimer */}
+          <div className="bg-[#101114] px-6 py-2.5 border-t border-[#242730] text-[10px] text-[#656c80] flex flex-col sm:flex-row sm:items-center justify-between gap-1 print:bg-white print:text-gray-600 print:border-gray-400">
+            <span>Fast-Track Gate Lookup • Admittance subject to live organizer database check</span>
+            <span className="font-mono">Ref: {registration.id.slice(0, 16)}</span>
           </div>
         </div>
 
@@ -273,7 +344,7 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#242730] border border-[#2e3442] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
           >
             Close
           </button>
