@@ -55,7 +55,7 @@ export const StudentLayout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
+    <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7] motion-safe:animate-page-enter">
       <AppTopBar
         placement="start"
         from="lg"
@@ -73,7 +73,7 @@ export const StudentLayout: React.FC = () => {
           <>
             <Link
               to={fests.to}
-              className={`inline-flex h-9 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+              className={`inline-flex h-10 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
             >
               {fests.label}
             </Link>
@@ -115,7 +115,7 @@ export const StudentLayout: React.FC = () => {
         </nav>
       </MobileDrawer>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <Outlet />
       </main>
     </div>

@@ -110,8 +110,8 @@ export const TopNavLink: React.FC<TopLinkProps> = ({ item, pathname, showIcon = 
     <Link
       to={item.to}
       aria-current={active ? 'page' : undefined}
-      className={`inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-colors ${FOCUS_RING} ${
-        active ? 'bg-white/[0.07] text-white' : 'text-[#9da3b4] hover:bg-white/5 hover:text-white'
+      className={`inline-flex h-10 items-center gap-2 whitespace-nowrap rounded-lg px-3 text-[13px] font-medium transition-all duration-200 ${FOCUS_RING} ${
+        active ? 'bg-[#1c1f26] text-white shadow-sm' : 'text-[#9da3b4] hover:bg-white/5 hover:text-white'
       }`}
     >
       {showIcon && (

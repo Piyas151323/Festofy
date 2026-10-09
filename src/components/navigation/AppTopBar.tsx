@@ -58,8 +58,8 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
 }) => {
   const l = LAYOUT[`${placement}-${from}` as keyof typeof LAYOUT];
   return (
-    <header data-nav-root className={`sticky top-0 z-40 border-b border-[#242730] backdrop-blur-md ${tone}`}>
-      <div className={`mx-auto h-14 w-full max-w-7xl items-center px-4 sm:h-16 sm:px-6 lg:px-8 ${l.row}`}>
+    <header data-nav-root className={`sticky top-0 z-40 border-b border-[#242730]/90 backdrop-blur-xl ${tone}`}>
+      <div className={`mx-auto h-14 w-full max-w-7xl items-center gap-3 px-3 sm:h-16 sm:px-6 lg:px-8 ${l.row}`}>
         <div className="min-w-0">{brand}</div>
         <nav aria-label="Primary" className={`items-center gap-1 ${l.nav}`}>
           {nav}

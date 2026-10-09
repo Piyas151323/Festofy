@@ -43,7 +43,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       to={to}
       onClick={onClick}
       aria-label={label ? `Festofy ${label} – home` : 'Festofy – home'}
-      className={`group inline-flex min-w-0 items-center gap-2.5 rounded-lg ${FOCUS_RING}`}
+      className={`group inline-flex min-w-0 items-center gap-3 rounded-lg px-1 py-1 ${FOCUS_RING}`}
     >
       <Monogram />
       {layout === 'stacked' ? (
@@ -61,7 +61,7 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
         </span>
       ) : (
         <span className={`flex min-w-0 items-center gap-2 ${hideNarrow}`}>
-          <span className="font-heading text-[18px] font-extrabold leading-none tracking-[0.01em] text-white">
+          <span className="font-heading text-[18px] font-extrabold leading-none tracking-[0.015em] text-white transition-colors group-hover:text-[#f4f5f7]">
             FESTOFY
           </span>
           {label && (

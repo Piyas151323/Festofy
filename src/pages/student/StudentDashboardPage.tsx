@@ -173,7 +173,7 @@ export const StudentDashboardPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-7 motion-safe:animate-page-enter">
       {/* Platform Admin Superuser Notice Banner */}
       {isAdmin && (
         <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-[#181a22] to-[#121316] border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
@@ -204,7 +204,7 @@ export const StudentDashboardPage: React.FC = () => {
 
       {/* 1. Header / Welcome Banner */}
       <section aria-labelledby="dashboard-welcome-heading">
-        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 shadow-sm">
+        <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5 shadow-sm">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#191b20] border border-[#2e3442] text-[11px] font-semibold text-[#ff4f1a]">
               <Sparkles className="w-3.5 h-3.5" />
@@ -290,7 +290,7 @@ export const StudentDashboardPage: React.FC = () => {
       <section aria-label="Registration Statistics">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Registrations */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3 transition-colors hover:border-[#383d4c] motion-safe:animate-page-enter">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
                 Total Registrations
@@ -310,7 +310,7 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
 
           {/* Confirmed Spots */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3 transition-colors hover:border-[#383d4c] motion-safe:animate-page-enter">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
                 Confirmed
@@ -330,7 +330,7 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
 
           {/* Pending Review */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3 transition-colors hover:border-[#383d4c] motion-safe:animate-page-enter">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
                 Pending
@@ -350,7 +350,7 @@ export const StudentDashboardPage: React.FC = () => {
           </div>
 
           {/* Upcoming Events */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3">
+          <div className="p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] flex flex-col justify-between space-y-3 transition-colors hover:border-[#383d4c] motion-safe:animate-page-enter">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-mono text-[#656c80] uppercase tracking-wider font-semibold">
                 Upcoming
@@ -675,11 +675,11 @@ export const StudentDashboardPage: React.FC = () => {
                   className="p-3.5 rounded-xl border border-[#242730] bg-[#14161a] hover:bg-[#191b20] hover:border-[#2e3442] transition-colors flex items-center justify-between group"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-[#191b20] group-hover:bg-[#1e222b] text-purple-400 flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-lg bg-[#191b20] group-hover:bg-[#1e222b] text-[#ff4f1a] flex items-center justify-center">
                       <Building2 className="w-4 h-4" />
                     </div>
                     <div className="text-left">
-                      <span className="text-xs font-semibold text-white block group-hover:text-purple-400 transition-colors">
+                      <span className="text-xs font-semibold text-white block group-hover:text-[#ff4f1a] transition-colors">
                         Start an Organization
                       </span>
                       <span className="text-[11px] text-[#656c80] block">
