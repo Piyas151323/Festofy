@@ -89,7 +89,10 @@ service cloud.firestore {
         request.resource.data.email is string && request.resource.data.email.size() <= 150;
       allow update: if isOwner(userId) &&
         request.resource.data.email == resource.data.email &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'phone', 'institution', 'classGrade',
+          'participantCategory', 'studentId', 'interests', 'isProfileComplete', 'updatedAt'
+        ]);
       allow delete: if isAdmin();
     }
 
@@ -241,14 +244,14 @@ service cloud.firestore {
               resource.data.status == 'draft' &&
               request.resource.data.status == 'draft' &&
               isValidFestPayload(request.resource.data) &&
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'updatedAt'])
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'visitorAccess', 'participantCategories', 'updatedAt'])
             ) ||
             // 2. Metadata updates on published fests (remains published)
             (
               resource.data.status == 'published' &&
               request.resource.data.status == 'published' &&
               isValidFestPayload(request.resource.data) &&
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'updatedAt'])
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'visitorAccess', 'participantCategories', 'updatedAt'])
             ) ||
             // 3. Lifecycle Transition: draft -> published
             (
@@ -256,7 +259,7 @@ service cloud.firestore {
               request.resource.data.status == 'published' &&
               isApprovedOrg(resource.data.organizationId) &&
               isValidFestPayload(request.resource.data) &&
-              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo'])
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt', 'name', 'description', 'startDate', 'endDate', 'bannerUrl', 'organizationName', 'organizationLogo', 'visitorAccess', 'participantCategories'])
             ) ||
             // 4. Lifecycle Transition: published -> completed
             (
@@ -348,7 +351,8 @@ service cloud.firestore {
                 'startTime', 'endTime', 'registrationDeadline', 'capacity',
                 'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
                 'customFormFields', 'isRegistrationClosed', 'updatedAt',
-                'festName', 'categoryName', 'organizationName'
+                'festName', 'categoryName', 'organizationName',
+                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics'
               ])
             ) ||
             // 2. Metadata update on published event
@@ -362,7 +366,8 @@ service cloud.firestore {
                 'startTime', 'endTime', 'registrationDeadline', 'capacity',
                 'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
                 'customFormFields', 'isRegistrationClosed', 'updatedAt',
-                'festName', 'categoryName', 'organizationName'
+                'festName', 'categoryName', 'organizationName',
+                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics'
               ])
             ) ||
             // 3. Lifecycle Transition: draft -> published (requires parent fest to be published)
@@ -461,13 +466,21 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid &&
         request.resource.data.status in ['pending', 'confirmed'] &&
         request.resource.data.keys().hasAll(['id', 'eventId', 'festId', 'organizationId', 'userId', 'status', 'registeredAt', 'ticketCode']) &&
-        request.resource.data.keys().hasOnly([
+        (request.resource.data.keys().hasOnly([
           'id', 'eventId', 'festId', 'organizationId', 'userId', 'ticketCode', 'status',
           'registrationType', 'studentName', 'studentEmail', 'studentPhone', 'institution',
           'studentId', 'teamName', 'teamMembers', 'eventName', 'festName', 'categoryName',
           'venue', 'startTime', 'endTime', 'organizationName', 'registrationData',
           'registeredAt', 'updatedAt'
-        ]) &&
+        ]) || request.resource.data.keys().hasOnly([
+          'id', 'eventId', 'festId', 'organizationId', 'userId', 'ticketCode', 'status',
+          'registrationType', 'studentName', 'studentEmail', 'studentPhone', 'institution',
+          'studentId', 'studentPhotoURL', 'classGrade', 'participantCategory', 'appliedFee', 'currency',
+          'paymentStatus', 'paymentMethod', 'paymentTransactionId', 'paymentReference', 'paidAt',
+          'teamName', 'teamMembers', 'eventName', 'festName', 'categoryName',
+          'venue', 'startTime', 'endTime', 'organizationName', 'registrationData',
+          'registeredAt', 'updatedAt'
+        ])) &&
         exists(/databases/$(database)/documents/events/$(request.resource.data.eventId)) &&
         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.organizationId == request.resource.data.organizationId &&
         get(/databases/$(database)/documents/events/$(request.resource.data.eventId)).data.festId == request.resource.data.festId &&
@@ -546,6 +559,77 @@ service cloud.firestore {
         )
       );
       allow delete: if isAdmin() || isOrgOwner(resource.data.organizationId);
+    }
+
+    // REGISTRATION FORM TEMPLATES (Reusable Organizer Questionnaire Layouts)
+    // Organizers can create, read, update, and delete form templates scoped to their organization.
+    match /registrationFormTemplates/{templateId} {
+      allow get: if isSignedIn() && (
+        resource.data.organizationId == 'default' ||
+        isOrgMember(resource.data.organizationId) ||
+        isAdmin()
+      );
+      allow list: if isSignedIn() && (
+        resource.data.organizationId == 'default' ||
+        isOrgMember(resource.data.organizationId) ||
+        isAdmin()
+      );
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (
+          isOrgMember(request.resource.data.organizationId) &&
+          request.resource.data.organizationId != 'default' &&
+          request.resource.data.keys().hasAll(['id', 'organizationId', 'name', 'fields', 'createdAt', 'updatedAt'])
+        )
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          isOrgMember(resource.data.organizationId) &&
+          resource.data.organizationId != 'default' &&
+          request.resource.data.organizationId == resource.data.organizationId &&
+          request.resource.data.id == resource.data.id &&
+          request.resource.data.createdAt == resource.data.createdAt
+        )
+      );
+      allow delete: if isSignedIn() && (
+        isAdmin() ||
+        (
+          isOrgMember(resource.data.organizationId) &&
+          resource.data.organizationId != 'default'
+        )
+      );
+    }
+
+    // NOTIFICATIONS COLLECTION (Private Student Notification Inbox)
+    // - Students can ONLY read, list, update (mark read), and delete notifications where userId == request.auth.uid.
+    // - Students CANNOT create notifications for other users (userId must match request.auth.uid).
+    // - Event organizers can dispatch recommendation alerts for their organization's events.
+    // - Admins retain supervisory administrative control.
+    match /notifications/{notificationId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.keys().hasAll(['id', 'userId', 'title', 'message', 'read', 'createdAt'])
+        ) ||
+        (
+          'organizationId' in request.resource.data &&
+          isOrgMember(request.resource.data.organizationId) &&
+          request.resource.data.keys().hasAll(['id', 'userId', 'title', 'message', 'read', 'createdAt', 'eventId', 'organizationId'])
+        )
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        )
+      );
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
   }
 }

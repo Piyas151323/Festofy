@@ -5,6 +5,13 @@ export interface UserProfile {
   displayName: string;
   email: string;
   photoURL?: string;
+  phone?: string;
+  institution?: string;
+  classGrade?: string;
+  participantCategory?: string;
+  studentId?: string;
+  interests?: string[];
+  isProfileComplete?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +57,16 @@ export interface OrganizationMember {
 
 export type FestStatus = 'draft' | 'published' | 'completed' | 'archived';
 
+export type VisitorAccessType = 'allowed' | 'restricted' | 'not_allowed';
+
+export interface ParticipantCategoryConfig {
+  id: string;
+  name: string;
+  fee?: number;
+  description?: string;
+  eligible?: boolean;
+}
+
 export interface Fest {
   id: string;
   organizationId: string;
@@ -59,6 +76,8 @@ export interface Fest {
   startDate: string;
   endDate: string;
   status: FestStatus;
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
   createdAt: string;
   updatedAt: string;
   // Denormalized/populated fields for UI conveniences
@@ -73,6 +92,8 @@ export interface CreateFestInput {
   startDate: string;
   endDate: string;
   bannerUrl?: string;
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
   organizationName?: string;
   organizationLogo?: string;
 }
@@ -83,6 +104,8 @@ export interface UpdateFestInput {
   startDate?: string;
   endDate?: string;
   bannerUrl?: string;
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
   organizationName?: string;
   organizationLogo?: string;
 }
@@ -112,6 +135,11 @@ export interface EventItem {
   capacity: number;
   status: EventStatus;
   festStatus?: FestStatus;
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
+  isPaid?: boolean;
+  baseFee?: number;
+  topics?: string[];
   createdAt: string;
   updatedAt: string;
   // Denormalized/populated for display
@@ -144,6 +172,11 @@ export interface CreateEventInput {
   maxTeamSize?: number;
   requiresApproval?: boolean;
   customFormFields?: EventFormField[];
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
+  isPaid?: boolean;
+  baseFee?: number;
+  topics?: string[];
 }
 
 export interface UpdateEventInput {
@@ -162,6 +195,11 @@ export interface UpdateEventInput {
   requiresApproval?: boolean;
   customFormFields?: EventFormField[];
   isRegistrationClosed?: boolean;
+  visitorAccess?: VisitorAccessType;
+  participantCategories?: ParticipantCategoryConfig[];
+  isPaid?: boolean;
+  baseFee?: number;
+  topics?: string[];
 }
 
 export type RegistrationStatus = 'pending' | 'confirmed' | 'waitlisted' | 'cancelled' | 'completed' | 'checked_in';
@@ -181,6 +219,18 @@ export interface EventFormField {
   validationRule?: string;
 }
 
+export interface RegistrationFormTemplate {
+  id: string;
+  organizationId: string; // or 'default'
+  name: string;
+  description?: string;
+  fields: EventFormField[];
+  isDefault?: boolean;
+  createdBy?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TeamMember {
   name: string;
   email: string;
@@ -189,6 +239,10 @@ export interface TeamMember {
   studentId?: string;
   role?: string;
 }
+
+export type PaymentMethod = 'bkash' | 'nagad' | 'free';
+
+export type PaymentStatus = 'not_required' | 'pending' | 'completed' | 'paid' | 'failed' | 'free';
 
 export interface Registration {
   id: string;
@@ -205,6 +259,9 @@ export interface Registration {
   studentPhone?: string;
   institution?: string;
   studentId?: string;
+  studentPhotoURL?: string;
+  classGrade?: string;
+  participantCategory?: string;
   // Team details
   teamName?: string;
   teamMembers?: TeamMember[];
@@ -216,6 +273,14 @@ export interface Registration {
   startTime: string;
   endTime?: string;
   organizationName?: string;
+  // Payment and Fees
+  appliedFee?: number;
+  currency?: string;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  paymentTransactionId?: string;
+  paymentReference?: string;
+  paidAt?: string;
   // Dynamic form response data
   registrationData: Record<string, unknown>;
   // Audit timestamps & lifecycle
@@ -239,6 +304,16 @@ export interface CreateRegistrationInput {
   studentPhone?: string;
   institution?: string;
   studentId?: string;
+  studentPhotoURL?: string;
+  classGrade?: string;
+  participantCategory?: string;
+  appliedFee?: number;
+  currency?: string;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  paymentTransactionId?: string;
+  paymentReference?: string;
+  paidAt?: string;
   teamName?: string;
   teamMembers?: TeamMember[];
   eventName: string;
@@ -250,6 +325,19 @@ export interface CreateRegistrationInput {
   organizationName?: string;
   registrationData?: Record<string, unknown>;
   status?: RegistrationStatus;
+}
+
+export interface StudentNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  eventId?: string;
+  festId?: string;
+  actionUrl?: string;
+  category?: string;
+  read: boolean;
+  createdAt: string;
 }
 
 export interface AuthContextType {

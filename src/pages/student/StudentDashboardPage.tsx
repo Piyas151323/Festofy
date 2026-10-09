@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock,
+  History,
   Sparkles,
   Ticket,
   Compass,
@@ -14,17 +15,27 @@ import {
   Calendar,
   Layers,
   Building2,
-  ExternalLink
+  ExternalLink,
+  UserCheck,
+  Camera,
+  Heart,
+  Tag,
+  ChevronRight
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getStudentRegistrations } from '../../services/registrationService';
-import { Registration } from '../../types';
+import { Registration, EventItem, UserProfile } from '../../types';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
 import { formatDateTime } from '../../utils/dateUtils';
+import { getUserProfile, calculateProfileCompletion } from '../../services/userService';
+import { getPublishedEvents } from '../../services/eventService';
+import { getPersonalizedEventSuggestions, syncStudentEventRecommendations } from '../../services/notificationService';
 
 export const StudentDashboardPage: React.FC = () => {
   const { currentUser, loading: authLoading, role, isAdmin } = useAuth();
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [recommendations, setRecommendations] = useState<{ event: EventItem; matchedInterests: string[] }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,8 +44,20 @@ export const StudentDashboardPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getStudentRegistrations(currentUser.uid);
+      const [data, userProfile, published] = await Promise.all([
+        getStudentRegistrations(currentUser.uid),
+        getUserProfile(currentUser.uid),
+        getPublishedEvents()
+      ]);
       setRegistrations(data);
+      setProfile(userProfile);
+      if (userProfile) {
+        const registeredIds = new Set(data.map((r) => r.eventId));
+        const recs = getPersonalizedEventSuggestions(published, userProfile, registeredIds);
+        setRecommendations(recs);
+        // Ensure recommendation alerts populate in notification bell
+        syncStudentEventRecommendations(currentUser.uid, userProfile, published);
+      }
     } catch (err) {
       console.warn('Dashboard registrations notice:', err);
       setError("Couldn't load your registrations.");
@@ -48,6 +71,13 @@ export const StudentDashboardPage: React.FC = () => {
       loadDashboardData();
     }
   }, [authLoading, loadDashboardData]);
+
+  const completion = useMemo(() => {
+    return calculateProfileCompletion(profile || {
+      displayName: currentUser?.displayName || '',
+      photoURL: currentUser?.photoURL || ''
+    });
+  }, [profile, currentUser]);
 
   // In-memory calculations derived strictly from the authenticated student's registrations
   const stats = useMemo(() => {
@@ -212,6 +242,50 @@ export const StudentDashboardPage: React.FC = () => {
         </div>
       </section>
 
+      {/* Profile Completion Prompt & Progress Indicator */}
+      {completion.percentage < 100 && (
+        <section aria-label="Profile Completion">
+          <div className="p-5 sm:p-6 rounded-3xl bg-gradient-to-r from-[#191b20] via-[#16181f] to-[#121316] border border-[#ff4f1a]/30 shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="relative w-12 h-12 rounded-2xl bg-[#ff4f1a]/15 border border-[#ff4f1a]/30 text-[#ff4f1a] flex items-center justify-center shrink-0">
+                <UserCheck className="w-6 h-6" />
+                <span className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-[#ff4f1a] text-white text-[9px] font-bold font-mono">
+                  {completion.percentage}%
+                </span>
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-heading text-sm font-bold text-white">
+                    Complete your Student Profile ({completion.percentage}%)
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#ff4f1a]/10 text-[#ff4f1a] border border-[#ff4f1a]/20">
+                    {completion.missingFields.length} {completion.missingFields.length === 1 ? 'item remaining' : 'items remaining'}
+                  </span>
+                </div>
+                <p className="text-xs text-[#9da3b4] leading-relaxed">
+                  Upload your profile picture, specify your institution, class/grade, and interests for instant 1-click registration pre-filling and personalized contest alerts.
+                </p>
+                {/* Visual Progress Bar */}
+                <div className="w-full max-w-md h-2 rounded-full bg-[#1e222b] overflow-hidden mt-2">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#ff4f1a] to-emerald-400 transition-all duration-500 rounded-full"
+                    style={{ width: `${completion.percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <Link
+              to="/dashboard/profile"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white transition-all shadow-md shadow-[#ff4f1a]/20 shrink-0 self-stretch md:self-auto justify-center"
+            >
+              <span>Complete Profile</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* 2. Quick Stats Grid */}
       <section aria-label="Registration Statistics">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -295,6 +369,112 @@ export const StudentDashboardPage: React.FC = () => {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Personalized Event Recommendations Section */}
+      <section aria-labelledby="recommendations-heading" className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#ff4f1a]" />
+            <h2 id="recommendations-heading" className="font-heading text-base font-bold text-white">
+              Recommended for You
+            </h2>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#191b20] border border-[#2e3442] text-[#ff4f1a]">
+              Personalized Suggestions
+            </span>
+          </div>
+          <Link
+            to="/events"
+            className="text-xs text-[#ff4f1a] hover:underline font-semibold flex items-center gap-1 self-start sm:self-auto"
+          >
+            <span>Explore all events</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </Link>
+        </div>
+
+        {recommendations.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {recommendations.slice(0, 3).map(({ event, matchedInterests }) => (
+              <div
+                key={event.id}
+                className="p-5 rounded-2xl bg-[#14161a] border border-[#242730] hover:border-[#383d4c] transition-all flex flex-col justify-between space-y-4 group"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-1.5">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#1e222b] text-zinc-300 border border-[#2e3442]">
+                      {event.categoryName || 'Competition'}
+                    </span>
+                    <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
+                      event.isPaid ? 'bg-amber-950/80 text-amber-300 border-amber-800/60' : 'bg-emerald-950/80 text-emerald-300 border-emerald-800/60'
+                    }`}>
+                      {event.isPaid ? `৳${event.baseFee || 0}` : 'Free ৳0'}
+                    </span>
+                  </div>
+
+                  <h3 className="font-heading text-sm font-bold text-white group-hover:text-[#ff4f1a] transition-colors line-clamp-1">
+                    {event.name}
+                  </h3>
+
+                  <p className="text-xs text-[#9da3b4] line-clamp-2 leading-relaxed">
+                    {event.description}
+                  </p>
+
+                  {/* Matched tags */}
+                  {matchedInterests.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 pt-1">
+                      <span className="text-[10px] text-[#656c80] font-mono">Matched:</span>
+                      {matchedInterests.map(tag => (
+                        <span
+                          key={tag}
+                          className="px-1.5 py-0.5 rounded bg-[#ff4f1a]/10 text-[#ff4f1a] border border-[#ff4f1a]/20 text-[10px] font-medium"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-3 border-t border-[#242730] flex items-center justify-between">
+                  <span className="text-[11px] text-[#9da3b4] flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-[#ff4f1a]" />
+                    <span>{formatDateTime(event.startTime)}</span>
+                  </span>
+                  <Link
+                    to={`/events/${event.id}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#191b20] hover:bg-[#ff4f1a] text-white transition-colors"
+                  >
+                    <span>View Event</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-5 rounded-2xl bg-[#14161a] border border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#191b20] border border-[#2e3442] text-[#ff4f1a] flex items-center justify-center shrink-0">
+                <Heart className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <h3 className="text-xs font-bold text-white">
+                  Want smarter event recommendations?
+                </h3>
+                <p className="text-[11px] text-[#9da3b4]">
+                  Add your interests and competition categories in your Student Profile to discover tailored hackathons, olympiads, and cultural contests.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/dashboard/profile"
+              className="px-4 py-2 rounded-xl bg-[#1e222b] hover:bg-[#282d38] border border-[#2e3442] text-xs font-semibold text-white transition-colors shrink-0 flex items-center gap-1.5"
+            >
+              <span>Update Interests</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+        )}
       </section>
 
       {/* 3. Empty State for Brand New Student with Zero Registrations */}
@@ -464,6 +644,26 @@ export const StudentDashboardPage: React.FC = () => {
                       </span>
                       <span className="text-[11px] text-[#656c80] block">
                         View all your registrations
+                      </span>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-[#656c80] group-hover:text-white group-hover:translate-x-0.5 transition-all" />
+                </Link>
+
+                <Link
+                  to="/dashboard/history"
+                  className="p-3.5 rounded-xl border border-[#242730] bg-[#14161a] hover:bg-[#191b20] hover:border-[#2e3442] transition-colors flex items-center justify-between group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#191b20] group-hover:bg-[#1e222b] text-[#ff4f1a] flex items-center justify-center">
+                      <History className="w-4 h-4" />
+                    </div>
+                    <div className="text-left">
+                      <span className="text-xs font-semibold text-white block group-hover:text-[#ff4f1a] transition-colors">
+                        Participation History
+                      </span>
+                      <span className="text-[11px] text-[#656c80] block">
+                        Past events, check-ins & payment ledger
                       </span>
                     </div>
                   </div>

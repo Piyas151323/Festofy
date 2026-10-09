@@ -17,6 +17,7 @@ import {
   UpdateEventInput
 } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
+import { dispatchRecommendationsForPublishedEvent } from './notificationService';
 
 const EVENTS_COLLECTION = 'events';
 const CATEGORIES_COLLECTION = 'eventCategories';
@@ -302,6 +303,11 @@ export async function createEvent(input: CreateEventInput, organizationId: strin
         registrationType: regType,
         requiresApproval: Boolean(input.requiresApproval),
         isRegistrationClosed: false,
+        visitorAccess: input.visitorAccess || (festData.visitorAccess as any) || 'allowed',
+        ...(input.participantCategories ? { participantCategories: input.participantCategories } : {}),
+        ...(input.topics && input.topics.length > 0 ? { topics: input.topics } : {}),
+        isPaid: Boolean(input.isPaid),
+        baseFee: typeof input.baseFee === 'number' ? input.baseFee : 0,
         createdAt: now,
         updatedAt: now,
         ...(validBanner ? { bannerUrl: validBanner } : {}),
@@ -475,6 +481,21 @@ export async function updateEvent(eventId: string, input: UpdateEventInput): Pro
   if (input.isRegistrationClosed !== undefined) {
     updates.isRegistrationClosed = input.isRegistrationClosed;
   }
+  if (input.visitorAccess !== undefined) {
+    updates.visitorAccess = input.visitorAccess;
+  }
+  if (input.participantCategories !== undefined) {
+    updates.participantCategories = input.participantCategories;
+  }
+  if (input.isPaid !== undefined) {
+    updates.isPaid = input.isPaid;
+  }
+  if (input.baseFee !== undefined) {
+    updates.baseFee = input.baseFee;
+  }
+  if (input.topics !== undefined) {
+    updates.topics = input.topics;
+  }
 
   try {
     const docRef = doc(db, EVENTS_COLLECTION, eventId);
@@ -634,7 +655,12 @@ export async function executeEventLifecycleTransition(
  * Publish a draft event via Firestore transaction.
  */
 export async function publishEvent(eventId: string): Promise<EventItem> {
-  return executeEventLifecycleTransition(eventId, 'draft', 'published');
+  const published = await executeEventLifecycleTransition(eventId, 'draft', 'published');
+  // Dispatch recommendations to eligible students asynchronously
+  dispatchRecommendationsForPublishedEvent(published).catch(err => {
+    console.warn('Notice dispatching recommendations after publishing event:', err);
+  });
+  return published;
 }
 
 /**

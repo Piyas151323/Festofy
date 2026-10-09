@@ -10,6 +10,7 @@ import { PublicLayout } from './layouts/PublicLayout';
 import { StudentLayout } from './layouts/StudentLayout';
 import { OrganizerLayout } from './layouts/OrganizerLayout';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
+import { ScrollToTop } from './components/common/ScrollToTop';
 
 // Public Pages
 import { HomePage } from './pages/public/HomePage';
@@ -24,6 +25,8 @@ import { AuthPage } from './pages/public/AuthPage';
 import { StudentDashboardPage } from './pages/student/StudentDashboardPage';
 import { StudentRegistrationsPage } from './pages/student/StudentRegistrationsPage';
 import { StudentRegistrationDetailPage } from './pages/student/StudentRegistrationDetailPage';
+import { StudentHistoryPage } from './pages/student/StudentHistoryPage';
+import { StudentProfilePage } from './pages/student/StudentProfilePage';
 import { StudentPassesPage } from './pages/student/StudentPassesPage';
 import { StudentOrgApplyPage } from './pages/student/StudentOrgApplyPage';
 import { StudentOrgRequestsPage } from './pages/student/StudentOrgRequestsPage';
@@ -52,6 +55,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Public Routes */}
           <Route element={<PublicLayout />}>
@@ -76,6 +80,8 @@ export default function App() {
             <Route index element={<StudentDashboardPage />} />
             <Route path="registrations" element={<StudentRegistrationsPage />} />
             <Route path="registrations/:registrationId" element={<StudentRegistrationDetailPage />} />
+            <Route path="history" element={<StudentHistoryPage />} />
+            <Route path="profile" element={<StudentProfilePage />} />
             <Route path="passes" element={<StudentPassesPage />} />
             <Route path="organizations" element={<StudentOrgRequestsPage />} />
             <Route path="organizations/apply" element={<StudentOrgApplyPage />} />

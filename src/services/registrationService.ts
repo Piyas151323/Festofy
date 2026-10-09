@@ -14,7 +14,9 @@ import {
   RegistrationStatus,
   RegistrationType,
   TeamMember,
-  EventItem
+  EventItem,
+  PaymentStatus,
+  PaymentMethod
 } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
 
@@ -32,6 +34,8 @@ export type RegistrationErrorCode =
   | 'INVALID_REGISTRATION_TYPE'
   | 'INVALID_TEAM_SIZE'
   | 'INVALID_FORM_DATA'
+  | 'INELIGIBLE_CATEGORY'
+  | 'PAYMENT_REQUIRED'
   | 'REGISTRATION_FAILED';
 
 export class RegistrationError extends Error {
@@ -104,6 +108,16 @@ export interface SubmitRegistrationInput {
   studentPhone?: string;
   institution?: string;
   studentId?: string;
+  studentPhotoURL?: string;
+  classGrade?: string;
+  participantCategory?: string;
+  appliedFee?: number;
+  currency?: string;
+  paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  paymentTransactionId?: string;
+  paymentReference?: string;
+  paidAt?: string;
   teamName?: string;
   teamMembers?: TeamMember[];
   registrationData?: Record<string, unknown>;
@@ -349,14 +363,63 @@ export async function submitAtomicRegistration(
         }
       }
 
-      // 10. Compute Lifecycle Status
+      // 10. Authoritative Participant Category & Eligibility Validation
+      let trustedCategory = input.participantCategory?.trim() || '';
+      let calculatedFee = 0;
+
+      if (eventData.participantCategories && eventData.participantCategories.length > 0) {
+        const eligibleCats = eventData.participantCategories.filter((c) => c.eligible !== false);
+        if (eligibleCats.length > 0) {
+          if (!trustedCategory) {
+            trustedCategory = eligibleCats[0].name;
+          } else {
+            const matched = eligibleCats.find(
+              (c) => c.name.toLowerCase() === trustedCategory.toLowerCase()
+            );
+            if (!matched) {
+              throw new RegistrationError(
+                'INELIGIBLE_CATEGORY',
+                `The participant category "${trustedCategory}" is not eligible for this competition.`
+              );
+            }
+            trustedCategory = matched.name;
+            if (typeof matched.fee === 'number') {
+              calculatedFee = Math.max(0, matched.fee);
+            } else if (eventData.isPaid && typeof eventData.baseFee === 'number') {
+              calculatedFee = Math.max(0, eventData.baseFee);
+            }
+          }
+        }
+      } else if (eventData.isPaid && typeof eventData.baseFee === 'number') {
+        calculatedFee = Math.max(0, eventData.baseFee);
+      }
+
+      if (!trustedCategory) {
+        trustedCategory = 'Open for Everyone';
+      }
+
+      // If paid event, require verified simulated payment
+      if (calculatedFee > 0) {
+        if (input.paymentStatus !== 'completed' && input.paymentStatus !== 'paid') {
+          throw new RegistrationError(
+            'PAYMENT_REQUIRED',
+            `A registration fee of ৳${calculatedFee} BDT is required before submitting registration.`
+          );
+        }
+      }
+
+      // 11. Compute Lifecycle Status
       const status: RegistrationStatus = eventData.requiresApproval ? 'pending' : 'confirmed';
 
-      // 11. Provision Unique Digital Pass Ticket Code
+      // 12. Provision Unique Digital Pass Ticket Code
       const ticketCode = generateTicketCode();
       const nowIso = new Date().toISOString();
 
-      // 12. Build Authoritative Registration Snapshot
+      const appliedFee = calculatedFee;
+      const paymentStatus = appliedFee > 0 ? 'completed' : 'not_required';
+      const paymentMethod = input.paymentMethod || (appliedFee > 0 ? 'bkash' : 'free');
+
+      // 13. Build Authoritative Registration Snapshot
       const newRegistration: Registration = {
         id: registrationId,
         eventId: eventData.id,
@@ -371,6 +434,9 @@ export async function submitAtomicRegistration(
         studentPhone: input.studentPhone?.trim() || '',
         institution: input.institution?.trim() || '',
         studentId: input.studentId?.trim() || '',
+        studentPhotoURL: input.studentPhotoURL?.trim() || currentUser.photoURL || '',
+        classGrade: input.classGrade?.trim() || '',
+        participantCategory: trustedCategory,
         teamName: input.registrationType === 'team' ? input.teamName?.trim() || '' : '',
         teamMembers: input.registrationType === 'team' ? input.teamMembers || [] : [],
         eventName: eventData.name,
@@ -380,12 +446,19 @@ export async function submitAtomicRegistration(
         startTime: eventData.startTime,
         endTime: eventData.endTime || '',
         organizationName: eventData.organizationName || '',
+        appliedFee,
+        currency: 'BDT',
+        paymentStatus,
+        paymentMethod,
+        paymentTransactionId: input.paymentTransactionId || '',
+        paymentReference: input.paymentReference || '',
+        paidAt: input.paidAt || (appliedFee > 0 ? nowIso : ''),
         registrationData: input.registrationData || {},
         registeredAt: nowIso,
         updatedAt: nowIso
       };
 
-      // 13. Atomic Writes Execution
+      // 14. Atomic Writes Execution
       transaction.set(regDocRef, newRegistration);
 
       // Increment capacity counter on the authoritative event document

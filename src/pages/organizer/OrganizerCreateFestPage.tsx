@@ -9,11 +9,26 @@ import {
   Sparkles,
   Image,
   Calendar,
-  FileText
+  FileText,
+  Users,
+  Eye,
+  Plus,
+  Trash2,
+  Tag
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { createFest } from '../../services/festService';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
+import { ParticipantCategoryConfig, VisitorAccessType } from '../../types';
+
+const DEFAULT_PRESET_CATEGORIES = [
+  'Junior',
+  'Secondary',
+  'Higher Secondary',
+  'College',
+  'University',
+  'Open for Everyone'
+];
 
 export const OrganizerCreateFestPage: React.FC = () => {
   const navigate = useNavigate();
@@ -25,8 +40,42 @@ export const OrganizerCreateFestPage: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [bannerUrl, setBannerUrl] = useState('');
 
+  // Visitor Policy
+  const [visitorAccess, setVisitorAccess] = useState<VisitorAccessType>('allowed');
+
+  // Custom Participant Categories
+  const [categories, setCategories] = useState<ParticipantCategoryConfig[]>([
+    { id: 'cat_open', name: 'Open for Everyone' }
+  ]);
+  const [newCatName, setNewCatName] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleAddCategory = () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) return;
+    if (categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      return;
+    }
+    setCategories(prev => [
+      ...prev,
+      { id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: trimmed }
+    ]);
+    setNewCatName('');
+  };
+
+  const handleQuickAddCategory = (catName: string) => {
+    if (categories.some(c => c.name.toLowerCase() === catName.toLowerCase())) return;
+    setCategories(prev => [
+      ...prev,
+      { id: `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, name: catName }
+    ]);
+  };
+
+  const handleRemoveCategory = (id: string) => {
+    setCategories(prev => prev.filter(c => c.id !== id));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +144,8 @@ export const OrganizerCreateFestPage: React.FC = () => {
           startDate: new Date(startDate).toISOString(),
           endDate: new Date(endDate).toISOString(),
           bannerUrl: bannerUrl.trim() || undefined,
+          visitorAccess,
+          participantCategories: categories,
           organizationName: activeOrganization.name,
           organizationLogo: activeOrganization.logoUrl
         },
@@ -248,6 +299,164 @@ export const OrganizerCreateFestPage: React.FC = () => {
           helperText="Direct image upload (JPG, PNG, WebP) or curated festival poster preset for student discovery"
           aspectRatio="banner"
         />
+
+        {/* Visitor Access Policy */}
+        <div className="p-4 rounded-2xl bg-[#14161a] border border-[#242730] space-y-3">
+          <div className="flex items-center gap-2">
+            <Eye className="w-4 h-4 text-[#ff4f1a]" />
+            <span className="font-heading font-semibold text-sm text-white">
+              Festival Visitor & Spectator Policy
+            </span>
+          </div>
+          <p className="text-xs text-[#9da3b4] leading-relaxed">
+            Clearly indicate whether outside visitors, guests, friends, and family are welcome to attend and watch festivities, or if access is strictly restricted to registered participants.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <label
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                visitorAccess === 'allowed'
+                  ? 'border-[#ff4f1a] bg-[#ff4f1a]/10 text-white'
+                  : 'border-[#2e3442] bg-[#191b20] text-[#9da3b4] hover:border-zinc-600'
+              }`}
+            >
+              <input
+                type="radio"
+                name="visitorAccess"
+                value="allowed"
+                checked={visitorAccess === 'allowed'}
+                onChange={() => setVisitorAccess('allowed')}
+                className="mt-0.5 text-[#ff4f1a] focus:ring-0"
+              />
+              <div>
+                <span className="block font-semibold text-xs text-white">
+                  Visitors Allowed (Open Campus)
+                </span>
+                <span className="text-[11px] text-[#9da3b4] block mt-0.5">
+                  Audiences, parents, and casual visitors may enter festival grounds and attend stage performances.
+                </span>
+              </div>
+            </label>
+
+            <label
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all flex items-start gap-3 ${
+                visitorAccess === 'not_allowed' || visitorAccess === 'restricted'
+                  ? 'border-[#ff4f1a] bg-[#ff4f1a]/10 text-white'
+                  : 'border-[#2e3442] bg-[#191b20] text-[#9da3b4] hover:border-zinc-600'
+              }`}
+            >
+              <input
+                type="radio"
+                name="visitorAccess"
+                value="not_allowed"
+                checked={visitorAccess === 'not_allowed' || visitorAccess === 'restricted'}
+                onChange={() => setVisitorAccess('not_allowed')}
+                className="mt-0.5 text-[#ff4f1a] focus:ring-0"
+              />
+              <div>
+                <span className="block font-semibold text-xs text-white">
+                  Visitors Not Allowed
+                </span>
+                <span className="text-[11px] text-[#9da3b4] block mt-0.5">
+                  Strict venue gate admission. Only students with a confirmed ticket pass are permitted onto grounds.
+                </span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        {/* Custom Participant Categories */}
+        <div className="p-4 rounded-2xl bg-[#14161a] border border-[#242730] space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-[#ff4f1a]" />
+              <span className="font-heading font-semibold text-sm text-white">
+                Festival Participant Categories
+              </span>
+            </div>
+            <span className="text-[11px] font-mono text-[#656c80]">
+              {categories.length} {categories.length === 1 ? 'Category' : 'Categories'} configured
+            </span>
+          </div>
+
+          <p className="text-xs text-[#9da3b4] leading-relaxed">
+            Define the academic divisions or participant levels accepted across events in this festival (e.g. Junior, College, University). You can further adjust fees and eligibility per competition.
+          </p>
+
+          {/* Quick Add Presets */}
+          <div className="space-y-1.5">
+            <span className="text-[10px] uppercase font-mono text-[#656c80] block">
+              Quick Add Common Categories:
+            </span>
+            <div className="flex flex-wrap gap-1.5">
+              {DEFAULT_PRESET_CATEGORIES.map((preset) => {
+                const alreadyAdded = categories.some(c => c.name.toLowerCase() === preset.toLowerCase());
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => handleQuickAddCategory(preset)}
+                    disabled={alreadyAdded}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-colors cursor-pointer ${
+                      alreadyAdded
+                        ? 'bg-[#191b20] text-[#656c80] border border-[#242730] cursor-not-allowed'
+                        : 'bg-[#1e222b] hover:bg-[#282d38] text-zinc-300 border border-[#2e3442] hover:text-white'
+                    }`}
+                  >
+                    + {preset}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Categories List */}
+          <div className="space-y-2 pt-1">
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white"
+                >
+                  <span className="font-medium">{cat.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveCategory(cat.id)}
+                    className="text-[#656c80] hover:text-red-400 cursor-pointer transition-colors"
+                    title="Remove category"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Custom Category Add Input */}
+            <div className="flex gap-2 pt-2">
+              <input
+                type="text"
+                placeholder="Add custom category (e.g. Masters, Professionals, Secondary Boys)..."
+                value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCategory();
+                  }
+                }}
+                className="flex-1 bg-[#191b20] border border-[#2e3442] rounded-xl px-3.5 py-2 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
+              />
+              <button
+                type="button"
+                onClick={handleAddCategory}
+                className="px-4 py-2 rounded-xl bg-[#1e222b] hover:bg-[#282d38] border border-[#2e3442] text-xs font-semibold text-white flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add</span>
+              </button>
+            </div>
+          </div>
+        </div>
 
         {/* Initial Status Callout */}
         <div className="p-4 rounded-xl bg-[#191b20]/60 border border-[#2e3442] flex items-start gap-3 text-xs text-[#9da3b4]">

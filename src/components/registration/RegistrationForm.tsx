@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   User,
   Mail,
@@ -14,15 +14,28 @@ import {
   Clock,
   ArrowLeft,
   Sparkles,
-  Info
+  Info,
+  CreditCard,
+  Tag,
+  ShieldAlert
 } from 'lucide-react';
-import { EventItem, Fest, RegistrationType, TeamMember, EventFormField } from '../../types';
+import {
+  EventItem,
+  Fest,
+  RegistrationType,
+  TeamMember,
+  EventFormField,
+  PaymentMethod,
+  PaymentStatus,
+  ParticipantCategoryConfig
+} from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { DynamicFormField } from './DynamicFormField';
 import { TeamMembersSection } from './TeamMembersSection';
 import { formatDateTime } from '../../utils/dateUtils';
 import { Link, useNavigate } from 'react-router-dom';
 import { submitAtomicRegistration } from '../../services/registrationService';
+import { DemoPaymentModal } from './DemoPaymentModal';
 
 interface RegistrationFormProps {
   event: EventItem;
@@ -43,9 +56,52 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   // Participant details
   const [studentName, setStudentName] = useState(currentUser?.displayName || '');
   const [studentEmail, setStudentEmail] = useState(currentUser?.email || '');
-  const [studentPhone, setStudentPhone] = useState('');
-  const [institution, setInstitution] = useState('');
-  const [studentId, setStudentId] = useState('');
+  const [studentPhone, setStudentPhone] = useState(currentUser?.phone || '');
+  const [institution, setInstitution] = useState(currentUser?.institution || '');
+  const [studentId, setStudentId] = useState(currentUser?.studentId || '');
+  const [classGrade, setClassGrade] = useState(currentUser?.classGrade || '');
+
+  // Participant Category
+  const defaultCategory = useMemo(() => {
+    if (event.participantCategories && event.participantCategories.length > 0) {
+      if (currentUser?.participantCategory) {
+        const found = event.participantCategories.find(c => c.name.toLowerCase() === currentUser.participantCategory?.toLowerCase());
+        if (found) return found.name;
+      }
+      return event.participantCategories[0].name;
+    }
+    return currentUser?.participantCategory || 'Open for Everyone';
+  }, [event.participantCategories, currentUser?.participantCategory]);
+
+  const [participantCategory, setParticipantCategory] = useState<string>(defaultCategory);
+
+  // Fee calculation based on event and selected participant category
+  const effectiveFee = useMemo(() => {
+    if (event.participantCategories && event.participantCategories.length > 0) {
+      const selected = event.participantCategories.find(c => c.name === participantCategory);
+      if (selected && typeof selected.fee === 'number') {
+        return selected.fee;
+      }
+    }
+    if (event.isPaid && typeof event.baseFee === 'number') {
+      return event.baseFee;
+    }
+    return 0;
+  }, [event.participantCategories, event.isPaid, event.baseFee, participantCategory]);
+
+  // Demo Payment State
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentDetails, setPaymentDetails] = useState<{
+    completed: boolean;
+    method?: PaymentMethod;
+    transactionId?: string;
+    reference?: string;
+    paidAt?: string;
+    amount?: number;
+  }>({
+    completed: effectiveFee === 0,
+    method: effectiveFee === 0 ? 'free' : undefined
+  });
 
   // Team details
   const minTeamSize = event.minTeamSize || 2;
@@ -56,9 +112,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     {
       name: currentUser?.displayName || '',
       email: currentUser?.email || '',
-      phone: '',
-      institution: '',
-      studentId: '',
+      phone: currentUser?.phone || '',
+      institution: currentUser?.institution || '',
+      studentId: currentUser?.studentId || '',
       role: 'Team Leader'
     },
     {
@@ -81,8 +137,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     studentPhone?: string;
     institution?: string;
     studentId?: string;
+    classGrade?: string;
+    participantCategory?: string;
     teamName?: string;
     teamSize?: string;
+    payment?: string;
     members?: Record<number, { name?: string; email?: string; phone?: string; studentId?: string }>;
     custom?: Record<string, string>;
   }>({});
@@ -99,17 +158,44 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     if (currentUser?.email && !studentEmail) {
       setStudentEmail(currentUser.email);
     }
+    if (currentUser?.phone && !studentPhone) {
+      setStudentPhone(currentUser.phone);
+    }
+    if (currentUser?.institution && !institution) {
+      setInstitution(currentUser.institution);
+    }
+    if (currentUser?.studentId && !studentId) {
+      setStudentId(currentUser.studentId);
+    }
+    if (currentUser?.classGrade && !classGrade) {
+      setClassGrade(currentUser.classGrade);
+    }
+    if (currentUser?.participantCategory && !participantCategory) {
+      setParticipantCategory(currentUser.participantCategory);
+    }
     if (currentUser && teamMembers[0] && !teamMembers[0].name) {
       setTeamMembers((prev) => [
         {
           ...prev[0],
           name: currentUser.displayName || '',
-          email: currentUser.email || ''
+          email: currentUser.email || '',
+          phone: currentUser.phone || '',
+          institution: currentUser.institution || '',
+          studentId: currentUser.studentId || ''
         },
         ...prev.slice(1)
       ]);
     }
   }, [currentUser]);
+
+  // If fee changes to 0, reset payment requirements
+  useEffect(() => {
+    if (effectiveFee === 0) {
+      setPaymentDetails({ completed: true, method: 'free' });
+    } else if (paymentDetails.amount !== effectiveFee) {
+      setPaymentDetails({ completed: false });
+    }
+  }, [effectiveFee]);
 
   // Validation helpers
   const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -234,6 +320,12 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
       });
     }
 
+    // Registration Fee & Payment Validation
+    if (effectiveFee > 0 && !paymentDetails.completed) {
+      newErrors.payment = `Please complete the demo bKash or Nagad payment of ৳${effectiveFee} before submitting.`;
+      hasError = true;
+    }
+
     setErrors(newErrors);
     return !hasError;
   };
@@ -272,6 +364,16 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         studentPhone,
         institution,
         studentId,
+        studentPhotoURL: currentUser?.photoURL || '',
+        classGrade,
+        participantCategory,
+        appliedFee: effectiveFee,
+        currency: 'BDT',
+        paymentStatus: effectiveFee > 0 ? 'completed' : 'not_required',
+        paymentMethod: paymentDetails.method || (effectiveFee > 0 ? 'bkash' : 'free'),
+        paymentTransactionId: paymentDetails.transactionId || '',
+        paymentReference: paymentDetails.reference || '',
+        paidAt: paymentDetails.paidAt || '',
         teamName: registrationType === 'team' ? teamName : undefined,
         teamMembers: registrationType === 'team' ? teamMembers : undefined,
         registrationData: customResponses
@@ -521,8 +623,23 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
               </div>
             </div>
 
+            {/* Class / Grade / Academic Year */}
+            <div className="space-y-1.5">
+              <label htmlFor="student-class-grade-input" className="text-xs font-medium text-[#d1d5db]">
+                <span>Class / Grade / Academic Year</span>
+              </label>
+              <input
+                id="student-class-grade-input"
+                type="text"
+                placeholder="e.g. Class 10, HSC 2026, 2nd Year CSE"
+                value={classGrade}
+                onChange={(e) => setClassGrade(e.target.value)}
+                className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors"
+              />
+            </div>
+
             {/* Student ID / Roll Number */}
-            <div className="space-y-1.5 sm:col-span-2">
+            <div className="space-y-1.5">
               <label htmlFor="student-id-input" className="text-xs font-medium text-[#d1d5db] flex items-center justify-between">
                 <span>Student ID / Roll Number</span>
                 <span className="text-[10px] text-[#656c80]">(Optional)</span>
@@ -541,6 +658,57 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
             </div>
           </div>
         </div>
+
+        {/* Section 1.5: Participant Category & Fee Bracket */}
+        {event.participantCategories && event.participantCategories.length > 0 && (
+          <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+            <div className="flex items-center gap-2 pb-2 border-b border-[#242730]">
+              <Tag className="w-5 h-5 text-[#ff4f1a]" />
+              <div>
+                <h3 className="font-heading text-sm font-bold text-white">
+                  Participant Category
+                </h3>
+                <p className="text-xs text-[#9da3b4]">
+                  Select the eligible category you belong to. Different categories may have specific fees or division tracks.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {event.participantCategories.map((cat) => {
+                const isSelected = participantCategory === cat.name;
+                const catFee = typeof cat.fee === 'number' ? cat.fee : (event.baseFee || 0);
+
+                return (
+                  <button
+                    key={cat.id || cat.name}
+                    type="button"
+                    onClick={() => setParticipantCategory(cat.name)}
+                    className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-2 ${
+                      isSelected
+                        ? 'bg-[#1e222b] border-[#ff4f1a] text-white shadow-lg shadow-[#ff4f1a]/10'
+                        : 'bg-[#191b20] border-[#2e3442] text-zinc-300 hover:border-zinc-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs text-white">{cat.name}</span>
+                      {isSelected && <CheckCircle2 className="w-4 h-4 text-[#ff4f1a]" />}
+                    </div>
+                    {cat.description && (
+                      <p className="text-[11px] text-[#9da3b4] line-clamp-2">{cat.description}</p>
+                    )}
+                    <div className="pt-1 flex items-center justify-between text-[11px] font-mono border-t border-white/5">
+                      <span className="text-[#656c80]">Fee:</span>
+                      <span className={catFee > 0 ? 'text-emerald-400 font-bold' : 'text-zinc-400 font-semibold'}>
+                        {catFee > 0 ? `৳${catFee}` : 'Free (৳0)'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Section 2: Team Members (if team registration) */}
         {registrationType === 'team' && (

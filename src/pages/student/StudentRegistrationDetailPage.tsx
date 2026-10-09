@@ -527,9 +527,16 @@ export const StudentRegistrationDetailPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <Link
             to="/dashboard/registrations"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white text-center transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white text-center transition-colors"
           >
             Back to My Registrations
+          </Link>
+
+          <Link
+            to="/dashboard/history"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] hover:border-[#ff4f1a] hover:text-[#ff4f1a] text-xs font-semibold text-zinc-300 text-center transition-colors"
+          >
+            Back to History
           </Link>
 
           {isEligibleForCancellation && (

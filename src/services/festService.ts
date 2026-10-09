@@ -170,6 +170,8 @@ export async function createFest(input: CreateFestInput, organizationId: string)
     endDate: new Date(endTime).toISOString(),
     status: 'draft',
     eventCount: 0,
+    visitorAccess: input.visitorAccess || 'allowed',
+    ...(input.participantCategories ? { participantCategories: input.participantCategories } : {}),
     ...(validBanner ? { bannerUrl: validBanner } : {}),
     ...(input.organizationName ? { organizationName: input.organizationName.trim() } : {}),
     ...(input.organizationLogo ? { organizationLogo: input.organizationLogo.trim() } : {}),
@@ -257,6 +259,12 @@ export async function updateFest(festId: string, input: UpdateFestInput): Promis
   }
   if (input.organizationLogo !== undefined) {
     updates.organizationLogo = input.organizationLogo.trim();
+  }
+  if (input.visitorAccess !== undefined) {
+    updates.visitorAccess = input.visitorAccess;
+  }
+  if (input.participantCategories !== undefined) {
+    updates.participantCategories = input.participantCategories;
   }
 
   try {

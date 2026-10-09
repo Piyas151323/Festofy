@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   QrCode,
   FileSpreadsheet,
+  CreditCard,
   X
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
@@ -50,6 +51,7 @@ export const OrganizerParticipantsPage: React.FC = () => {
   const [eventFilter, setEventFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [checkInFilter, setCheckInFilter] = useState<string>('all');
+  const [paymentFilter, setPaymentFilter] = useState<string>('all');
   const [expandedRegId, setExpandedRegId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
@@ -154,6 +156,15 @@ export const OrganizerParticipantsPage: React.FC = () => {
         return false;
       }
 
+      // Payment filter
+      if (paymentFilter !== 'all') {
+        const pStatus = r.paymentStatus || (r.appliedFee && r.appliedFee > 0 ? 'pending' : 'free');
+        if (paymentFilter === 'paid' && pStatus !== 'paid') return false;
+        if (paymentFilter === 'free' && pStatus !== 'free') return false;
+        if (paymentFilter === 'pending' && pStatus !== 'pending') return false;
+        if (paymentFilter === 'failed' && pStatus !== 'failed') return false;
+      }
+
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
@@ -242,6 +253,12 @@ export const OrganizerParticipantsPage: React.FC = () => {
       'Email',
       'Phone',
       'Institution',
+      'Class/Grade',
+      'Category',
+      'Applied Fee (BDT)',
+      'Payment Status',
+      'Payment Method',
+      'Payment TxID',
       'Student ID',
       'Team Name',
       'Team Members Count',
@@ -260,6 +277,12 @@ export const OrganizerParticipantsPage: React.FC = () => {
       sanitizeCsvValue(r.studentEmail),
       sanitizeCsvValue(r.studentPhone),
       sanitizeCsvValue(r.institution),
+      sanitizeCsvValue(r.classGrade || ''),
+      sanitizeCsvValue(r.participantCategory || r.categoryName || ''),
+      sanitizeCsvValue(r.appliedFee !== undefined ? r.appliedFee : 0),
+      sanitizeCsvValue(r.paymentStatus || (r.appliedFee && r.appliedFee > 0 ? 'pending' : 'free')),
+      sanitizeCsvValue(r.paymentMethod || 'none'),
+      sanitizeCsvValue(r.paymentTransactionId || ''),
       sanitizeCsvValue(r.studentId),
       sanitizeCsvValue(r.teamName),
       sanitizeCsvValue(r.teamMembers?.length || 0),
@@ -714,6 +737,19 @@ export const OrganizerParticipantsPage: React.FC = () => {
             <option value="not_checked_in">Not Checked In</option>
           </select>
 
+          {/* Payment Status Filter */}
+          <select
+            value={paymentFilter}
+            onChange={(e) => setPaymentFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white focus:outline-none focus:border-[#ff4f1a]"
+          >
+            <option value="all">Payment: All</option>
+            <option value="paid">Paid (bKash/Nagad)</option>
+            <option value="free">Free (৳0)</option>
+            <option value="pending">Pending Payment</option>
+            <option value="failed">Failed Payment</option>
+          </select>
+
           {/* Event Select */}
           {uniqueEvents.length > 0 && (
             <select
@@ -779,24 +815,44 @@ export const OrganizerParticipantsPage: React.FC = () => {
                     <React.Fragment key={reg.id}>
                       <tr className="hover:bg-[#1a1d24] transition-colors">
                         <td className="p-4">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-[#242730] text-[#ff4f1a] font-bold flex items-center justify-center text-xs shrink-0">
-                              {(reg.studentName || reg.teamName || 'P')[0]?.toUpperCase()}
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-[#242730] border border-[#2e3442] text-[#ff4f1a] font-bold flex items-center justify-center text-xs shrink-0 overflow-hidden">
+                              {reg.studentPhotoURL ? (
+                                <img
+                                  src={reg.studentPhotoURL}
+                                  alt={reg.studentName || 'Student'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span>{(reg.studentName || reg.teamName || 'P')[0]?.toUpperCase()}</span>
+                              )}
                             </div>
                             <div className="min-w-0">
-                              <div className="font-semibold text-white truncate">
-                                {reg.studentName || 'Student Participant'}
+                              <div className="font-semibold text-white truncate flex items-center gap-1.5">
+                                <span>{reg.studentName || 'Student Participant'}</span>
                               </div>
                               <div className="text-[11px] text-[#9da3b4] truncate">
                                 {reg.studentEmail}
                               </div>
-                              {reg.institution && (
-                                <div className="text-[10px] text-[#656c80] truncate">
-                                  {reg.institution}
-                                </div>
-                              )}
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {(reg.participantCategory || reg.categoryName) && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#1e222b] text-[#ff4f1a] border border-[#ff4f1a]/30 text-[9px] font-mono font-medium">
+                                    {reg.participantCategory || reg.categoryName}
+                                  </span>
+                                )}
+                                {reg.classGrade && (
+                                  <span className="px-1.5 py-0.5 rounded bg-[#1e222b] text-zinc-300 border border-[#2e3442] text-[9px] font-mono">
+                                    {reg.classGrade}
+                                  </span>
+                                )}
+                                {reg.institution && (
+                                  <span className="text-[10px] text-[#656c80] truncate max-w-[130px]">
+                                    {reg.institution}
+                                  </span>
+                                )}
+                              </div>
                               {isTeam && (
-                                <div className="mt-0.5 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/50 border border-purple-800/40 text-[10px] font-mono text-purple-300">
+                                <div className="mt-1 inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-purple-950/50 border border-purple-800/40 text-[10px] font-mono text-purple-300">
                                   <span>Team: {reg.teamName || 'Roster'}</span>
                                   <span>({reg.teamMembers?.length || 1} members)</span>
                                 </div>
@@ -831,8 +887,22 @@ export const OrganizerParticipantsPage: React.FC = () => {
                         </td>
 
                         <td className="p-4">
-                          <div className="space-y-1">
+                          <div className="space-y-1.5">
                             <RegistrationStatusBadge status={reg.status} />
+                            {reg.paymentStatus === 'paid' ? (
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-950/60 border border-emerald-800 text-[10px] text-emerald-300 font-mono">
+                                <CreditCard className="w-2.5 h-2.5" />
+                                <span>৳{reg.appliedFee !== undefined ? reg.appliedFee : 0} Paid ({reg.paymentMethod?.toUpperCase() || 'DEMO'})</span>
+                              </div>
+                            ) : reg.appliedFee && reg.appliedFee > 0 ? (
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-950/60 border border-amber-800 text-[10px] text-amber-300 font-mono">
+                                <span>Pending ৳{reg.appliedFee}</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#191b20] border border-[#2e3442] text-[10px] text-zinc-400 font-mono">
+                                <span>Free (৳0)</span>
+                              </div>
+                            )}
                             {reg.status === 'checked_in' && reg.checkedInAt && (
                               <div className="text-[10px] text-cyan-400 font-mono">
                                 In: {new Date(reg.checkedInAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -926,34 +996,99 @@ export const OrganizerParticipantsPage: React.FC = () => {
                           <td colSpan={6} className="p-4 border-t border-[#242730]">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                               {/* Left Column: Participant Snapshot */}
-                              <div className="p-3.5 rounded-xl bg-[#14161a] border border-[#242730] space-y-2">
-                                <h4 className="font-heading font-semibold text-white text-xs uppercase tracking-wider text-[#ff4f1a]">
-                                  Participant Dossier
-                                </h4>
+                              <div className="p-3.5 rounded-xl bg-[#14161a] border border-[#242730] space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h4 className="font-heading font-semibold text-white text-xs uppercase tracking-wider text-[#ff4f1a]">
+                                    Participant Dossier
+                                  </h4>
+                                  <span className="text-[10px] font-mono text-[#656c80]">
+                                    Pass: {reg.ticketCode}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3 p-2.5 rounded-lg bg-[#191b20] border border-[#2e3442]">
+                                  <div className="w-12 h-12 rounded-xl bg-[#242730] border border-[#2e3442] overflow-hidden flex items-center justify-center text-sm font-bold text-[#ff4f1a] shrink-0">
+                                    {reg.studentPhotoURL ? (
+                                      <img
+                                        src={reg.studentPhotoURL}
+                                        alt={reg.studentName || 'Student'}
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <span>{(reg.studentName || 'S')[0]?.toUpperCase()}</span>
+                                    )}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <div className="font-bold text-white text-xs truncate">
+                                      {reg.studentName || 'Student Participant'}
+                                    </div>
+                                    <div className="text-[11px] text-[#9da3b4] truncate">
+                                      {reg.studentEmail}
+                                    </div>
+                                    <div className="text-[10px] text-[#656c80] truncate">
+                                      {reg.studentPhone || 'No phone provided'}
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-2 text-[11px]">
                                   <div>
-                                    <span className="text-[#656c80] block">Phone:</span>
-                                    <span className="text-zinc-300">{reg.studentPhone || 'N/A'}</span>
+                                    <span className="text-[#656c80] block">Participant Category:</span>
+                                    <span className="text-[#ff4f1a] font-medium font-mono">
+                                      {reg.participantCategory || reg.categoryName || 'Open for Everyone'}
+                                    </span>
                                   </div>
                                   <div>
-                                    <span className="text-[#656c80] block">Student ID:</span>
-                                    <span className="text-zinc-300">{reg.studentId || 'N/A'}</span>
+                                    <span className="text-[#656c80] block">Class / Grade / Level:</span>
+                                    <span className="text-zinc-300 font-mono">{reg.classGrade || 'N/A'}</span>
                                   </div>
                                   <div>
-                                    <span className="text-[#656c80] block">Institution:</span>
+                                    <span className="text-[#656c80] block">Institution / College:</span>
                                     <span className="text-zinc-300">{reg.institution || 'N/A'}</span>
                                   </div>
                                   <div>
-                                    <span className="text-[#656c80] block">Venue:</span>
-                                    <span className="text-zinc-300">{reg.venue || 'TBA'}</span>
+                                    <span className="text-[#656c80] block">Student ID / Roll:</span>
+                                    <span className="text-zinc-300 font-mono">{reg.studentId || 'N/A'}</span>
                                   </div>
                                   <div>
                                     <span className="text-[#656c80] block">Registration Mode:</span>
                                     <span className="capitalize text-zinc-300">{reg.registrationType}</span>
                                   </div>
                                   <div>
-                                    <span className="text-[#656c80] block">Ticket Pass ID:</span>
-                                    <span className="font-mono text-zinc-300">{reg.ticketCode}</span>
+                                    <span className="text-[#656c80] block">Venue:</span>
+                                    <span className="text-zinc-300">{reg.venue || 'TBA'}</span>
+                                  </div>
+                                </div>
+
+                                {/* Payment Details Block */}
+                                <div className="p-2.5 rounded-lg bg-[#191b20] border border-[#2e3442] space-y-1 text-[11px]">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-mono text-[#656c80] uppercase">Payment Record</span>
+                                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold ${
+                                      reg.paymentStatus === 'paid'
+                                        ? 'bg-emerald-950/60 text-emerald-400 border border-emerald-800'
+                                        : reg.appliedFee && reg.appliedFee > 0
+                                        ? 'bg-amber-950/60 text-amber-400 border border-amber-800'
+                                        : 'bg-[#14161a] text-zinc-400 border border-[#2e3442]'
+                                    }`}>
+                                      {reg.paymentStatus === 'paid' ? 'PAID' : reg.appliedFee && reg.appliedFee > 0 ? 'PENDING' : 'FREE ENTRY'}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1.5 pt-1 text-[10px]">
+                                    <div>
+                                      <span className="text-[#656c80] block">Applied Amount:</span>
+                                      <span className="text-white font-mono font-bold">৳{reg.appliedFee !== undefined ? reg.appliedFee : 0} {reg.currency || 'BDT'}</span>
+                                    </div>
+                                    <div>
+                                      <span className="text-[#656c80] block">Payment Gateway:</span>
+                                      <span className="text-zinc-300 uppercase font-mono">{reg.paymentMethod || 'Demo Simulator'}</span>
+                                    </div>
+                                    {reg.paymentTransactionId && (
+                                      <div className="col-span-2">
+                                        <span className="text-[#656c80] block">Demo Transaction ID:</span>
+                                        <span className="text-cyan-400 font-mono">{reg.paymentTransactionId}</span>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
@@ -1064,16 +1199,52 @@ export const OrganizerParticipantsPage: React.FC = () => {
             {filteredRegistrations.map((reg) => (
               <div key={reg.id} className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="font-semibold text-white text-sm">
-                      {reg.studentName || 'Student Participant'}
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-[#242730] border border-[#2e3442] overflow-hidden flex items-center justify-center text-xs font-bold text-[#ff4f1a] shrink-0">
+                      {reg.studentPhotoURL ? (
+                        <img src={reg.studentPhotoURL} alt="Student" className="w-full h-full object-cover" />
+                      ) : (
+                        <span>{(reg.studentName || 'S')[0]?.toUpperCase()}</span>
+                      )}
                     </div>
-                    <div className="text-xs text-[#9da3b4]">{reg.studentEmail}</div>
-                    {reg.teamName && (
-                      <div className="text-[11px] text-purple-400">Team: {reg.teamName}</div>
+                    <div>
+                      <div className="font-semibold text-white text-sm">
+                        {reg.studentName || 'Student Participant'}
+                      </div>
+                      <div className="text-xs text-[#9da3b4]">{reg.studentEmail}</div>
+                      <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                        {(reg.participantCategory || reg.categoryName) && (
+                          <span className="px-1.5 py-0.2 rounded bg-[#1e222b] text-[#ff4f1a] border border-[#ff4f1a]/30 text-[9px] font-mono">
+                            {reg.participantCategory || reg.categoryName}
+                          </span>
+                        )}
+                        {reg.classGrade && (
+                          <span className="px-1.5 py-0.2 rounded bg-[#1e222b] text-zinc-300 border border-[#2e3442] text-[9px] font-mono">
+                            {reg.classGrade}
+                          </span>
+                        )}
+                      </div>
+                      {reg.teamName && (
+                        <div className="text-[11px] text-purple-400 mt-0.5">Team: {reg.teamName}</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <RegistrationStatusBadge status={reg.status} />
+                    {reg.paymentStatus === 'paid' ? (
+                      <span className="text-[10px] text-emerald-400 font-mono">
+                        ৳{reg.appliedFee !== undefined ? reg.appliedFee : 0} Paid ({reg.paymentMethod?.toUpperCase()})
+                      </span>
+                    ) : reg.appliedFee && reg.appliedFee > 0 ? (
+                      <span className="text-[10px] text-amber-400 font-mono">
+                        ৳{reg.appliedFee} Pending
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-zinc-400 font-mono">
+                        Free (৳0)
+                      </span>
                     )}
                   </div>
-                  <RegistrationStatusBadge status={reg.status} />
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-[#656c80] font-mono">

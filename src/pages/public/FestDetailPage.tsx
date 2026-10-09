@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Calendar, ArrowLeft, Building2, Layers } from 'lucide-react';
+import { Calendar, ArrowLeft, Building2, Layers, Eye, EyeOff } from 'lucide-react';
 import { getFestById } from '../../services/festService';
 import { getPublishedEvents } from '../../services/eventService';
 import { getOrganizationById } from '../../services/organizationService';
 import { Fest, EventItem, Organization } from '../../types';
 import { formatDateRange } from '../../utils/dateUtils';
+import { getVisitorAccessDisplay } from '../../utils/visitorUtils';
 import { EventCard } from '../../components/common/Cards';
 import { PageContainer } from '../../components/common/PageContainer';
 import { DetailSkeleton, CardSkeleton } from '../../components/common/LoadingSkeleton';
@@ -173,7 +174,29 @@ export const FestDetailPage: React.FC = () => {
                 </dt>
                 <dd className="font-semibold text-white">{events.length}</dd>
               </div>
+              <div className="flex items-start justify-between gap-3 pt-2 border-t border-[#242730]">
+                <dt className="flex items-center gap-2 text-[#656c80]">
+                  {getVisitorAccessDisplay(null, fest).status === 'allowed' ? (
+                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <EyeOff className="w-3.5 h-3.5 text-amber-400" />
+                  )}
+                  <span>Visitors</span>
+                </dt>
+                <dd className="text-right">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
+                    getVisitorAccessDisplay(null, fest).status === 'allowed'
+                      ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800'
+                      : 'bg-amber-950/60 text-amber-300 border border-amber-800'
+                  }`}>
+                    {getVisitorAccessDisplay(null, fest).badgeText}
+                  </span>
+                </dd>
+              </div>
             </dl>
+            <p className="text-[11px] text-[#9da3b4] pt-1 leading-tight border-t border-[#242730]">
+              {getVisitorAccessDisplay(null, fest).description}
+            </p>
           </div>
         </aside>
       </div>
