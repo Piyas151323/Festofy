@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
   Building2,
@@ -15,8 +15,7 @@ import {
   AlertCircle,
   ShieldCheck,
   Check,
-  X,
-  ExternalLink
+  X
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -24,28 +23,28 @@ import {
   approveOrganization,
   rejectOrganization
 } from '../../services/organizationService';
-import { Organization, OrganizationStatus } from '../../types';
+import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export const AdminOrganizationRequestDetailPage: React.FC = () => {
   const { organizationId } = useParams<{ organizationId: string }>();
   const { currentUser } = useAuth();
-  const navigate = useNavigate();
 
   const [org, setOrg] = useState<Organization | null>(null);
   const [requester, setRequester] = useState<{ displayName: string; email: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Workflow Modal States
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [showRejectModal, setShowRejectModal] = useState(false);
+  // Workflow Dialog States
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [actionSuccessMessage, setActionSuccessMessage] = useState<string | null>(null);
   const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!organizationId) return;
     try {
       setLoading(true);
@@ -57,18 +56,18 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       }
       setOrg(res.organization);
       setRequester(res.requesterProfile || null);
-      document.title = `${res.organization.name || 'Request Details'} · Festofy`;
+      document.title = `${res.organization.name || 'Request Details'} · Admin · Festofy`;
     } catch (err: any) {
       console.warn('Notice loading organization request:', err?.message || err);
       setError('Unable to load application details.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId]);
 
   useEffect(() => {
     loadData();
-  }, [organizationId]);
+  }, [loadData]);
 
   const handleApprove = async () => {
     if (!org || !currentUser?.uid) return;
@@ -77,7 +76,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       setActionErrorMessage(null);
       await approveOrganization(org.id, currentUser.uid);
       setActionSuccessMessage('Organization approved! The requester has been promoted to Organizer with Owner membership.');
-      setShowApproveModal(false);
+      setShowApproveDialog(false);
       await loadData();
     } catch (err: any) {
       console.warn('Notice approving organization:', err?.message || err);
@@ -94,7 +93,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       setActionErrorMessage(null);
       await rejectOrganization(org.id, currentUser.uid, rejectionReason);
       setActionSuccessMessage('Application rejected. The requester remains a student.');
-      setShowRejectModal(false);
+      setShowRejectDialog(false);
       await loadData();
     } catch (err: any) {
       console.warn('Notice rejecting organization:', err?.message || err);
@@ -106,7 +105,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-12 text-center text-xs text-[#9da3b4] animate-pulse">
+      <div className="max-w-4xl mx-auto py-12 text-center text-xs text-[#9da3b4] motion-safe:animate-pulse">
         Loading organization application dossier...
       </div>
     );
@@ -136,8 +135,8 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
   const status = org.status || 'approved';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Breadcrumb */}
+    <div className="max-w-4xl mx-auto space-y-6 motion-safe:animate-page-enter">
+      {/* Breadcrumb Navigation */}
       <div>
         <Link
           to="/admin/organization-requests"
@@ -148,7 +147,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
         </Link>
       </div>
 
-      {/* Success Notification */}
+      {/* Success Notification Feedback */}
       {actionSuccessMessage && (
         <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-900/50 flex items-center justify-between text-xs text-emerald-200">
           <div className="flex items-center gap-2">
@@ -158,7 +157,8 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActionSuccessMessage(null)}
-            className="text-emerald-400 hover:text-white"
+            className="text-emerald-400 hover:text-white cursor-pointer"
+            aria-label="Dismiss message"
           >
             <X className="w-4 h-4" />
           </button>
@@ -175,7 +175,8 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setActionErrorMessage(null)}
-            className="text-red-400 hover:text-white"
+            className="text-red-400 hover:text-white cursor-pointer"
+            aria-label="Dismiss error"
           >
             <X className="w-4 h-4" />
           </button>
@@ -183,287 +184,238 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       )}
 
       {/* Main Dossier Card */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-[#242730] bg-[#14161a] space-y-6 shadow-xl">
+      <div className="p-6 sm:p-8 rounded-2xl border border-[#242730] bg-[#14161a] space-y-6 shadow-xl">
         {/* Header Block */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-6 border-b border-[#242730]">
-          <div className="flex items-start gap-4">
+          <div className="flex items-start gap-4 min-w-0">
             {org.logoUrl ? (
               <img
                 src={org.logoUrl}
                 alt=""
-                className="w-16 h-16 rounded-2xl object-cover bg-[#17191e] border border-[#272b35] shrink-0"
+                className="w-14 h-14 rounded-2xl object-cover bg-[#17191e] border border-[#272b35] shrink-0"
               />
             ) : (
-              <div className="w-16 h-16 rounded-2xl bg-[#17191e] border border-[#272b35] text-red-400 flex items-center justify-center font-bold text-2xl shrink-0">
+              <div className="w-14 h-14 rounded-2xl bg-[#17191e] border border-[#272b35] text-red-400 flex items-center justify-center font-bold text-xl shrink-0">
                 {org.name?.[0]?.toUpperCase() || 'C'}
               </div>
             )}
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="font-heading text-xl sm:text-2xl font-extrabold text-white">
-                  {org.name}
-                </h1>
-                {status === 'pending' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                    Pending Review
-                  </span>
-                )}
-                {status === 'approved' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                    Approved
-                  </span>
-                )}
-                {status === 'rejected' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-red-500/15 text-red-400 border border-red-500/30">
-                    Rejected
-                  </span>
-                )}
-                {status === 'suspended' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-zinc-800 text-zinc-400 border border-zinc-700">
-                    Suspended
-                  </span>
-                )}
-              </div>
 
+            <div className="space-y-1 min-w-0">
+              <h1 className="font-heading text-xl sm:text-2xl font-bold text-white truncate">
+                {org.name}
+              </h1>
               {org.institution && (
                 <div className="flex items-center gap-1.5 text-xs text-[#9da3b4]">
-                  <School className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                  <span>{org.institution}</span>
-                </div>
-              )}
-
-              <div className="text-[11px] text-[#656c80] font-mono">
-                Organization ID: <span className="text-zinc-300">{org.id}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Top Status Badge / Timestamp */}
-          <div className="text-left sm:text-right text-xs text-[#656c80] space-y-1 shrink-0">
-            <div>Submitted: {formatDateTime(org.requestedAt || org.createdAt)}</div>
-            <div>Updated: {formatDateTime(org.updatedAt)}</div>
-          </div>
-        </div>
-
-        {/* Rejection Note if rejected */}
-        {status === 'rejected' && org.rejectionReason && (
-          <div className="p-4 rounded-2xl bg-red-950/30 border border-red-900/50 space-y-1">
-            <div className="text-xs font-semibold text-red-300 flex items-center gap-1.5">
-              <AlertCircle className="w-4 h-4 text-red-400" />
-              <span>Administrative Rejection Reason:</span>
-            </div>
-            <p className="text-xs text-red-200 pl-5 leading-relaxed">{org.rejectionReason}</p>
-          </div>
-        )}
-
-        {/* 2-Column Info Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Left Column: Organization Profile */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-semibold text-red-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Organization Details</span>
-            </h2>
-
-            <div className="p-4 rounded-2xl bg-[#17191e] border border-[#272b35] space-y-3 text-xs">
-              <div>
-                <span className="text-[#656c80] block text-[11px]">Description</span>
-                <p className="text-zinc-200 mt-0.5 leading-relaxed">
-                  {org.description || 'No description provided by applicant.'}
-                </p>
-              </div>
-
-              {org.logoUrl && (
-                <div className="pt-2 border-t border-[#272b35]">
-                  <span className="text-[#656c80] block text-[11px]">Logo Asset</span>
-                  <a
-                    href={org.logoUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-red-400 hover:underline flex items-center gap-1 mt-0.5 truncate"
-                  >
-                    <span>View original logo asset</span>
-                    <ExternalLink className="w-3 h-3 shrink-0" />
-                  </a>
+                  <School className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                  <span className="truncate">{org.institution}</span>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Right Column: Requester Information */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-semibold text-red-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5" />
-              <span>Applicant Dossier</span>
-            </h2>
-
-            <div className="p-4 rounded-2xl bg-[#17191e] border border-[#272b35] space-y-3 text-xs">
-              <div>
-                <span className="text-[#656c80] block text-[11px]">Applicant Name</span>
-                <span className="font-semibold text-white">
-                  {requester?.displayName || 'Student Applicant'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[#656c80] block text-[11px]">Contact Email</span>
-                <span className="text-zinc-300 font-mono">
-                  {requester?.email || 'Registered student email'}
-                </span>
-              </div>
-
-              <div className="pt-2 border-t border-[#272b35]">
-                <span className="text-[#656c80] block text-[11px]">Firebase User UID</span>
-                <span className="text-zinc-400 font-mono text-[11px] break-all">
-                  {org.requestedBy || 'N/A'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Administrative Action Bar */}
-        <div className="pt-6 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-xs text-[#9da3b4]">
+          <div className="shrink-0">
             {status === 'pending' ? (
-              <span>Reviewing this application authorizes the requester to publish events.</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-mono font-semibold">
+                <Clock className="w-3.5 h-3.5" />
+                <span>Pending Review</span>
+              </span>
             ) : status === 'approved' ? (
-              <span className="text-emerald-400 font-medium flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Club verified and registered with owner privileges.</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-xs font-mono font-semibold">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Approved Club</span>
+              </span>
+            ) : status === 'rejected' ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-red-500/10 text-red-400 border border-red-500/30 text-xs font-mono font-semibold">
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Rejected</span>
               </span>
             ) : (
-              <span className="text-red-400 font-medium flex items-center gap-1.5">
-                <XCircle className="w-4 h-4" />
-                <span>Application is concluded in rejected status.</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-zinc-800 text-zinc-400 border border-zinc-700 text-xs font-mono font-semibold">
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span>Suspended</span>
               </span>
             )}
           </div>
+        </div>
 
-          {/* Action Buttons for Pending */}
-          {status === 'pending' && (
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+        {/* Rejection notice if previously rejected */}
+        {status === 'rejected' && (
+          <div className="p-4 rounded-2xl bg-red-950/30 border border-red-900/40 space-y-1.5 text-xs">
+            <span className="font-semibold text-red-300 block">Application Declined</span>
+            <p className="text-[#9da3b4] leading-relaxed">
+              {org.rejectionReason || 'No specific rationale was provided by the administrator.'}
+            </p>
+          </div>
+        )}
+
+        {/* Dossier Information Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs">
+          {/* Organization Details */}
+          <div className="space-y-4 p-5 rounded-2xl bg-[#17191e] border border-[#242730]">
+            <h3 className="font-heading font-bold text-white text-sm flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-red-400" />
+              <span>Organization Details</span>
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Official Name</span>
+                <span className="font-semibold text-white">{org.name}</span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Institution / Campus</span>
+                <span className="text-zinc-300">{org.institution || 'None specified'}</span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">System Identifier</span>
+                <span className="font-mono text-zinc-400 text-[11px]">{org.id}</span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Application Date</span>
+                <span className="font-mono text-zinc-300">
+                  {formatDateTime(org.requestedAt || org.createdAt)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Requester Credentials */}
+          <div className="space-y-4 p-5 rounded-2xl bg-[#17191e] border border-[#242730]">
+            <h3 className="font-heading font-bold text-white text-sm flex items-center gap-2">
+              <User className="w-4 h-4 text-red-400" />
+              <span>Applicant Identity</span>
+            </h3>
+
+            <div className="space-y-3">
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Student Name</span>
+                <span className="font-semibold text-white">
+                  {requester?.displayName || 'Applicant'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Verified Account Email</span>
+                <span className="text-zinc-300 font-mono text-[11px]">
+                  {requester?.email || 'Hidden or unregistered'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Applicant User ID</span>
+                <span className="font-mono text-zinc-400 text-[11px]">
+                  {org.requestedBy || 'N/A'}
+                </span>
+              </div>
+
+              <div>
+                <span className="text-[#656c80] block text-[11px] font-mono uppercase">Security Check</span>
+                <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Valid student session verified</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Mission Statement / Club Description */}
+        <div className="space-y-2 p-5 rounded-2xl bg-[#17191e] border border-[#242730]">
+          <h3 className="font-heading font-bold text-white text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-red-400" />
+            <span>Charter & Activity Description</span>
+          </h3>
+          <p className="text-xs text-[#9da3b4] leading-relaxed whitespace-pre-line">
+            {org.description || 'No detailed mission statement provided with this submission.'}
+          </p>
+        </div>
+
+        {/* Action Controls (Only available on pending applications) */}
+        {status === 'pending' && (
+          <div className="pt-4 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="text-xs text-[#9da3b4]">
+              Review the collegiate association charter before authorizing organizer administrative privileges.
+            </div>
+
+            <div className="flex items-center gap-2.5 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => setShowRejectModal(true)}
+                onClick={() => setShowRejectDialog(true)}
                 disabled={isProcessing}
-                className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-900/60 text-xs font-semibold text-red-200 transition-colors cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-red-950/40 hover:bg-red-900/60 border border-red-900/60 text-xs font-semibold text-red-200 transition-colors cursor-pointer disabled:opacity-50"
               >
                 Reject Application
               </button>
 
               <button
                 type="button"
-                onClick={() => setShowApproveModal(true)}
+                onClick={() => setShowApproveDialog(true)}
                 disabled={isProcessing}
-                className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition-colors shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
+                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition-colors shadow-sm shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
               >
                 Approve Organization
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal: Approve Confirmation */}
-      {showApproveModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="max-w-md w-full p-6 rounded-3xl border border-[#242730] bg-[#14161a] space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <Check className="w-6 h-6" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="font-heading text-lg font-bold text-white">
-                Approve {org.name}?
-              </h3>
-              <p className="text-xs text-[#9da3b4] leading-relaxed">
-                Approving this club will atomically perform three operations:
-              </p>
-              <ul className="text-[11px] text-[#9da3b4] list-disc list-inside space-y-1 pt-1">
-                <li>Set organization status to <span className="text-emerald-400 font-semibold font-mono">approved</span>.</li>
-                <li>Promote requester to <span className="text-emerald-400 font-semibold font-mono">organizer</span> in userRoles.</li>
-                <li>Assign requester <span className="text-emerald-400 font-semibold font-mono">owner</span> in organizationMembers.</li>
-              </ul>
-            </div>
-
-            <div className="pt-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowApproveModal(false)}
-                disabled={isProcessing}
-                className="px-4 py-2 rounded-xl bg-[#17191e] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={isProcessing}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white transition-colors shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <span>{isProcessing ? 'Processing Approval...' : 'Confirm Approval'}</span>
-              </button>
-            </div>
+      {/* Approval Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showApproveDialog}
+        onClose={() => setShowApproveDialog(false)}
+        onConfirm={handleApprove}
+        title={`Approve ${org.name}?`}
+        variant="success"
+        confirmLabel="Confirm Approval"
+        isLoading={isProcessing}
+        description={
+          <div className="space-y-2">
+            <p className="text-xs text-[#9da3b4]">
+              Approving this club will atomically perform the following operational updates:
+            </p>
+            <ul className="text-[11px] text-[#9da3b4] list-disc list-inside space-y-1">
+              <li>Set organization status to <span className="text-emerald-400 font-semibold font-mono">approved</span>.</li>
+              <li>Promote requester to <span className="text-emerald-400 font-semibold font-mono">organizer</span> in userRoles.</li>
+              <li>Assign requester <span className="text-emerald-400 font-semibold font-mono">owner</span> membership.</li>
+            </ul>
           </div>
+        }
+      />
+
+      {/* Rejection Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showRejectDialog}
+        onClose={() => setShowRejectDialog(false)}
+        onConfirm={handleReject}
+        title={`Reject ${org.name}?`}
+        variant="danger"
+        confirmLabel="Confirm Rejection"
+        isLoading={isProcessing}
+        description={
+          <p className="text-xs text-[#9da3b4]">
+            The application for <span className="text-white font-semibold">{org.name}</span> will be rejected. The requester will remain a student without organizer access.
+          </p>
+        }
+      >
+        <div className="space-y-1.5 pt-2">
+          <label htmlFor="rejection-reason" className="text-xs font-semibold text-white block">
+            Reason for Rejection (Optional)
+          </label>
+          <textarea
+            id="rejection-reason"
+            rows={3}
+            maxLength={1000}
+            placeholder="e.g. Unverified student association or duplicate application..."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-[#656c80] focus:outline-hidden focus:border-red-500 resize-none transition-colors"
+          />
         </div>
-      )}
-
-      {/* Modal: Reject Confirmation */}
-      {showRejectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="max-w-md w-full p-6 rounded-3xl border border-[#242730] bg-[#14161a] space-y-4 shadow-2xl">
-            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center">
-              <X className="w-6 h-6" />
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="font-heading text-lg font-bold text-white">
-                Reject Application?
-              </h3>
-              <p className="text-xs text-[#9da3b4] leading-relaxed">
-                The application for <span className="text-white font-semibold">{org.name}</span> will be rejected. The requester will remain a student and will not receive organizer access.
-              </p>
-            </div>
-
-            <div className="space-y-1.5">
-              <label htmlFor="rejection-reason" className="text-xs font-semibold text-white">
-                Reason for Rejection (Optional)
-              </label>
-              <textarea
-                id="rejection-reason"
-                rows={3}
-                maxLength={1000}
-                placeholder="e.g. Unverified student association or duplicate application..."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-red-500 resize-none"
-              />
-            </div>
-
-            <div className="pt-2 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowRejectModal(false)}
-                disabled={isProcessing}
-                className="px-4 py-2 rounded-xl bg-[#17191e] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleReject}
-                disabled={isProcessing}
-                className="px-5 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors shadow-md shadow-red-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <span>{isProcessing ? 'Rejecting...' : 'Confirm Rejection'}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </ConfirmDialog>
     </div>
   );
 };

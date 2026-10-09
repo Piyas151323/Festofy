@@ -183,3 +183,39 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
     </div>
   );
 };
+
+export interface StatCardProps {
+  label: string;
+  value: string | number;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}
+
+export const StatCard: React.FC<StatCardProps> = ({
+  label,
+  value,
+  description,
+  icon,
+  className = ''
+}) => {
+  return (
+    <div className={`p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between transition-colors hover:border-[#383d4c] ${className}`}>
+      <div className="flex justify-between items-center text-xs text-[#656c80]">
+        <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">{label}</span>
+        {icon && <div className="text-[#9da3b4]">{icon}</div>}
+      </div>
+      <div>
+        <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
+          {value}
+        </div>
+        {description && (
+          <p className="text-[11px] text-[#9da3b4] mt-0.5 leading-snug">
+            {description}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+

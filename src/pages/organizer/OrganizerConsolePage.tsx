@@ -4,23 +4,18 @@ import {
   Calendar,
   Users,
   Clock,
-  ShieldCheck,
   Plus,
-  Activity,
-  MapPin,
   RefreshCw,
-  Sparkles,
   Building2,
   Ticket,
   AlertCircle,
   ExternalLink,
   ChevronRight,
   CalendarCheck,
-  Flame,
+  CheckCircle2,
+  MapPin,
   AlertTriangle,
-  UserCheck,
-  TrendingUp,
-  BarChart3,
+  Flame,
   UserCog
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
@@ -29,13 +24,14 @@ import { getOrganizationFests } from '../../services/festService';
 import { getOrganizationEvents } from '../../services/eventService';
 import { getOrganizationRegistrations } from '../../services/registrationService';
 import { Fest, EventItem, Registration } from '../../types';
-import { formatDateTime } from '../../utils/dateUtils';
+import { formatDateTime, getDeadlineText } from '../../utils/dateUtils';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
 import { PageHeader } from '../../components/common/PageHeader';
+import { StatCard } from '../../components/common/Cards';
 
 export const OrganizerConsolePage: React.FC = () => {
-  const { activeOrganization, loading: orgLoading, error: orgError, refetchOrganizations } = useOrganizer();
-  const { role, isAdmin } = useAuth();
+  const { activeOrganization, loading: orgLoading, refetchOrganizations } = useOrganizer();
+  const { isAdmin } = useAuth();
 
   const [fests, setFests] = useState<Fest[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -83,8 +79,6 @@ export const OrganizerConsolePage: React.FC = () => {
   const stats = useMemo(() => {
     const totalFests = fests.length;
     const activeFests = fests.filter((f) => f.status === 'published').length;
-    const completedFests = fests.filter((f) => f.status === 'completed').length;
-    const draftFests = fests.filter((f) => f.status === 'draft').length;
 
     const totalEvents = events.length;
     const publishedEvents = events.filter((e) => e.status === 'published').length;
@@ -98,14 +92,10 @@ export const OrganizerConsolePage: React.FC = () => {
       })
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
-    const totalCapacity = events.reduce((sum, e) => sum + (e.capacity || 0), 0);
-    
     // Status metrics
     const confirmed = registrations.filter((r) => r.status === 'confirmed').length;
     const checkedIn = registrations.filter((r) => r.status === 'checked_in').length;
     const pending = registrations.filter((r) => r.status === 'pending').length;
-    const cancelled = registrations.filter((r) => r.status === 'cancelled').length;
-    const activeRegistrations = registrations.filter((r) => r.status !== 'cancelled').length;
 
     // Attendance rate
     const attendanceEligible = confirmed + checkedIn;
@@ -130,42 +120,84 @@ export const OrganizerConsolePage: React.FC = () => {
     return {
       totalFests,
       activeFests,
-      completedFests,
-      draftFests,
       totalEvents,
       publishedEvents,
       upcomingEvents,
-      totalCapacity,
       totalRegistrations: registrations.length,
-      activeRegistrations,
       confirmed,
       checkedIn,
       pending,
-      cancelled,
       attendanceRate,
       approachingCapacityEvents,
       approachingDeadlines
     };
   }, [fests, events, registrations]);
 
-  // 1. Loading State
+  // Needs Attention items
+  const attentionItems = useMemo(() => {
+    const items: {
+      id: string;
+      title: string;
+      description: string;
+      link: string;
+      badgeText: string;
+      badgeVariant: 'warning' | 'danger' | 'info';
+    }[] = [];
+
+    // 1. Pending participant reviews
+    if (stats.pending > 0) {
+      items.push({
+        id: 'pending-reviews',
+        title: `${stats.pending} pending registration review${stats.pending === 1 ? '' : 's'}`,
+        description: 'New participant submissions awaiting your confirmation.',
+        link: '/organizer/participants',
+        badgeText: 'Pending Review',
+        badgeVariant: 'warning'
+      });
+    }
+
+    // 2. Events at or above 80% capacity
+    stats.approachingCapacityEvents.forEach((evt) => {
+      const percentage = Math.round(((evt.currentRegistrations || 0) / (evt.capacity || 1)) * 100);
+      items.push({
+        id: `capacity-${evt.id}`,
+        title: `"${evt.name}" is at ${percentage}% capacity`,
+        description: `${evt.currentRegistrations || 0} of ${evt.capacity} seats reserved. Consider expanding capacity.`,
+        link: `/organizer/events/${evt.id}`,
+        badgeText: `${percentage}% Full`,
+        badgeVariant: 'danger'
+      });
+    });
+
+    // 3. Deadlines within next 72 hours
+    stats.approachingDeadlines.forEach((evt) => {
+      items.push({
+        id: `deadline-${evt.id}`,
+        title: `Registration closing soon for "${evt.name}"`,
+        description: `Deadline: ${formatDateTime(evt.registrationDeadline)} (${getDeadlineText(evt.registrationDeadline).label}).`,
+        link: `/organizer/events/${evt.id}`,
+        badgeText: 'Closing Soon',
+        badgeVariant: 'info'
+      });
+    });
+
+    return items;
+  }, [stats]);
+
+  // 1. Loading Skeleton
   if (orgLoading || (loading && !activeOrganization)) {
     return (
-      <div className="space-y-8 animate-pulse">
-        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 space-y-3">
-          <div className="h-4 w-40 bg-[#1e222b] rounded" />
-          <div className="h-8 w-64 bg-[#1e222b] rounded" />
-          <div className="h-4 w-96 max-w-full bg-[#1e222b] rounded" />
+      <div className="space-y-6 motion-safe:animate-pulse">
+        <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-5 sm:p-6 space-y-2">
+          <div className="h-6 w-36 bg-[#1e222b] rounded-lg" />
+          <div className="h-4 w-64 bg-[#1e222b] rounded-md" />
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] h-28" />
+            <div key={i} className="p-4 rounded-2xl border border-[#242730] bg-[#14161a] h-24" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 rounded-2xl border border-[#242730] bg-[#14161a] h-80" />
-          <div className="rounded-2xl border border-[#242730] bg-[#14161a] h-80" />
-        </div>
+        <div className="rounded-2xl border border-[#242730] bg-[#14161a] h-64" />
       </div>
     );
   }
@@ -174,29 +206,29 @@ export const OrganizerConsolePage: React.FC = () => {
   if (!activeOrganization) {
     if (isAdmin) {
       return (
-        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 sm:p-12 text-center space-y-4 max-w-2xl mx-auto my-12">
-          <div className="w-14 h-14 rounded-2xl bg-red-600/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
-            <Building2 className="w-7 h-7" />
+        <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-8 sm:p-10 text-center space-y-4 max-w-xl mx-auto my-8">
+          <div className="w-12 h-12 rounded-xl bg-red-600/10 border border-red-500/30 text-red-400 flex items-center justify-center mx-auto">
+            <Building2 className="w-6 h-6" />
           </div>
-          <div className="space-y-1.5 max-w-md mx-auto">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20 text-[10px] font-mono uppercase font-semibold">
+          <div className="space-y-1">
+            <span className="text-[10px] font-mono uppercase text-red-400 font-semibold">
               Platform Administrator Oversight
-            </div>
-            <h2 className="font-heading text-xl font-bold text-white">No Active Organizations</h2>
-            <p className="text-xs text-[#9da3b4] leading-relaxed">
-              You are logged in with root administrator privileges. There are no approved club workspaces registered yet, or applications are currently pending review.
+            </span>
+            <h2 className="font-heading text-lg font-bold text-white">No Active Organizations</h2>
+            <p className="text-xs text-[#9da3b4]">
+              No approved organization workspaces are currently available or pending review.
             </p>
           </div>
-          <div className="pt-2 flex flex-wrap justify-center gap-3">
+          <div className="pt-2 flex flex-wrap justify-center gap-2.5">
             <Link
               to="/admin/organization-requests"
-              className="px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors shadow-sm"
+              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors"
             >
               Review Organization Requests
             </Link>
             <Link
               to="/admin"
-              className="px-5 py-2.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors"
+              className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors"
             >
               Admin Dashboard
             </Link>
@@ -206,29 +238,29 @@ export const OrganizerConsolePage: React.FC = () => {
     }
 
     return (
-      <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 sm:p-12 text-center space-y-4 max-w-2xl mx-auto my-12">
-        <div className="w-14 h-14 rounded-2xl bg-[#191b20] border border-[#2e3442] text-amber-400 flex items-center justify-center mx-auto">
-          <Building2 className="w-7 h-7" />
+      <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-8 text-center space-y-4 max-w-xl mx-auto my-8">
+        <div className="w-12 h-12 rounded-xl bg-[#191b20] border border-[#2e3442] text-amber-400 flex items-center justify-center mx-auto">
+          <Building2 className="w-6 h-6" />
         </div>
-        <div className="space-y-1.5 max-w-md mx-auto">
-          <h2 className="font-heading text-xl font-bold text-white">No Organizations Assigned</h2>
-          <p className="text-xs text-[#9da3b4] leading-relaxed">
-            Your authenticated account is not currently linked to an authorized club or festival organization. Please reach out to your club administrator or festival director.
+        <div className="space-y-1">
+          <h2 className="font-heading text-lg font-bold text-white">No Organizations Assigned</h2>
+          <p className="text-xs text-[#9da3b4]">
+            Your account is not currently linked to an approved club organization.
           </p>
         </div>
-        <div className="pt-2 flex justify-center gap-3">
+        <div className="pt-2 flex justify-center gap-2.5">
           <button
             type="button"
             onClick={refetchOrganizations}
-            className="px-5 py-2.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer"
           >
             Retry Verification
           </button>
           <Link
-            to="/dashboard"
-            className="px-5 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors"
+            to="/organizer/apply"
+            className="px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors"
           >
-            Return to Student Portal
+            Apply to Organize
           </Link>
         </div>
       </div>
@@ -236,79 +268,43 @@ export const OrganizerConsolePage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Admin Superuser Notification Banner */}
-      {isAdmin && (
-        <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/40 via-[#181a22] to-[#121316] border border-red-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5">
-            <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-mono text-[10px] uppercase font-bold shrink-0">
-              Admin Mode
-            </span>
-            <span className="text-[#d1d5db]">
-              Platform administrator privileges active. Managing workspace for <span className="text-white font-semibold">{activeOrganization.name}</span>.
-            </span>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Link
-              to="/admin"
-              className="text-xs text-red-400 hover:text-red-300 font-mono font-medium underline transition-colors"
-            >
-              Admin Console →
-            </Link>
-            <Link
-              to="/dashboard"
-              className="text-xs text-[#9da3b4] hover:text-white font-medium ml-2 transition-colors"
-            >
-              Student Portal →
-            </Link>
-          </div>
-        </div>
-      )}
-
-      {/* 1. Header */}
+    <div className="space-y-6 motion-safe:animate-page-enter">
+      {/* 1. Page Header (Titled Overview with Active Organization name, no decorative pulsing dot) */}
       <PageHeader
-        title="Organizer Dashboard"
-        documentTitle="Organizer Dashboard"
-        description="Event operations for club festivals, schedules, and participant registrations."
+        title="Overview"
+        documentTitle="Overview · Organizer · Festofy"
+        description={`Festival and competition operations for ${activeOrganization.name}.`}
         badge={
-          <span className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider">
-            {activeOrganization.name.toUpperCase()}
+          <span className="text-xs font-mono font-semibold text-[#ff4f1a] uppercase tracking-wider">
+            {activeOrganization.name}
           </span>
         }
         actions={
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={loadDashboardData}
               disabled={loading}
               title="Refresh workspace overview"
               aria-label="Refresh workspace overview"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
+              <span className="hidden sm:inline">Refresh</span>
             </button>
 
             <Link
-              to="/organizer/profile"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors"
-            >
-              <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
-              <span>Edit Profile</span>
-            </Link>
-
-            <Link
-              to="/organizer/fests"
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center gap-1.5 shadow-md shadow-[#ff4f1a]/20"
+              to="/organizer/events/new"
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center gap-1.5 shadow-sm shadow-[#ff4f1a]/20"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Manage Fests</span>
+              <span>Create Event</span>
             </Link>
           </div>
         }
       />
 
-      {/* Error Banner if any */}
+      {/* Error notice if fetch failed */}
       {fetchError && (
         <div className="p-4 rounded-2xl bg-red-950/40 border border-red-900/50 flex items-center justify-between gap-3 text-xs text-red-200">
           <div className="flex items-center gap-2">
@@ -325,231 +321,192 @@ export const OrganizerConsolePage: React.FC = () => {
         </div>
       )}
 
-      {/* 2. High-Level KPI Statistics Grid (Organization Scoped) */}
-      <section aria-label="Organization Telemetry">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Total Fests */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs text-[#656c80]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Total Fests</span>
-              <Calendar className="w-4 h-4 text-[#ff4f1a]" />
+      {/* 2. Needs Attention Panel (Only shown when there are actionable items) */}
+      {attentionItems.length > 0 && (
+        <section aria-labelledby="needs-attention-heading" className="rounded-2xl border border-[#2e3442] bg-[#14161a] p-4 sm:p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <h2 id="needs-attention-heading" className="font-heading text-sm font-bold text-white">
+                Needs Attention
+              </h2>
             </div>
-            <div>
-              <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-                {stats.totalFests}
-              </div>
-              <p className="text-[11px] text-[#9da3b4] mt-0.5">
-                {stats.activeFests} published • {stats.draftFests} drafts
-              </p>
-            </div>
+            <span className="text-[11px] font-mono text-[#9da3b4] bg-[#191b20] px-2 py-0.5 rounded-lg border border-[#2e3442]">
+              {attentionItems.length} {attentionItems.length === 1 ? 'item' : 'items'}
+            </span>
           </div>
 
-          {/* Published / Active Fests */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs text-[#656c80]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Published Fests</span>
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div>
-              <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-                {stats.activeFests}
-              </div>
-              <p className="text-[11px] text-emerald-400 font-medium mt-0.5">
-                Active in public directory
-              </p>
-            </div>
-          </div>
-
-          {/* Total Events */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs text-[#656c80]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Total Events</span>
-              <Activity className="w-4 h-4 text-[#ff4f1a]" />
-            </div>
-            <div>
-              <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-                {stats.totalEvents}
-              </div>
-              <p className="text-[11px] text-[#9da3b4] mt-0.5">
-                {stats.upcomingEvents.length} upcoming competitions
-              </p>
-            </div>
-          </div>
-
-          {/* Active Registrations */}
-          <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between">
-            <div className="flex justify-between items-center text-xs text-[#656c80]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Active Registrations</span>
-              <Users className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div>
-              <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-                {stats.activeRegistrations}
-              </div>
-              <p className="text-[11px] text-[#9da3b4] mt-0.5">
-                {stats.confirmed} confirmed • {stats.checkedIn} checked in
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 2.5 Operational Intelligence Highlights */}
-      {(stats.approachingCapacityEvents.length > 0 || stats.approachingDeadlines.length > 0 || stats.pending > 0) && (
-        <section aria-label="Operational Highlights" className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Pending reviews banner */}
-          {stats.pending > 0 && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5">
-                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
-                <div>
-                  <span className="font-bold text-white block">{stats.pending} Pending Reviews</span>
-                  <span className="text-zinc-400 text-[11px]">Require organizer verification</span>
-                </div>
-              </div>
+          <div className="space-y-2">
+            {attentionItems.map((item) => (
               <Link
-                to="/organizer/participants"
-                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold transition-colors text-[11px] shrink-0"
+                key={item.id}
+                to={item.link}
+                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#282c37] hover:border-[#383d4c] transition-colors"
               >
-                Review →
-              </Link>
-            </div>
-          )}
-
-          {/* High Demand alert */}
-          {stats.approachingCapacityEvents.length > 0 && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5">
-                <Flame className="w-4 h-4 text-red-400 shrink-0" />
-                <div>
-                  <span className="font-bold text-white block">{stats.approachingCapacityEvents.length} Nearing Capacity</span>
-                  <span className="text-zinc-400 text-[11px]">≥80% seat quota fulfilled</span>
+                <div className="space-y-0.5 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-mono uppercase font-semibold ${
+                        item.badgeVariant === 'danger'
+                          ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          : item.badgeVariant === 'warning'
+                          ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                          : 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                      }`}
+                    >
+                      {item.badgeText}
+                    </span>
+                    <span className="text-xs font-semibold text-white group-hover:text-[#ff4f1a] transition-colors truncate">
+                      {item.title}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-[#9da3b4] truncate">{item.description}</p>
                 </div>
-              </div>
-              <Link
-                to="/organizer/analytics"
-                className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold transition-colors text-[11px] shrink-0"
-              >
-                Inspect →
-              </Link>
-            </div>
-          )}
 
-          {/* Approaching Deadlines */}
-          {stats.approachingDeadlines.length > 0 && (
-            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
-                <div>
-                  <span className="font-bold text-white block">{stats.approachingDeadlines.length} Closing Soon</span>
-                  <span className="text-zinc-400 text-[11px]">Deadlines within 72 hours</span>
+                <div className="flex items-center gap-1 text-[11px] font-semibold text-[#ff4f1a] shrink-0 group-hover:translate-x-0.5 transition-transform self-end sm:self-center">
+                  <span>Review</span>
+                  <ChevronRight className="w-3 h-3" />
                 </div>
-              </div>
-              <Link
-                to="/organizer/events"
-                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-semibold transition-colors text-[11px] shrink-0"
-              >
-                View →
               </Link>
-            </div>
-          )}
+            ))}
+          </div>
         </section>
       )}
 
-      {/* 3. Main Dashboard 2-Column Content */}
+      {/* 3. Exactly Four Distinct KPI Metrics (Compact 2-col mobile, 4-col desktop) */}
+      <section aria-label="Key Performance Indicators">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <StatCard
+            label="Active Festivals"
+            value={stats.activeFests}
+            description={`${stats.totalFests} festival${stats.totalFests === 1 ? '' : 's'} managed`}
+            icon={<Calendar className="w-4 h-4 text-[#ff4f1a]" />}
+          />
+          <StatCard
+            label="Active Competitions"
+            value={stats.publishedEvents}
+            description={`${stats.upcomingEvents.length} scheduled event${stats.upcomingEvents.length === 1 ? '' : 's'}`}
+            icon={<CalendarCheck className="w-4 h-4 text-emerald-400" />}
+          />
+          <StatCard
+            label="Total Registrations"
+            value={stats.totalRegistrations}
+            description={`${stats.confirmed} confirmed • ${stats.pending} pending`}
+            icon={<Users className="w-4 h-4 text-amber-400" />}
+          />
+          <StatCard
+            label="Checked-In Attendees"
+            value={stats.checkedIn}
+            description={stats.attendanceRate !== null ? `${stats.attendanceRate}% check-in rate` : 'On-site check-ins logged'}
+            icon={<CheckCircle2 className="w-4 h-4 text-cyan-400" />}
+          />
+        </div>
+      </section>
+
+      {/* 4. Main 2-Column Content: Upcoming Events & Recent Registrations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Left Column (2/3 width): Upcoming Events */}
-        <section aria-labelledby="upcoming-events-heading" className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between pb-1">
-            <div className="flex items-center gap-2">
+        {/* Left Column (2 columns on desktop): Upcoming Events */}
+        <section aria-labelledby="upcoming-events-heading" className="lg:col-span-2 space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 id="upcoming-events-heading" className="font-heading text-sm sm:text-base font-bold text-white flex items-center gap-2">
               <CalendarCheck className="w-4 h-4 text-[#ff4f1a]" />
-              <h2 id="upcoming-events-heading" className="font-heading text-base font-bold text-white">
-                Upcoming Events & Competitions
-              </h2>
-            </div>
+              <span>Upcoming Competitions</span>
+            </h2>
             <Link
               to="/organizer/events"
-              className="text-xs text-[#ff4f1a] hover:underline font-semibold flex items-center gap-1"
+              className="text-xs font-semibold text-[#ff4f1a] hover:underline flex items-center gap-1"
             >
-              <span>View all events</span>
+              <span>Manage all</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           </div>
 
           {stats.upcomingEvents.length === 0 ? (
-            <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-8 text-center space-y-3">
+            <div className="rounded-2xl border border-dashed border-[#242730] bg-[#14161a] p-8 text-center space-y-3">
               <div className="w-10 h-10 rounded-xl bg-[#191b20] text-zinc-500 flex items-center justify-center mx-auto">
-                <Calendar className="w-5 h-5" />
+                <Calendar className="w-5 h-5 text-[#ff4f1a]" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-white">No upcoming events yet</h3>
+                <h3 className="text-sm font-semibold text-white">No upcoming events scheduled</h3>
                 <p className="text-xs text-[#9da3b4] max-w-sm mx-auto">
-                  Fest and event management will appear here as you schedule upcoming competitions.
+                  Create a competition or challenge under your active festivals to start accepting registrations.
                 </p>
+              </div>
+              <div className="pt-1">
+                <Link
+                  to="/organizer/events/new"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Create Event</span>
+                </Link>
               </div>
             </div>
           ) : (
-            <div className="space-y-3.5">
+            <div className="space-y-3">
               {stats.upcomingEvents.slice(0, 5).map((evt) => (
                 <article
                   key={evt.id}
-                  className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] hover:border-[#2e3442] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="p-4 sm:p-5 rounded-2xl border border-[#242730] bg-[#14161a] hover:border-[#383d4c] transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                  <div className="space-y-2 flex-1 min-w-0">
+                  <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-heading font-bold text-sm sm:text-base text-white">
+                      <Link
+                        to={`/organizer/events/${evt.id}`}
+                        className="font-heading font-bold text-sm sm:text-base text-white hover:text-[#ff4f1a] transition-colors truncate"
+                      >
                         {evt.name}
-                      </h3>
+                      </Link>
                       {evt.categoryName && (
-                        <span className="px-2 py-0.5 rounded bg-[#1e222b] text-[#d1d5db] border border-[#2e3442] text-[10px] font-mono">
+                        <span className="px-2 py-0.5 rounded bg-[#1e222b] text-[#9da3b4] border border-[#2e3442] text-[10px] font-mono">
                           {evt.categoryName}
                         </span>
                       )}
-                      <span className="px-2 py-0.5 rounded bg-[#191b20] text-emerald-400 border border-[#2e3442] text-[10px] font-mono uppercase">
-                        {evt.status}
-                      </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#9da3b4]">
-                      {evt.festName && (
-                        <span className="text-white font-medium">{evt.festName}</span>
-                      )}
-                      {evt.venue && (
-                        <span className="flex items-center gap-1 text-[11px]">
-                          <MapPin className="w-3 h-3 text-[#ff4f1a] shrink-0" />
-                          <span>{evt.venue}</span>
-                        </span>
-                      )}
+                      {evt.festName && <span className="text-zinc-300 font-medium">{evt.festName}</span>}
                       {evt.startTime && (
                         <span className="flex items-center gap-1 text-[11px] text-white font-medium">
                           <Clock className="w-3 h-3 text-[#ff4f1a] shrink-0" />
                           <span>{formatDateTime(evt.startTime)}</span>
                         </span>
                       )}
-                    </div>
-
-                    <div className="text-[11px] text-[#656c80] flex items-center gap-2">
-                      <span>Reg. Deadline: {formatDateTime(evt.registrationDeadline)}</span>
+                      {evt.venue && (
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <MapPin className="w-3 h-3 text-[#656c80] shrink-0" />
+                          <span>{evt.venue}</span>
+                        </span>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex flex-row md:flex-col items-center md:items-end justify-between gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#242730]">
-                    <div className="text-right">
-                      <span className="text-[10px] font-mono text-[#656c80] uppercase block">Reserved Seats</span>
+                  <div className="flex items-center justify-between md:flex-col md:items-end gap-2 shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-[#242730]">
+                    <div className="text-left md:text-right">
+                      <span className="text-[10px] font-mono text-[#656c80] uppercase block">Seats</span>
                       <span className="font-heading font-bold text-sm text-white">
                         {evt.currentRegistrations ?? 0}
                         {evt.capacity ? ` / ${evt.capacity}` : ''}
                       </span>
                     </div>
-                    <Link
-                      to={`/events/${evt.id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[11px] text-[#ff4f1a] hover:underline font-semibold"
-                    >
-                      <span>Public Page</span>
-                      <ExternalLink className="w-3 h-3" />
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        to={`/events/${evt.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-[11px] text-[#656c80] hover:text-[#ff4f1a] transition-colors"
+                      >
+                        <span>Public</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </Link>
+                      <Link
+                        to={`/organizer/events/${evt.id}`}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors"
+                      >
+                        <span>Manage</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </Link>
+                    </div>
                   </div>
                 </article>
               ))}
@@ -557,64 +514,20 @@ export const OrganizerConsolePage: React.FC = () => {
           )}
         </section>
 
-        {/* Right Column (1/3 width): Workspace Summary & Recent Registrations */}
+        {/* Right Column (1 column on desktop): Recent Registrations */}
         <div className="space-y-6">
-          {/* Workspace Information */}
-          <section aria-labelledby="workspace-summary-heading" className="space-y-3">
-            <h2 id="workspace-summary-heading" className="font-heading text-sm font-bold text-white flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-[#ff4f1a]" />
-              <span>Workspace Profile</span>
-            </h2>
-
-            <div className="p-4 rounded-2xl border border-[#242730] bg-[#14161a] space-y-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#ff4f1a]/20 border border-[#ff4f1a]/30 text-[#ff4f1a] flex items-center justify-center font-bold text-base">
-                  {activeOrganization.name?.[0]?.toUpperCase() || 'O'}
-                </div>
-                <div className="min-w-0">
-                  <div className="font-heading text-sm font-bold text-white truncate">
-                    {activeOrganization.name}
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-mono">
-                    Authorized Club Organization
-                  </span>
-                </div>
-              </div>
-
-              <p className="text-xs text-[#9da3b4] leading-relaxed line-clamp-3">
-                {activeOrganization.description || 'Student-run technology organization hosting inter-collegiate festival tournaments.'}
-              </p>
-
-              <div className="pt-2 border-t border-[#242730] flex items-center justify-between text-[11px]">
-                <span className="text-[#656c80] font-mono">Organization ID:</span>
-                <span className="font-mono text-zinc-300">{activeOrganization.id}</span>
-              </div>
-
-              <div className="pt-1">
-                <Link
-                  to="/organizer/profile"
-                  className="w-full py-2 px-3 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Edit Profile & Organization Info</span>
-                </Link>
-              </div>
-            </div>
-          </section>
-
-          {/* Recent Registrations Manifest */}
           <section aria-labelledby="recent-registrations-heading" className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 id="recent-registrations-heading" className="font-heading text-sm font-bold text-white flex items-center gap-2">
+              <h2 id="recent-registrations-heading" className="font-heading text-sm sm:text-base font-bold text-white flex items-center gap-2">
                 <Users className="w-4 h-4 text-[#ff4f1a]" />
                 <span>Recent Registrations</span>
               </h2>
               <Link
                 to="/organizer/participants"
-                className="text-[11px] text-[#ff4f1a] hover:underline font-semibold flex items-center gap-1"
+                className="text-xs font-semibold text-[#ff4f1a] hover:underline flex items-center gap-1"
               >
-                <span>Participants</span>
-                <ChevronRight className="w-3 h-3" />
+                <span>View all</span>
+                <ChevronRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
@@ -622,7 +535,7 @@ export const OrganizerConsolePage: React.FC = () => {
               <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] text-center space-y-2">
                 <Ticket className="w-5 h-5 text-zinc-500 mx-auto" />
                 <p className="text-xs text-[#9da3b4]">
-                  No registrations recorded yet. Student entries will appear here in real-time.
+                  No participant registrations logged yet.
                 </p>
               </div>
             ) : (
@@ -650,6 +563,29 @@ export const OrganizerConsolePage: React.FC = () => {
               </div>
             )}
           </section>
+
+          {/* Quick links to Organization Profile */}
+          <div className="p-4 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 text-xs">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-[#656c80] block">
+              Workspace Actions
+            </span>
+            <div className="flex flex-col gap-1.5">
+              <Link
+                to="/organizer/participants"
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] text-white flex items-center justify-between transition-colors font-medium"
+              >
+                <span>Participant Check-in & QR Scanner</span>
+                <ChevronRight className="w-3.5 h-3.5 text-[#656c80]" />
+              </Link>
+              <Link
+                to="/organizer/profile"
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#1e222b] text-white flex items-center justify-between transition-colors font-medium"
+              >
+                <span>Edit Organization Profile</span>
+                <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
