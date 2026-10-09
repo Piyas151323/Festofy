@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { CalendarDays, Compass, GraduationCap, Home, LayoutDashboard, ShieldCheck, Terminal, UserCircle, Building2, Clock } from 'lucide-react';
+import { CalendarDays, Compass, GraduationCap, Home, LayoutDashboard, ShieldCheck, Terminal, UserCircle, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
@@ -123,35 +123,12 @@ export const PublicLayout: React.FC = () => {
           ) : (
             <div className="grid gap-2">
               <Link
-                to="/organizer/apply"
-                onClick={close}
-                className={`flex min-h-11 items-center justify-center rounded-lg border border-[#ff4f1a]/40 bg-[#ff4f1a]/10 text-[13px] font-semibold text-[#ff4f1a] transition-colors hover:bg-[#ff4f1a]/20 ${FOCUS_RING}`}
-              >
-                Join Festofy as Organizer
-              </Link>
-              <Link
                 to="/auth?mode=signup"
                 onClick={close}
                 className={`flex min-h-11 items-center justify-center rounded-lg bg-[#ff4f1a] text-[13px] font-semibold text-white transition-colors hover:bg-[#ff6838] ${FOCUS_RING}`}
               >
-                Get started (Student)
+                Get started
               </Link>
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  to="/auth"
-                  onClick={close}
-                  className={`flex min-h-11 items-center justify-center rounded-lg border border-[#2e3442] text-[13px] font-semibold text-white transition-colors hover:bg-white/5 ${FOCUS_RING}`}
-                >
-                  Student Sign In
-                </Link>
-                <Link
-                  to="/organizer/login"
-                  onClick={close}
-                  className={`flex min-h-11 items-center justify-center rounded-lg border border-[#2e3442] text-[13px] font-semibold text-white transition-colors hover:bg-white/5 ${FOCUS_RING}`}
-                >
-                  Organizer Login
-                </Link>
-              </div>
             </div>
           )
         }
@@ -163,14 +140,6 @@ export const PublicLayout: React.FC = () => {
             onNavigate={close}
             groups={[
               { label: 'Browse', items: navLinks },
-              {
-                label: 'Organizer Hub',
-                items: [
-                  { label: 'Join as Organizer', to: '/organizer/apply', icon: Building2 },
-                  { label: 'Organizer Console', to: '/organizer', icon: Terminal },
-                  { label: 'Application Status', to: '/organizer/status', icon: Clock }
-                ]
-              },
               ...(isAuthenticated
                 ? [{ label: 'Your portals', items: [primaryPortal, ...otherPortals] }]
                 : [])

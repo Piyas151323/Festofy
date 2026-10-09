@@ -6,7 +6,6 @@ import {
   User,
   ArrowRight,
   AlertCircle,
-  Shield,
   Sparkles,
   Globe,
   ExternalLink,
@@ -15,8 +14,7 @@ import {
   Info,
   HelpCircle,
   ChevronDown,
-  ChevronUp,
-  RefreshCw
+  ChevronUp
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { SITE_CONFIG, getCurrentDomainInfo } from '../../config/siteConfig';
@@ -44,7 +42,6 @@ export const AuthPage: React.FC = () => {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
-    signInWithGoogleRedirect,
     signInWithGoogleDemo,
     isAuthenticated,
     isOrganizer,
@@ -241,27 +238,7 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const handleGoogleSignInRedirect = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      await signInWithGoogleRedirect();
-    } catch (err: any) {
-      const code = err?.code || '';
-      const msg = err?.message || '';
-      if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
-        const activeHost = window.location.hostname || SITE_CONFIG.productionDomain;
-        setDomainWarning(activeHost);
-        setShowDomainGuide(true);
-        setErrorMsg(
-          `Domain Authorization Required: "${activeHost}" must be whitelisted in Firebase Console -> Authentication -> Settings -> Authorized domains for project "${SITE_CONFIG.firebaseProjectId}".`
-        );
-      } else {
-        setErrorMsg(msg || 'Google Redirect failed. Please try popup sign-in or use Instant Google Demo.');
-      }
-      setLoading(false);
-    }
-  };
+
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
@@ -283,21 +260,6 @@ export const AuthPage: React.FC = () => {
           </p>
         </div>
 
-        {/* Organizer Callout Banner */}
-        <div className="p-3.5 rounded-2xl border border-[#2e3442] bg-[#121418] text-center space-y-1.5 shadow-sm">
-          <p className="text-xs text-[#9da3b4]">
-            Campus club or festival organizer? You do not need a student account.
-          </p>
-          <div className="flex items-center justify-center gap-3 text-xs font-semibold">
-            <Link to="/organizer/apply" className="text-[#ff4f1a] hover:text-[#ff6838] transition-colors">
-              Join Festofy as Organizer &rarr;
-            </Link>
-            <span className="text-[#3b404d]">•</span>
-            <Link to="/organizer/login" className="text-white hover:text-[#ff4f1a] transition-colors">
-              Organizer Sign In
-            </Link>
-          </div>
-        </div>
 
         {/* Auth Box */}
         <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 space-y-6 shadow-2xl">
@@ -371,28 +333,6 @@ export const AuthPage: React.FC = () => {
                 <span>{loading ? 'Authenticating with Google...' : 'Continue with Google'}</span>
               </button>
 
-              <div className="flex items-center justify-between px-1 text-[11px]">
-                <button
-                  type="button"
-                  onClick={handleGoogleSignInRedirect}
-                  disabled={loading}
-                  className="text-[#9da3b4] hover:text-white hover:underline flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
-                  title="If popups are blocked by your browser, sign in using full page redirect"
-                >
-                  <RefreshCw className="w-3 h-3 text-[#656c80]" />
-                  <span>Popup blocked? Use Redirect Flow</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleInstantGoogleDemo}
-                  disabled={loading}
-                  className="text-[#ff4f1a] hover:text-[#ff6838] hover:underline flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 font-medium"
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>Instant Google Demo</span>
-                </button>
-              </div>
             </div>
           </div>
 
@@ -543,11 +483,6 @@ export const AuthPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Security and Account Guarantee Notice */}
-        <div className="text-center p-3 rounded-xl bg-[#121316] border border-[#242730] text-[11px] text-[#656c80] flex items-center justify-center gap-2">
-          <Shield className="w-3.5 h-3.5 text-[#ff4f1a]" />
-          <span>Festofy Student Account: Explore competitions, manage entry passes, and represent your campus.</span>
-        </div>
 
         {/* Link to Admin Login */}
         <div className="text-center text-xs text-[#656c80]">
