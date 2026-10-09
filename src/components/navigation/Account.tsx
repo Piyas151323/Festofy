@@ -68,6 +68,20 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
           {roleLabel}
         </span>
       </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Link
+          to="/dashboard/profile"
+          className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+        >
+          Profile
+        </Link>
+        <Link
+          to="/dashboard"
+          className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+        >
+          Dashboard
+        </Link>
+      </div>
       <button
         type="button"
         onClick={() => void handleSignOut()}

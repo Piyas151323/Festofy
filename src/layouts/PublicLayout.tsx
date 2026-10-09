@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { CalendarDays, Compass, GraduationCap, ShieldCheck, Terminal } from 'lucide-react';
+import { CalendarDays, Compass, GraduationCap, Home, LayoutDashboard, ShieldCheck, Terminal, UserCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
@@ -10,6 +10,7 @@ import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
 import { FOCUS_RING, NavEntry } from '../components/navigation/navUtils';
 
 const navLinks: NavEntry[] = [
+  { label: 'Home', to: '/', icon: Home, exact: true },
   { label: 'Fests', to: '/fests', icon: CalendarDays },
   { label: 'Events', to: '/events', icon: Compass }
 ];
@@ -27,6 +28,11 @@ export const PublicLayout: React.FC = () => {
   const studentLink: NavEntry = { label: 'Student Portal', to: '/dashboard', icon: GraduationCap };
   const primaryPortal = isAdmin ? adminLink : isOrganizer ? organizerLink : studentLink;
   const otherPortals = isAdmin ? [organizerLink, studentLink] : [];
+  const accountItems: NavEntry[] = [
+    { label: 'View Profile', to: '/dashboard/profile', icon: UserCircle },
+    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+    ...otherPortals
+  ];
   const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : 'Student';
 
   const PrimaryIcon = primaryPortal.icon;
@@ -61,7 +67,7 @@ export const PublicLayout: React.FC = () => {
                 user={currentUser}
                 fallbackName="User"
                 roleLabel={roleLabel}
-                items={otherPortals}
+                items={accountItems}
                 onSignOut={() => signOutUser()}
               />
             </>

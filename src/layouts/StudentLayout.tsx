@@ -9,19 +9,20 @@ import {
   Ticket,
   CalendarDays,
   ShieldCheck,
-  Terminal
+  Terminal,
+  UserCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
 import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
-import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
+import { NavGroupList } from '../components/navigation/NavLinks';
+import { DashboardMenu } from '../components/navigation/DashboardMenu';
 import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
 import { FOCUS_RING, NavEntry, NavGroup } from '../components/navigation/navUtils';
 
-const studentNavItems: NavEntry[] = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-  { label: 'Events', to: '/events', icon: Compass },
+const dashboardItems: NavEntry[] = [
+  { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, exact: true },
   { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
   { label: 'History', to: '/dashboard/history', icon: History },
   { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
@@ -49,8 +50,8 @@ export const StudentLayout: React.FC = () => {
   ];
 
   const drawerGroups: NavGroup[] = [
-    { label: 'Student portal', items: studentNavItems },
-    { label: 'Discover', items: [fests] },
+    { label: 'Student portal', items: dashboardItems },
+    { label: 'Discover', items: [fests, { label: 'Events', to: '/events', icon: Compass }] },
     ...(isAdmin ? [{ label: 'Switch console', items: adminLinks }] : [])
   ];
 
@@ -62,18 +63,27 @@ export const StudentLayout: React.FC = () => {
         tone="bg-[#0d0e11]/95"
         brand={<BrandLogo to="/" label="Student" />}
         nav={
-          <>
-            <span aria-hidden="true" className="mx-2 h-5 w-px bg-[#242730]" />
-            {studentNavItems.map((item) => (
-              <TopNavLink key={item.to} item={item} pathname={pathname} showIcon />
-            ))}
-          </>
+          <div className="flex items-center gap-1">
+            <DashboardMenu pathname={pathname} items={dashboardItems} />
+            <Link
+              to="/fests"
+              className={`inline-flex h-10 items-center rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+            >
+              Fests
+            </Link>
+            <Link
+              to="/events"
+              className={`inline-flex h-10 items-center rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+            >
+              Events
+            </Link>
+          </div>
         }
         actions={
           <>
             <Link
               to={fests.to}
-              className={`inline-flex h-10 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+              className={`hidden xl:inline-flex h-10 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
             >
               {fests.label}
             </Link>
@@ -81,7 +91,7 @@ export const StudentLayout: React.FC = () => {
               user={currentUser}
               fallbackName="Student"
               roleLabel={roleLabel}
-              items={isAdmin ? adminLinks : []}
+              items={[{ label: 'View Profile', to: '/dashboard/profile', icon: UserCircle }, { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true }, ...(isAdmin ? adminLinks : [])]}
               onSignOut={handleSignOut}
             />
           </>
