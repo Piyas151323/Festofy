@@ -7,7 +7,6 @@ import {
   History,
   Building2,
   Ticket,
-  CalendarDays,
   ShieldCheck,
   Terminal,
   UserCircle
@@ -37,10 +36,9 @@ export const StudentLayout: React.FC = () => {
     navigate('/');
   };
 
-  // Top navigation items: Dashboard, Events, My Registrations, Passes
+  // Top navigation items: Dashboard, My Registrations, Passes
   const topNavItems: NavEntry[] = [
     { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-    { label: 'Events', to: '/events', icon: Compass },
     { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
     { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
   ];
@@ -71,22 +69,11 @@ export const StudentLayout: React.FC = () => {
     { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
     { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
     { label: 'History', to: '/dashboard/history', icon: History },
-    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
-    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
-    ...(isStudentOnly
-      ? [{ label: 'Become an Organizer', to: '/dashboard/organizations/apply', icon: Compass }]
-      : [])
+    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle }
   ];
 
   const drawerGroups: NavGroup[] = [
     { label: 'Student portal', items: drawerPortalItems },
-    {
-      label: 'Discover',
-      items: [
-        { label: 'Browse Fests', to: '/fests', icon: CalendarDays },
-        { label: 'Events', to: '/events', icon: Compass }
-      ]
-    },
     ...(isAdmin
       ? [{ label: 'Switch console', items: adminLinks }]
       : isOrganizer

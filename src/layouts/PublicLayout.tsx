@@ -48,21 +48,6 @@ export const PublicLayout: React.FC = () => {
   ];
   const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : hasPendingOrgRequest ? 'Applicant' : 'Student';
 
-  const PrimaryIcon = primaryPortal.icon;
-  const portalButton = (
-    <Link
-      to={primaryPortal.to}
-      className={`inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 text-[13px] font-semibold transition-colors ${FOCUS_RING} ${
-        isAdmin
-          ? 'border-red-500/30 bg-red-500/10 text-red-300 hover:bg-red-500/20'
-          : 'border-[#2e3442] bg-[#1c1f26] text-white hover:bg-[#252a34]'
-      }`}
-    >
-      <PrimaryIcon className="hidden h-4 w-4 lg:block" aria-hidden="true" />
-      {primaryPortal.label}
-    </Link>
-  );
-
   return (
     <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
       <AppTopBar
@@ -74,24 +59,15 @@ export const PublicLayout: React.FC = () => {
         ))}
         actions={
           isAuthenticated ? (
-            <>
-              {portalButton}
-              <AccountMenu
-                user={currentUser}
-                fallbackName="User"
-                roleLabel={roleLabel}
-                items={accountItems}
-                onSignOut={() => signOutUser()}
-              />
-            </>
+            <AccountMenu
+              user={currentUser}
+              fallbackName="User"
+              roleLabel={roleLabel}
+              items={accountItems}
+              onSignOut={() => signOutUser()}
+            />
           ) : (
             <>
-              <Link
-                to="/organizer/apply"
-                className={`hidden sm:inline-flex h-9 items-center rounded-lg border border-[#2e3442] bg-[#14161a] px-3 text-[13px] font-semibold text-[#f4f5f7] transition-colors hover:bg-[#1e222b] ${FOCUS_RING}`}
-              >
-                Join as Organizer
-              </Link>
               <Link
                 to="/auth"
                 className={`inline-flex h-9 items-center rounded-lg px-3 text-[13px] font-medium text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
@@ -239,23 +215,11 @@ export const PublicLayout: React.FC = () => {
                     </li>
                   </>
                 ) : (
-                  <>
-                    <li>
-                      <Link to="/auth" className="hover:text-white transition-colors">
-                        Sign In
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/organizer/apply" className="hover:text-white transition-colors">
-                        Join as Organizer
-                      </Link>
-                    </li>
-                    <li>
-                      <Link to="/organizer/login" className="hover:text-white transition-colors">
-                        Organizer Sign In
-                      </Link>
-                    </li>
-                  </>
+                  <li>
+                    <Link to="/auth" className="hover:text-white transition-colors">
+                      Sign In
+                    </Link>
+                  </li>
                 )}
               </ul>
             </div>
