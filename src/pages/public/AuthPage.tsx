@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { SITE_CONFIG, getCurrentDomainInfo } from '../../config/siteConfig';
+import { getPostAuthDestination } from '../../utils/authUtils';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -46,7 +47,9 @@ export const AuthPage: React.FC = () => {
     signInWithGoogleRedirect,
     signInWithGoogleDemo,
     isAuthenticated,
+    isOrganizer,
     role,
+    currentUser,
     loading: authLoading
   } = useAuth();
 
@@ -62,15 +65,24 @@ export const AuthPage: React.FC = () => {
 
   // If already authenticated and auth finished loading, redirect to intended or role-appropriate dashboard
   React.useEffect(() => {
-    if (!authLoading && isAuthenticated) {
-      if (searchParams.get('redirect')) {
-        navigate(searchParams.get('redirect')!, { replace: true });
-      } else {
-        const target = role.toString() === 'admin' ? '/admin' : role.toString() === 'organizer' ? '/organizer' : '/dashboard';
-        navigate(target, { replace: true });
+    let mounted = true;
+    async function redirect() {
+      if (!authLoading && isAuthenticated && currentUser) {
+        if (searchParams.get('redirect')) {
+          navigate(searchParams.get('redirect')!, { replace: true });
+        } else {
+          const target = await getPostAuthDestination(currentUser.uid, role);
+          if (mounted) {
+            navigate(target, { replace: true });
+          }
+        }
       }
     }
-  }, [isAuthenticated, authLoading, role, navigate, searchParams]);
+    redirect();
+    return () => {
+      mounted = false;
+    };
+  }, [isAuthenticated, authLoading, role, currentUser, navigate, searchParams]);
 
   const getPostLoginDestination = (userRole: string) => {
     const requested = searchParams.get('redirect');
@@ -93,11 +105,13 @@ export const AuthPage: React.FC = () => {
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters.');
         }
-        await signUpWithEmail(email, password, displayName);
-        navigate(getPostLoginDestination('student'), { replace: true });
+        const cred = await signUpWithEmail(email, password, displayName);
+        const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : '/dashboard';
+        navigate(dest, { replace: true });
       } else {
-        await signInWithEmail(email, password);
-        navigate(getPostLoginDestination(role), { replace: true });
+        const cred = await signInWithEmail(email, password);
+        const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : (isOrganizer ? '/organizer' : '/dashboard');
+        navigate(dest, { replace: true });
       }
     } catch (err: any) {
       const isOpNotAllowed =
@@ -181,8 +195,11 @@ export const AuthPage: React.FC = () => {
     setErrorMsg(null);
     setLoading(true);
     try {
-      await signInWithGoogleDemo();
-      navigate(getPostLoginDestination('student'), { replace: true });
+      const cred = await signInWithGoogleDemo();
+      if (cred?.user) {
+        const dest = await getPostAuthDestination(cred.user.uid);
+        navigate(dest, { replace: true });
+      }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Instant Google sign-in notice.');
     } finally {
@@ -196,7 +213,8 @@ export const AuthPage: React.FC = () => {
     try {
       const cred = await signInWithGoogle();
       if (cred?.user) {
-        navigate(getPostLoginDestination('student'), { replace: true });
+        const dest = await getPostAuthDestination(cred.user.uid);
+        navigate(dest, { replace: true });
       }
     } catch (err: any) {
       const code = err?.code || '';
@@ -260,9 +278,25 @@ export const AuthPage: React.FC = () => {
           </h1>
           <p className="text-xs text-[#9da3b4]">
             {mode === 'signup'
-              ? 'Create a student account to explore events and register. Organizer access is granted through approved organizations.'
-              : 'Sign in to access your registered events and organizer tools.'}
+              ? 'Create a student participant account to explore campus festivals and register for competitions.'
+              : 'Sign in to access your registered events, passes, and schedule.'}
           </p>
+        </div>
+
+        {/* Organizer Callout Banner */}
+        <div className="p-3.5 rounded-2xl border border-[#2e3442] bg-[#121418] text-center space-y-1.5 shadow-sm">
+          <p className="text-xs text-[#9da3b4]">
+            Campus club or festival organizer? You do not need a student account.
+          </p>
+          <div className="flex items-center justify-center gap-3 text-xs font-semibold">
+            <Link to="/organizer/apply" className="text-[#ff4f1a] hover:text-[#ff6838] transition-colors">
+              Join Festofy as Organizer &rarr;
+            </Link>
+            <span className="text-[#3b404d]">•</span>
+            <Link to="/organizer/login" className="text-white hover:text-[#ff4f1a] transition-colors">
+              Organizer Sign In
+            </Link>
+          </div>
         </div>
 
         {/* Auth Box */}

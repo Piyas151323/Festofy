@@ -20,7 +20,128 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [role, setRole] = useState<UserRoleType>('student');
+  const [hasPendingOrgRequest, setHasPendingOrgRequest] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
+
+  const resolveUserAuthData = async (firebaseUser: FirebaseUser) => {
+    try {
+      const userRef = doc(db, 'users', firebaseUser.uid);
+      const roleRef = doc(db, 'userRoles', firebaseUser.uid);
+
+      const [userSnap, roleSnap] = await Promise.all([
+        getDoc(userRef).catch(err => {
+          console.warn('Error fetching user profile:', err);
+          return null;
+        }),
+        getDoc(roleRef).catch(err => {
+          console.warn('Error fetching user role:', err);
+          return null;
+        })
+      ]);
+
+      let profileData: UserProfile;
+
+      if (!userSnap || !userSnap.exists()) {
+        // New user registration profile initialization
+        const newProfile = {
+          displayName: (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'User').slice(0, 120),
+          email: (firebaseUser.email || '').slice(0, 150),
+          photoURL: (firebaseUser.photoURL || '').slice(0, 500),
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        await setDoc(userRef, newProfile).catch(err => {
+          console.warn('Profile initialization notice in users:', err);
+        });
+        profileData = {
+          uid: firebaseUser.uid,
+          ...newProfile
+        };
+      } else {
+        const data = userSnap.data();
+        profileData = {
+          uid: firebaseUser.uid,
+          displayName: data.displayName || firebaseUser.displayName || 'User',
+          email: data.email || firebaseUser.email || '',
+          photoURL: data.photoURL || firebaseUser.photoURL || '',
+          createdAt: data.createdAt || new Date().toISOString(),
+          updatedAt: data.updatedAt || new Date().toISOString()
+        };
+      }
+
+      // Authoritative role resolution from Firestore userRoles & organizationMembers collections.
+      let assignedRole: UserRoleType = 'student';
+      let pendingOrg = false;
+
+      if (roleSnap && roleSnap.exists()) {
+        const rData = roleSnap.data();
+        if (rData?.role === 'organizer' || rData?.role === 'admin') {
+          assignedRole = rData.role;
+        }
+      }
+
+      // If still student, check if user has verified organization membership in organizationMembers or approved organization
+      if (assignedRole === 'student') {
+        try {
+          const memQuery = query(
+            collection(db, 'organizationMembers'),
+            where('userId', '==', firebaseUser.uid)
+          );
+          const memSnap = await getDocs(memQuery);
+          if (!memSnap.empty) {
+            assignedRole = 'organizer';
+          } else {
+            const orgQuery = query(
+              collection(db, 'organizations'),
+              where('requestedBy', '==', firebaseUser.uid)
+            );
+            const orgSnap = await getDocs(orgQuery);
+            if (!orgSnap.empty) {
+              const hasApproved = orgSnap.docs.some(d => d.data().status === 'approved');
+              if (hasApproved) {
+                assignedRole = 'organizer';
+              } else {
+                pendingOrg = orgSnap.docs.some(d => d.data().status === 'pending');
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('Error checking organization memberships:', err);
+        }
+      }
+
+      if (!roleSnap || !roleSnap.exists()) {
+        await setDoc(roleRef, {
+          role: 'student',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }).catch(err => {
+          console.warn('Role initialization notice in userRoles:', err);
+        });
+      }
+
+      setCurrentUser(profileData);
+      setRole(assignedRole);
+      setHasPendingOrgRequest(pendingOrg);
+    } catch (err) {
+      console.warn('Profile/role resolution notice:', err);
+      setCurrentUser({
+        uid: firebaseUser.uid,
+        displayName: firebaseUser.displayName || 'User',
+        email: firebaseUser.email || '',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      setRole('student');
+      setHasPendingOrgRequest(false);
+    }
+  };
+
+  const refreshUserRole = async () => {
+    if (auth.currentUser) {
+      await resolveUserAuthData(auth.currentUser);
+    }
+  };
 
   useEffect(() => {
     // Check for redirect result if the user was directed to Google login
@@ -39,103 +160,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       setLoading(true);
       if (firebaseUser) {
-        try {
-          const userRef = doc(db, 'users', firebaseUser.uid);
-          const roleRef = doc(db, 'userRoles', firebaseUser.uid);
-
-          const [userSnap, roleSnap] = await Promise.all([
-            getDoc(userRef).catch(err => {
-              console.warn('Error fetching user profile:', err);
-              return null;
-            }),
-            getDoc(roleRef).catch(err => {
-              console.warn('Error fetching user role:', err);
-              return null;
-            })
-          ]);
-
-          let profileData: UserProfile;
-
-          if (!userSnap || !userSnap.exists()) {
-            // New user registration profile initialization
-            const newProfile = {
-              displayName: (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Student Participant').slice(0, 120),
-              email: (firebaseUser.email || '').slice(0, 150),
-              photoURL: (firebaseUser.photoURL || '').slice(0, 500),
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-            await setDoc(userRef, newProfile).catch(err => {
-              console.warn('Profile initialization notice in users:', err);
-            });
-            profileData = {
-              uid: firebaseUser.uid,
-              ...newProfile
-            };
-          } else {
-            const data = userSnap.data();
-            profileData = {
-              uid: firebaseUser.uid,
-              displayName: data.displayName || firebaseUser.displayName || 'Student Participant',
-              email: data.email || firebaseUser.email || '',
-              photoURL: data.photoURL || firebaseUser.photoURL || '',
-              createdAt: data.createdAt || new Date().toISOString(),
-              updatedAt: data.updatedAt || new Date().toISOString()
-            };
-          }
-
-          // Authoritative role resolution from Firestore userRoles & organizationMembers collections.
-          let assignedRole: UserRoleType = 'student';
-
-          if (roleSnap && roleSnap.exists()) {
-            const rData = roleSnap.data();
-            if (rData?.role === 'organizer' || rData?.role === 'admin') {
-              assignedRole = rData.role;
-            }
-          }
-
-          // If still student, check if user has verified organization membership in organizationMembers
-          if (assignedRole === 'student') {
-            try {
-              const memQuery = query(
-                collection(db, 'organizationMembers'),
-                where('userId', '==', firebaseUser.uid)
-              );
-              const memSnap = await getDocs(memQuery);
-              if (!memSnap.empty) {
-                assignedRole = 'organizer';
-              }
-            } catch (err) {
-              console.warn('Error checking organization memberships:', err);
-            }
-          }
-
-          if (!roleSnap || !roleSnap.exists()) {
-            await setDoc(roleRef, {
-              role: 'student',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }).catch(err => {
-              console.warn('Role initialization notice in userRoles:', err);
-            });
-          }
-
-          setCurrentUser(profileData);
-          setRole(assignedRole);
-        } catch (err) {
-          console.warn('Profile/role resolution notice:', err);
-          setCurrentUser({
-            uid: firebaseUser.uid,
-            displayName: firebaseUser.displayName || 'User',
-            email: firebaseUser.email || '',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          });
-          setRole('student');
-        }
+        await resolveUserAuthData(firebaseUser);
       } else {
         setCurrentUser(null);
         setRole('student');
+        setHasPendingOrgRequest(false);
       }
       setLoading(false);
     });
@@ -262,12 +291,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isStudent,
         isOrganizer,
         isAdmin,
+        hasPendingOrgRequest,
         signInWithGoogle,
         signInWithGoogleRedirect,
         signInWithGoogleDemo,
         signInWithEmail,
         signUpWithEmail,
-        signOutUser
+        signOutUser,
+        refreshUserRole
       }}
     >
       {children}

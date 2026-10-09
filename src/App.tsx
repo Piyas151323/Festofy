@@ -44,6 +44,9 @@ import { OrganizerEditEventPage } from './pages/organizer/OrganizerEditEventPage
 import { OrganizerParticipantsPage } from './pages/organizer/OrganizerParticipantsPage';
 import { OrganizerAnalyticsPage } from './pages/organizer/OrganizerAnalyticsPage';
 import { OrganizerProfilePage } from './pages/organizer/OrganizerProfilePage';
+import { OrganizerJoinPage } from './pages/organizer/OrganizerJoinPage';
+import { OrganizerApplicationStatusPage } from './pages/organizer/OrganizerApplicationStatusPage';
+import { OrganizerLoginPage } from './pages/organizer/OrganizerLoginPage';
 
 // Admin Layout & Pages
 import { AdminLayout } from './layouts/AdminLayout';
@@ -67,6 +70,11 @@ export default function App() {
             <Route path="/events/:eventId" element={<EventDetailPage />} />
             <Route path="/events/:eventId/register" element={<RegistrationPage />} />
             <Route path="/auth" element={<AuthPage />} />
+            {/* Dedicated Organizer Access & Onboarding Routes */}
+            <Route path="/organizer/apply" element={<OrganizerJoinPage />} />
+            <Route path="/organizer/join" element={<OrganizerJoinPage />} />
+            <Route path="/organizer/status" element={<OrganizerApplicationStatusPage />} />
+            <Route path="/organizer/login" element={<OrganizerLoginPage />} />
           </Route>
 
           {/* Student Protected Routes */}
@@ -86,18 +94,6 @@ export default function App() {
             <Route path="passes" element={<StudentPassesPage />} />
             <Route path="organizations" element={<StudentOrgRequestsPage />} />
             <Route path="organizations/apply" element={<StudentOrgApplyPage />} />
-          </Route>
-
-          {/* Student-accessible Club Organization Application Route */}
-          <Route
-            path="/organizer/apply"
-            element={
-              <ProtectedRoute>
-                <StudentLayout />
-              </ProtectedRoute>
-            }
-          >
-            <Route index element={<StudentOrgApplyPage />} />
           </Route>
 
           {/* Organizer Protected Routes */}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Clock, Building2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRoleType } from '../../types';
 import { AdminLoginPage } from '../../pages/admin/AdminLoginPage';
@@ -16,7 +16,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   adminAuth
 }) => {
-  const { role, loading, isAuthenticated } = useAuth();
+  const { role, loading, isAuthenticated, hasPendingOrgRequest } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -37,6 +37,43 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     }
     // Redirect to general student/organizer auth with return url
     return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  }
+
+  // If applicant is awaiting organization review and accessing organizer area
+  if (allowedRoles?.includes('organizer') && !allowedRoles.includes(role) && role !== 'admin' && hasPendingOrgRequest) {
+    return (
+      <div className="max-w-md mx-auto my-16 p-8 rounded-2xl border border-amber-500/30 bg-[#14161a] text-center space-y-4 shadow-xl">
+        <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center">
+          <Clock className="w-6 h-6" />
+        </div>
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-semibold uppercase">
+            Review Pending
+          </div>
+          <h3 className="font-heading text-lg font-bold text-white">
+            Application Under Review
+          </h3>
+        </div>
+        <p className="text-xs text-[#9da3b4] leading-relaxed">
+          Your organization charter application is currently being verified by platform administrators. Once approved, your account will be granted full organizer access.
+        </p>
+
+        <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+          <Link
+            to="/organizer/status"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors shadow-sm"
+          >
+            Track Status & Onboarding &rarr;
+          </Link>
+          <Link
+            to="/events"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1e222b] hover:bg-[#252a34] text-xs font-semibold text-white border border-[#2e3442] transition-colors"
+          >
+            Public Directory
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // If role check specified and current authenticated role is insufficient.
