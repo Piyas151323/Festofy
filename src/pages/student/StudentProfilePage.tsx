@@ -25,10 +25,13 @@ import {
 } from '../../services/userService';
 import { uploadDirectImage } from '../../services/imageUploadService';
 import { UserProfile } from '../../types';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 
 export const StudentProfilePage: React.FC = () => {
   const { currentUser } = useAuth();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const returnUrl = searchParams.get('returnUrl');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -160,7 +163,13 @@ export const StudentProfilePage: React.FC = () => {
       });
 
       setSuccessMsg('Your profile has been saved successfully!');
-      setTimeout(() => setSuccessMsg(null), 4000);
+      if (returnUrl) {
+        setTimeout(() => {
+          navigate(returnUrl);
+        }, 1200);
+      } else {
+        setTimeout(() => setSuccessMsg(null), 4000);
+      }
     } catch (err: any) {
       console.warn('Notice updating profile:', err);
       setErrorMsg(err.message || 'Failed to save profile. Please try again.');
@@ -182,12 +191,30 @@ export const StudentProfilePage: React.FC = () => {
       {/* Navigation Breadcrumb */}
       <div>
         <Link
-          to="/"
+          to={returnUrl || '/'}
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Home
+          <ArrowLeft className="w-4 h-4" /> {returnUrl ? 'Return to Registration' : 'Back to Home'}
         </Link>
       </div>
+
+      {/* Return to Registration Context Banner */}
+      {returnUrl && (
+        <div className="p-4 rounded-2xl bg-[#ff4f1a]/10 border border-[#ff4f1a]/20 text-xs text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#ff4f1a] shrink-0" />
+            <span>
+              Updating profile for event registration. Changes saved here will automatically apply to your registration pass.
+            </span>
+          </div>
+          <Link
+            to={returnUrl}
+            className="text-xs font-semibold text-[#ff4f1a] hover:underline shrink-0"
+          >
+            Return to Registration →
+          </Link>
+        </div>
+      )}
 
       {/* Header and Progress Indicator */}
       <div className="p-6 sm:p-8 rounded-3xl bg-[#14161a] border border-[#242730] space-y-6">
@@ -254,9 +281,20 @@ export const StudentProfilePage: React.FC = () => {
 
       {/* Notifications / Flash messages */}
       {successMsg && (
-        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200 flex items-center gap-2.5">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{successMsg}</span>
+        <div className="p-4 rounded-2xl bg-emerald-950/40 border border-emerald-800/60 text-xs text-emerald-200 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{successMsg}</span>
+          </div>
+          {returnUrl && (
+            <button
+              type="button"
+              onClick={() => navigate(returnUrl)}
+              className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-lg text-xs transition-colors cursor-pointer shrink-0"
+            >
+              Return to Registration Now →
+            </button>
+          )}
         </div>
       )}
 
@@ -500,10 +538,10 @@ export const StudentProfilePage: React.FC = () => {
         {/* Submit Controls */}
         <div className="flex items-center justify-between p-6 rounded-3xl bg-[#14161a] border border-[#242730]">
           <Link
-            to="/"
+            to={returnUrl || '/'}
             className="text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
           >
-            Back to Home
+            {returnUrl ? 'Cancel & Return to Registration' : 'Back to Home'}
           </Link>
 
           <button

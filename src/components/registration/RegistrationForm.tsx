@@ -17,7 +17,8 @@ import {
   Info,
   CreditCard,
   Tag,
-  ShieldAlert
+  Edit3,
+  ExternalLink
 } from 'lucide-react';
 import {
   EventItem,
@@ -26,10 +27,10 @@ import {
   TeamMember,
   EventFormField,
   PaymentMethod,
-  PaymentStatus,
-  ParticipantCategoryConfig
+  UserProfile
 } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
+import { getUserProfile } from '../../services/userService';
 import { DynamicFormField } from './DynamicFormField';
 import { TeamMembersSection } from './TeamMembersSection';
 import { formatDateTime } from '../../utils/dateUtils';
@@ -42,9 +43,161 @@ interface RegistrationFormProps {
   fest?: Fest | null;
 }
 
+/**
+ * Helper to identify if an event custom field duplicates standard student profile information.
+ * Standard profile fields: Name, Email, Phone, Institution, Class/Grade, Student ID / Roll.
+ */
+function isRedundantProfileField(field: EventFormField): boolean {
+  const lbl = (field.label || '').trim().toLowerCase();
+  const id = (field.id || '').trim().toLowerCase();
+
+  // Full Name (excluding team name, project title, emergency contact name)
+  if (
+    (lbl.includes('name') &&
+      !lbl.includes('team') &&
+      !lbl.includes('project') &&
+      !lbl.includes('emergency') &&
+      !lbl.includes('parent') &&
+      !lbl.includes('guardian')) ||
+    id.includes('name')
+  ) {
+    return true;
+  }
+
+  // Email
+  if (lbl.includes('email') || field.type === 'email' || id.includes('email')) {
+    return true;
+  }
+
+  // Contact Phone Number (excluding emergency phone)
+  if (
+    ((lbl.includes('phone') || lbl.includes('contact') || lbl.includes('mobile')) &&
+      !lbl.includes('emergency') &&
+      !lbl.includes('parent') &&
+      !lbl.includes('guardian')) ||
+    (id.includes('phone') && !id.includes('emergency'))
+  ) {
+    return true;
+  }
+
+  // Institution / College / School / University
+  if (
+    lbl.includes('institution') ||
+    lbl.includes('college') ||
+    lbl.includes('school') ||
+    lbl.includes('university') ||
+    id.includes('inst')
+  ) {
+    return true;
+  }
+
+  // Class / Grade / Academic Year
+  if (
+    lbl.includes('class') ||
+    lbl.includes('grade') ||
+    lbl.includes('academic year') ||
+    id.includes('grade') ||
+    id.includes('class')
+  ) {
+    return true;
+  }
+
+  // Student ID / Roll Number
+  if (
+    lbl.includes('student id') ||
+    lbl.includes('roll number') ||
+    lbl.includes('institutional roll') ||
+    id.includes('roll') ||
+    id.includes('studentid')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Extracts student profile value matching a redundant field so backend customResponses
+ * remain fully populated for organizer exports and firestore validations.
+ */
+function getProfileValueForField(
+  field: EventFormField,
+  data: {
+    studentName: string;
+    studentEmail: string;
+    studentPhone: string;
+    institution: string;
+    classGrade: string;
+    studentId: string;
+  }
+): string {
+  const lbl = (field.label || '').trim().toLowerCase();
+  const id = (field.id || '').trim().toLowerCase();
+
+  if (
+    (lbl.includes('name') &&
+      !lbl.includes('team') &&
+      !lbl.includes('project') &&
+      !lbl.includes('emergency') &&
+      !lbl.includes('parent') &&
+      !lbl.includes('guardian')) ||
+    id.includes('name')
+  ) {
+    return data.studentName;
+  }
+
+  if (lbl.includes('email') || field.type === 'email' || id.includes('email')) {
+    return data.studentEmail;
+  }
+
+  if (
+    ((lbl.includes('phone') || lbl.includes('contact') || lbl.includes('mobile')) &&
+      !lbl.includes('emergency')) ||
+    (id.includes('phone') && !id.includes('emergency'))
+  ) {
+    return data.studentPhone;
+  }
+
+  if (
+    lbl.includes('institution') ||
+    lbl.includes('college') ||
+    lbl.includes('school') ||
+    lbl.includes('university') ||
+    id.includes('inst')
+  ) {
+    return data.institution;
+  }
+
+  if (
+    lbl.includes('class') ||
+    lbl.includes('grade') ||
+    lbl.includes('academic year') ||
+    id.includes('grade') ||
+    id.includes('class')
+  ) {
+    return data.classGrade;
+  }
+
+  if (
+    lbl.includes('student id') ||
+    lbl.includes('roll number') ||
+    lbl.includes('institutional roll') ||
+    id.includes('roll') ||
+    id.includes('studentid')
+  ) {
+    return data.studentId;
+  }
+
+  return '';
+}
+
 export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest }) => {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // Full student profile state fetched from users collection (Single Source of Truth)
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loadingProfile, setLoadingProfile] = useState(true);
 
   // Determine initial registration type based on event configuration
   const defaultType: RegistrationType =
@@ -53,25 +206,62 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
   const [registrationType, setRegistrationType] = useState<RegistrationType>(defaultType);
 
-  // Participant details
+  // Participant details populated from profile
   const [studentName, setStudentName] = useState(currentUser?.displayName || '');
   const [studentEmail, setStudentEmail] = useState(currentUser?.email || '');
   const [studentPhone, setStudentPhone] = useState(currentUser?.phone || '');
   const [institution, setInstitution] = useState(currentUser?.institution || '');
   const [studentId, setStudentId] = useState(currentUser?.studentId || '');
   const [classGrade, setClassGrade] = useState(currentUser?.classGrade || '');
+  const [studentPhotoURL, setStudentPhotoURL] = useState(currentUser?.photoURL || '');
 
-  // Participant Category
+  // Fetch full student profile from users collection
+  useEffect(() => {
+    let mounted = true;
+    async function loadFullProfile() {
+      if (!currentUser?.uid) {
+        setLoadingProfile(false);
+        return;
+      }
+      try {
+        setLoadingProfile(true);
+        const userProf = await getUserProfile(currentUser.uid);
+        if (mounted && userProf) {
+          setProfile(userProf);
+          if (userProf.displayName) setStudentName(userProf.displayName);
+          if (userProf.email) setStudentEmail(userProf.email);
+          if (userProf.phone) setStudentPhone(userProf.phone);
+          if (userProf.institution) setInstitution(userProf.institution);
+          if (userProf.studentId) setStudentId(userProf.studentId);
+          if (userProf.classGrade) setClassGrade(userProf.classGrade);
+          if (userProf.photoURL) setStudentPhotoURL(userProf.photoURL);
+        }
+      } catch (err) {
+        console.warn('Notice loading user profile for registration form:', err);
+      } finally {
+        if (mounted) setLoadingProfile(false);
+      }
+    }
+    loadFullProfile();
+    return () => {
+      mounted = false;
+    };
+  }, [currentUser]);
+
+  // Participant Category selection
   const defaultCategory = useMemo(() => {
     if (event.participantCategories && event.participantCategories.length > 0) {
-      if (currentUser?.participantCategory) {
-        const found = event.participantCategories.find(c => c.name.toLowerCase() === currentUser.participantCategory?.toLowerCase());
+      const preferredCategory = profile?.participantCategory || currentUser?.participantCategory;
+      if (preferredCategory) {
+        const found = event.participantCategories.find(
+          c => c.name.toLowerCase() === preferredCategory.toLowerCase()
+        );
         if (found) return found.name;
       }
       return event.participantCategories[0].name;
     }
-    return currentUser?.participantCategory || 'Open for Everyone';
-  }, [event.participantCategories, currentUser?.participantCategory]);
+    return profile?.participantCategory || currentUser?.participantCategory || 'Open for Everyone';
+  }, [event.participantCategories, profile?.participantCategory, currentUser?.participantCategory]);
 
   const [participantCategory, setParticipantCategory] = useState<string>(defaultCategory);
 
@@ -150,43 +340,55 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   const [submissionError, setSubmissionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Synchronize initial prefill if currentUser loads later
+  // Synchronize team leader details with student profile
   useEffect(() => {
-    if (currentUser?.displayName && !studentName) {
-      setStudentName(currentUser.displayName);
-    }
-    if (currentUser?.email && !studentEmail) {
-      setStudentEmail(currentUser.email);
-    }
-    if (currentUser?.phone && !studentPhone) {
-      setStudentPhone(currentUser.phone);
-    }
-    if (currentUser?.institution && !institution) {
-      setInstitution(currentUser.institution);
-    }
-    if (currentUser?.studentId && !studentId) {
-      setStudentId(currentUser.studentId);
-    }
-    if (currentUser?.classGrade && !classGrade) {
-      setClassGrade(currentUser.classGrade);
-    }
-    if (currentUser?.participantCategory && !participantCategory) {
-      setParticipantCategory(currentUser.participantCategory);
-    }
-    if (currentUser && teamMembers[0] && !teamMembers[0].name) {
+    if (studentName || studentEmail) {
       setTeamMembers((prev) => [
         {
           ...prev[0],
-          name: currentUser.displayName || '',
-          email: currentUser.email || '',
-          phone: currentUser.phone || '',
-          institution: currentUser.institution || '',
-          studentId: currentUser.studentId || ''
+          name: studentName,
+          email: studentEmail,
+          phone: studentPhone,
+          institution: institution,
+          studentId: studentId
         },
         ...prev.slice(1)
       ]);
     }
-  }, [currentUser]);
+  }, [studentName, studentEmail, studentPhone, institution, studentId]);
+
+  // Filter out redundant profile questions so they never appear twice to the student
+  const eventSpecificFields = useMemo(() => {
+    if (!event.customFormFields || event.customFormFields.length === 0) return [];
+    return event.customFormFields.filter((f) => !isRedundantProfileField(f));
+  }, [event.customFormFields]);
+
+  // Prepopulate redundant questionnaire fields from student profile behind the scenes
+  useEffect(() => {
+    if (event.customFormFields && event.customFormFields.length > 0) {
+      setCustomResponses((prev) => {
+        let changed = false;
+        const updated = { ...prev };
+        event.customFormFields?.forEach((f) => {
+          if (isRedundantProfileField(f)) {
+            const val = getProfileValueForField(f, {
+              studentName,
+              studentEmail,
+              studentPhone,
+              institution,
+              classGrade,
+              studentId
+            });
+            if (val && updated[f.id] !== val) {
+              updated[f.id] = val;
+              changed = true;
+            }
+          }
+        });
+        return changed ? updated : prev;
+      });
+    }
+  }, [event.customFormFields, studentName, studentEmail, studentPhone, institution, classGrade, studentId]);
 
   // If fee changes to 0, reset payment requirements
   useEffect(() => {
@@ -281,9 +483,9 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
       });
     }
 
-    // Dynamic custom questions validation
-    if (event.customFormFields && event.customFormFields.length > 0) {
-      event.customFormFields.forEach((field) => {
+    // Dynamic questionnaire questions validation (Only truly event-specific questions)
+    if (eventSpecificFields.length > 0) {
+      eventSpecificFields.forEach((field) => {
         const val = customResponses[field.id];
 
         if (field.required) {
@@ -335,7 +537,6 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
       ...prev,
       [fieldId]: val
     }));
-    // Clear field-level error
     if (errors.custom?.[fieldId]) {
       setErrors((prev) => ({
         ...prev,
@@ -364,7 +565,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         studentPhone,
         institution,
         studentId,
-        studentPhotoURL: currentUser?.photoURL || '',
+        studentPhotoURL: studentPhotoURL || currentUser?.photoURL || '',
         classGrade,
         participantCategory,
         appliedFee: effectiveFee,
@@ -390,7 +591,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     }
   };
 
-  // Active Registration Form View
+  // Identify any missing essential profile fields
+  const missingRequiredFields: string[] = [];
+  if (!studentName.trim()) missingRequiredFields.push('Full Name');
+  if (!studentEmail.trim()) missingRequiredFields.push('Email Address');
+
   return (
     <div className="space-y-6">
       <form onSubmit={handleSubmit} noValidate className="space-y-8">
@@ -502,161 +707,166 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           </div>
         )}
 
-        {/* Section 1: Participant Information */}
-        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-6">
-          <div className="flex items-center gap-2 pb-2 border-b border-[#242730]">
-            <User className="w-5 h-5 text-[#ff4f1a]" />
-            <div>
-              <h3 className="font-heading text-sm font-bold text-white">
-                Participant Information
-              </h3>
-              <p className="text-xs text-[#9da3b4]">
-                Your personal registration profile snapshot for credentials and pass issuance.
-              </p>
+        {/* Section 1: Participant Information (Single Source of Truth from Student Profile) */}
+        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#242730]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#ff4f1a]/15 text-[#ff4f1a] flex items-center justify-center">
+                <User className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-heading text-sm font-bold text-white flex items-center gap-2">
+                  <span>Participant Information</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" /> Profile Connected
+                  </span>
+                </h3>
+                <p className="text-xs text-[#9da3b4]">
+                  Reusing saved student profile data. Only event-specific questions are required below.
+                </p>
+              </div>
+            </div>
+
+            {/* Clear Edit Profile link returning to registration */}
+            <Link
+              to={`/dashboard/profile?returnUrl=/events/${event.id}/register`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] hover:border-zinc-500 text-xs font-semibold text-[#ff4f1a] transition-all cursor-pointer shadow-sm self-start sm:self-auto shrink-0"
+              title="Edit your official student profile"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Profile</span>
+            </Link>
+          </div>
+
+          {/* Compact Read-Only Participant Summary */}
+          <div className="p-5 rounded-2xl bg-[#191b20] border border-[#2e3442] space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              {/* Avatar */}
+              <div className="w-14 h-14 rounded-2xl bg-[#242730] border border-[#383d4c] text-[#ff4f1a] font-bold flex items-center justify-center text-lg shrink-0 overflow-hidden">
+                {studentPhotoURL ? (
+                  <img
+                    src={studentPhotoURL}
+                    alt={studentName || 'Student'}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{(studentName || 'S')[0]?.toUpperCase()}</span>
+                )}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-heading text-base font-bold text-white truncate">
+                    {studentName || 'Student Participant'}
+                  </span>
+                  {studentId && (
+                    <span className="px-2 py-0.5 rounded-md bg-[#242730] text-[#9da3b4] text-[10px] font-mono border border-[#2e3442]">
+                      ID: {studentId}
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-[#9da3b4] flex items-center gap-3 mt-1 flex-wrap">
+                  <span className="flex items-center gap-1 text-white/90">
+                    <Mail className="w-3.5 h-3.5 text-[#656c80]" />
+                    {studentEmail || 'No email associated'}
+                  </span>
+                  {studentPhone && (
+                    <span className="flex items-center gap-1 text-[#9da3b4]">
+                      <Phone className="w-3.5 h-3.5 text-[#656c80]" />
+                      {studentPhone}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Metadata Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#242730] text-xs">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Institution / College</span>
+                <span className="font-medium text-white flex items-center gap-1.5 truncate">
+                  <School className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
+                  <span className="truncate">{institution || <span className="text-zinc-500 italic">Not specified in profile</span>}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Class / Academic Year</span>
+                <span className="font-medium text-white flex items-center gap-1.5 truncate">
+                  <IdCard className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
+                  <span className="truncate">{classGrade || <span className="text-zinc-500 italic">Not specified in profile</span>}</span>
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Profile Status</span>
+                <span className="text-emerald-400 font-medium flex items-center gap-1">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Active & Synced</span>
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-name-input" className="text-xs font-medium text-[#d1d5db] flex items-center gap-1">
-                <span>Full Name</span>
-                <span className="text-[#ff4f1a] font-bold">*</span>
-              </label>
-              <div className="relative">
-                <User className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  id="student-name-input"
-                  type="text"
-                  placeholder="e.g. Tanvir Ahmed"
-                  value={studentName}
-                  onChange={(e) => {
-                    setStudentName(e.target.value);
-                    if (errors.studentName) setErrors((prev) => ({ ...prev, studentName: undefined }));
-                  }}
-                  className={`w-full bg-[#191b20] border rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none transition-colors ${
-                    errors.studentName
-                      ? 'border-red-500/80 focus:border-red-500'
-                      : 'border-[#2e3442] focus:border-[#ff4f1a]'
-                  }`}
-                />
+          {/* Missing Required Profile Information Notice & Fallback */}
+          {missingRequiredFields.length > 0 && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-bold text-amber-100 block">
+                    Missing Profile Information Required for Registration
+                  </span>
+                  <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                    Your student profile is missing: {missingRequiredFields.join(', ')}. Please update your profile or complete the missing fields below.
+                  </p>
+                </div>
               </div>
-              {errors.studentName && (
-                <p className="text-[11px] text-red-400 font-medium">{errors.studentName}</p>
-              )}
-            </div>
 
-            {/* Email Address */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-email-input" className="text-xs font-medium text-[#d1d5db] flex items-center gap-1">
-                <span>Email Address</span>
-                <span className="text-[#ff4f1a] font-bold">*</span>
-              </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  id="student-email-input"
-                  type="email"
-                  placeholder="student@drmc.edu.bd"
-                  value={studentEmail}
-                  onChange={(e) => {
-                    setStudentEmail(e.target.value);
-                    if (errors.studentEmail) setErrors((prev) => ({ ...prev, studentEmail: undefined }));
-                  }}
-                  className={`w-full bg-[#191b20] border rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none transition-colors ${
-                    errors.studentEmail
-                      ? 'border-red-500/80 focus:border-red-500'
-                      : 'border-[#2e3442] focus:border-[#ff4f1a]'
-                  }`}
-                />
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Link
+                  to={`/dashboard/profile?returnUrl=/events/${event.id}/register`}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors"
+                >
+                  Complete in Student Profile →
+                </Link>
               </div>
-              {errors.studentEmail && (
-                <p className="text-[11px] text-red-400 font-medium">{errors.studentEmail}</p>
-              )}
-            </div>
 
-            {/* Phone Number */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-phone-input" className="text-xs font-medium text-[#d1d5db] flex items-center justify-between">
-                <span>Phone Number</span>
-                <span className="text-[10px] text-[#656c80]">(Optional)</span>
-              </label>
-              <div className="relative">
-                <Phone className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  id="student-phone-input"
-                  type="tel"
-                  placeholder="+880 1700-000000"
-                  value={studentPhone}
-                  onChange={(e) => {
-                    setStudentPhone(e.target.value);
-                    if (errors.studentPhone) setErrors((prev) => ({ ...prev, studentPhone: undefined }));
-                  }}
-                  className={`w-full bg-[#191b20] border rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none transition-colors ${
-                    errors.studentPhone
-                      ? 'border-red-500/80 focus:border-red-500'
-                      : 'border-[#2e3442] focus:border-[#ff4f1a]'
-                  }`}
-                />
-              </div>
-              {errors.studentPhone && (
-                <p className="text-[11px] text-red-400 font-medium">{errors.studentPhone}</p>
-              )}
-            </div>
-
-            {/* Institution / College */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-institution-input" className="text-xs font-medium text-[#d1d5db] flex items-center justify-between">
-                <span>Institution / College</span>
-                <span className="text-[10px] text-[#656c80]">(Optional)</span>
-              </label>
-              <div className="relative">
-                <School className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  id="student-institution-input"
-                  type="text"
-                  placeholder="e.g. Dhaka Residential Model College"
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
-                  className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors"
-                />
+              {/* Inline inputs for ONLY missing required fields */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-amber-500/20">
+                {!studentName.trim() && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-amber-100">Full Name *</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Tanvir Ahmed"
+                      value={studentName}
+                      onChange={(e) => {
+                        setStudentName(e.target.value);
+                        if (errors.studentName) setErrors((prev) => ({ ...prev, studentName: undefined }));
+                      }}
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                    />
+                    {errors.studentName && <p className="text-[10px] text-red-400">{errors.studentName}</p>}
+                  </div>
+                )}
+                {!studentEmail.trim() && (
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-medium text-amber-100">Email Address *</label>
+                    <input
+                      type="email"
+                      placeholder="student@example.com"
+                      value={studentEmail}
+                      onChange={(e) => {
+                        setStudentEmail(e.target.value);
+                        if (errors.studentEmail) setErrors((prev) => ({ ...prev, studentEmail: undefined }));
+                      }}
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                    />
+                    {errors.studentEmail && <p className="text-[10px] text-red-400">{errors.studentEmail}</p>}
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Class / Grade / Academic Year */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-class-grade-input" className="text-xs font-medium text-[#d1d5db]">
-                <span>Class / Grade / Academic Year</span>
-              </label>
-              <input
-                id="student-class-grade-input"
-                type="text"
-                placeholder="e.g. Class 10, HSC 2026, 2nd Year CSE"
-                value={classGrade}
-                onChange={(e) => setClassGrade(e.target.value)}
-                className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors"
-              />
-            </div>
-
-            {/* Student ID / Roll Number */}
-            <div className="space-y-1.5">
-              <label htmlFor="student-id-input" className="text-xs font-medium text-[#d1d5db] flex items-center justify-between">
-                <span>Student ID / Roll Number</span>
-                <span className="text-[10px] text-[#656c80]">(Optional)</span>
-              </label>
-              <div className="relative">
-                <IdCard className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  id="student-id-input"
-                  type="text"
-                  placeholder="e.g. 2026-CS-892"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors"
-                />
-              </div>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Section 1.5: Participant Category & Fee Bracket */}
@@ -735,8 +945,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           </div>
         )}
 
-        {/* Section 3: Dynamic Event-Specific Custom Questions */}
-        {event.customFormFields && event.customFormFields.length > 0 && (
+        {/* Section 3: Dynamic Event-Specific Custom Questions (Excluding redundant profile fields) */}
+        {eventSpecificFields.length > 0 && (
           <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b border-[#242730]">
               <Sparkles className="w-5 h-5 text-[#ff4f1a]" />
@@ -745,13 +955,13 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                   Event Specific Questionnaire
                 </h3>
                 <p className="text-xs text-[#9da3b4]">
-                  Please answer these supplementary questions provided by the event organizers.
+                  Please answer these supplementary questions required specifically for this event.
                 </p>
               </div>
             </div>
 
             <div className="space-y-5">
-              {event.customFormFields.map((field) => (
+              {eventSpecificFields.map((field) => (
                 <DynamicFormField
                   key={field.id}
                   field={field}
@@ -763,6 +973,75 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
             </div>
           </div>
         )}
+
+        {/* Section 4: Registration Fee & Payment Simulator */}
+        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-[#242730]">
+            <div className="flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-[#ff4f1a]" />
+              <div>
+                <h3 className="font-heading text-sm font-bold text-white">
+                  Payable Amount & Registration Fee
+                </h3>
+                <p className="text-xs text-[#9da3b4]">
+                  {effectiveFee === 0 ? 'This competition is free of charge.' : 'Sandbox payment simulator for bKash and Nagad.'}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] text-[#656c80] uppercase font-mono block">Payable Amount</span>
+              <span className={`text-base font-bold font-mono ${effectiveFee === 0 ? 'text-zinc-300' : 'text-emerald-400'}`}>
+                {effectiveFee === 0 ? 'Free (৳0)' : `৳${effectiveFee} BDT`}
+              </span>
+            </div>
+          </div>
+
+          {effectiveFee > 0 && (
+            <div className="p-4 rounded-2xl bg-[#191b20] border border-[#2e3442] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              {paymentDetails.completed ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-emerald-400">
+                      Demo {paymentDetails.method === 'bkash' ? 'bKash' : paymentDetails.method === 'nagad' ? 'Nagad' : ''} Payment Completed
+                    </div>
+                    <div className="text-[11px] text-[#9da3b4] font-mono">
+                      TrxID: {paymentDetails.transactionId} • Ref: {paymentDetails.reference || 'N/A'}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center shrink-0">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold text-white">Payment Required</div>
+                    <div className="text-[11px] text-[#9da3b4]">
+                      Simulate fee payment of ৳{effectiveFee} via bKash or Nagad sandbox.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {effectiveFee > 0 && !paymentDetails.completed && (
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-bold transition-all shadow-md shadow-[#ff4f1a]/20 cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  Pay ৳{effectiveFee} (Demo Gateway)
+                </button>
+              )}
+            </div>
+          )}
+
+          {errors.payment && (
+            <p className="text-[11px] text-red-400 font-medium">{errors.payment}</p>
+          )}
+        </div>
 
         {/* Structured Submission Error Banner */}
         {submissionError && (
@@ -780,6 +1059,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           errors.studentEmail ||
           errors.teamName ||
           errors.teamSize ||
+          errors.payment ||
           (errors.members && Object.keys(errors.members).length > 0) ||
           (errors.custom && Object.keys(errors.custom).some((k) => !!errors.custom![k]))) && (
           <div className="flex items-center gap-2.5 p-4 rounded-2xl bg-red-950/40 border border-red-900/50 text-red-200 text-xs">
@@ -813,6 +1093,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           </button>
         </div>
       </form>
+
+      {/* Demo Payment Modal */}
+      <DemoPaymentModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        amount={effectiveFee}
+        eventName={event.name}
+        categoryName={participantCategory}
+        onPaymentSuccess={(details) => {
+          setPaymentDetails({
+            completed: true,
+            method: details.method,
+            transactionId: details.transactionId,
+            reference: details.reference,
+            paidAt: details.paidAt,
+            amount: details.amount
+          });
+          setIsPaymentModalOpen(false);
+          if (errors.payment) {
+            setErrors((prev) => ({ ...prev, payment: undefined }));
+          }
+        }}
+      />
     </div>
   );
 };
