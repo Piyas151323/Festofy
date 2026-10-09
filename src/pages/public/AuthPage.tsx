@@ -16,14 +16,27 @@ export const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, isOrganizer } = useAuth();
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, role, loading: authLoading } = useAuth();
 
-  // If already authenticated, redirect
+  // If already authenticated and auth finished loading, redirect to intended or role-appropriate dashboard
   React.useEffect(() => {
-    if (isAuthenticated) {
-      navigate(redirectPath);
+    if (!authLoading && isAuthenticated) {
+      if (searchParams.get('redirect')) {
+        navigate(searchParams.get('redirect')!, { replace: true });
+      } else {
+        const target = role === 'admin' ? '/admin' : role === 'organizer' ? '/organizer' : '/dashboard';
+        navigate(target, { replace: true });
+      }
     }
-  }, [isAuthenticated, navigate, redirectPath]);
+  }, [isAuthenticated, authLoading, role, navigate, searchParams]);
+
+  const getPostLoginDestination = (userRole: string) => {
+    const requested = searchParams.get('redirect');
+    if (requested) return requested;
+    if (userRole === 'admin') return '/admin';
+    if (userRole === 'organizer') return '/organizer';
+    return '/dashboard';
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,10 +52,12 @@ export const AuthPage: React.FC = () => {
           throw new Error('Password must be at least 6 characters.');
         }
         await signUpWithEmail(email, password, displayName);
+        navigate(getPostLoginDestination('student'));
       } else {
         await signInWithEmail(email, password);
+        // Auth state listener in useAuth will resolve the role and update state,
+        // but we let the useEffect above handle the navigation cleanly once role is ready.
       }
-      navigate(redirectPath);
     } catch (err: any) {
       const isOpNotAllowed =
         err?.code === 'auth/operation-not-allowed' ||
@@ -114,7 +129,8 @@ export const AuthPage: React.FC = () => {
     setLoading(true);
     try {
       await signInWithGoogle();
-      navigate(redirectPath);
+      // Auth state listener in useAuth will resolve the role and update state,
+      // and the useEffect above will redirect to the correct role dashboard.
     } catch (err: any) {
       if (
         err?.code === 'auth/popup-closed-by-user' ||

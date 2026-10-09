@@ -19,6 +19,7 @@ import {
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
 import { dispatchRecommendationsForPublishedEvent } from './notificationService';
 import { sanitizeForFirestore } from '../utils/firestoreUtils';
+import { validatePhoneNumber } from '../utils/phoneUtils';
 
 const EVENTS_COLLECTION = 'events';
 const CATEGORIES_COLLECTION = 'eventCategories';
@@ -236,6 +237,15 @@ export async function createEvent(input: CreateEventInput, organizationId: strin
     validBanner = raw;
   }
 
+  let validWhatsApp: string | undefined = undefined;
+  if (input.organizerWhatsApp && input.organizerWhatsApp.trim()) {
+    const check = validatePhoneNumber(input.organizerWhatsApp.trim());
+    if (!check.isValid) {
+      throw new Error(check.error || 'Invalid WhatsApp contact number.');
+    }
+    validWhatsApp = input.organizerWhatsApp.trim();
+  }
+
   const regType = input.registrationType || 'individual';
   const minTeamSize = regType === 'team' ? (input.minTeamSize || 2) : undefined;
   const maxTeamSize = regType === 'team' ? (input.maxTeamSize || 4) : undefined;
@@ -312,6 +322,7 @@ export async function createEvent(input: CreateEventInput, organizationId: strin
         createdAt: now,
         updatedAt: now,
         ...(validBanner ? { bannerUrl: validBanner } : {}),
+        ...(validWhatsApp ? { organizerWhatsApp: validWhatsApp } : {}),
         ...(minTeamSize ? { minTeamSize } : {}),
         ...(maxTeamSize ? { maxTeamSize } : {}),
         ...(input.customFormFields && input.customFormFields.length > 0 ? { customFormFields: input.customFormFields } : {}),
@@ -497,6 +508,18 @@ export async function updateEvent(eventId: string, input: UpdateEventInput): Pro
   }
   if (input.topics !== undefined) {
     updates.topics = input.topics;
+  }
+  if (input.organizerWhatsApp !== undefined) {
+    const rawWa = input.organizerWhatsApp.trim();
+    if (rawWa) {
+      const check = validatePhoneNumber(rawWa);
+      if (!check.isValid) {
+        throw new Error(check.error || 'Invalid WhatsApp contact number.');
+      }
+      updates.organizerWhatsApp = rawWa;
+    } else {
+      updates.organizerWhatsApp = '';
+    }
   }
 
   try {

@@ -43,6 +43,7 @@ import { OrganizerEventDetailPage } from './pages/organizer/OrganizerEventDetail
 import { OrganizerEditEventPage } from './pages/organizer/OrganizerEditEventPage';
 import { OrganizerParticipantsPage } from './pages/organizer/OrganizerParticipantsPage';
 import { OrganizerAnalyticsPage } from './pages/organizer/OrganizerAnalyticsPage';
+import { OrganizerProfilePage } from './pages/organizer/OrganizerProfilePage';
 
 // Admin Layout & Pages
 import { AdminLayout } from './layouts/AdminLayout';
@@ -119,6 +120,7 @@ export default function App() {
             <Route path="events/:eventId/edit" element={<OrganizerEditEventPage />} />
             <Route path="participants" element={<OrganizerParticipantsPage />} />
             <Route path="analytics" element={<OrganizerAnalyticsPage />} />
+            <Route path="profile" element={<OrganizerProfilePage />} />
           </Route>
 
           {/* Main Admin Protected Routes */}

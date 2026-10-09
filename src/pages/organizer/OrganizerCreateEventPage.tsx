@@ -19,7 +19,8 @@ import {
   Tag,
   CreditCard,
   FileText,
-  BookmarkPlus
+  BookmarkPlus,
+  Phone
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { createEvent, getEventCategories } from '../../services/eventService';
@@ -28,6 +29,7 @@ import { AVAILABLE_INTERESTS } from '../../services/userService';
 import { Fest, EventCategory, EventFormField, FormFieldType, ParticipantCategoryConfig, VisitorAccessType } from '../../types';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 import { TemplateSelectorModal } from '../../components/registration/TemplateSelectorModal';
+import { validatePhoneNumber } from '../../utils/phoneUtils';
 
 const DEFAULT_PRESET_CATEGORIES = [
   'Junior',
@@ -62,6 +64,7 @@ export const OrganizerCreateEventPage: React.FC = () => {
   const [registrationDeadline, setRegistrationDeadline] = useState('');
   const [capacity, setCapacity] = useState('100');
   const [bannerUrl, setBannerUrl] = useState('');
+  const [organizerWhatsApp, setOrganizerWhatsApp] = useState('');
 
   // Visitor Policy
   const [visitorAccess, setVisitorAccess] = useState<VisitorAccessType>('allowed');
@@ -308,6 +311,14 @@ export const OrganizerCreateEventPage: React.FC = () => {
       }
     }
 
+    if (organizerWhatsApp.trim()) {
+      const waCheck = validatePhoneNumber(organizerWhatsApp.trim());
+      if (!waCheck.isValid) {
+        setErrorMsg(waCheck.error || 'Please enter a valid WhatsApp phone number.');
+        return;
+      }
+    }
+
     const minTeam = parseInt(minTeamSize, 10);
     const maxTeam = parseInt(maxTeamSize, 10);
     if (registrationType === 'team') {
@@ -336,6 +347,7 @@ export const OrganizerCreateEventPage: React.FC = () => {
           registrationDeadline: new Date(deadlineMs).toISOString(),
           capacity: capNum,
           ...(bannerUrl.trim() ? { bannerUrl: bannerUrl.trim() } : {}),
+          ...(organizerWhatsApp.trim() ? { organizerWhatsApp: organizerWhatsApp.trim() } : {}),
           registrationType,
           ...(registrationType === 'team' ? { minTeamSize: minTeam, maxTeamSize: maxTeam } : {}),
           requiresApproval,
@@ -564,6 +576,25 @@ export const OrganizerCreateEventPage: React.FC = () => {
                 placeholder="e.g., Auditorium B or Discord / Zoom"
                 className="w-full px-3.5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
+                Organizer WhatsApp Contact <span className="text-zinc-500 font-normal">(Optional)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="tel"
+                  value={organizerWhatsApp}
+                  onChange={(e) => setOrganizerWhatsApp(e.target.value)}
+                  placeholder="e.g. +8801712345678"
+                  className="w-full px-3.5 py-2.5 pl-9 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a]"
+                />
+                <Phone className="w-4 h-4 text-emerald-400 absolute left-3 top-3" />
+              </div>
+              <p className="text-[10px] text-[#656c80] mt-1">
+                Students can click "Contact Organizer" on the event page to chat directly via WhatsApp.
+              </p>
             </div>
 
             <div className="sm:col-span-2 pt-2">

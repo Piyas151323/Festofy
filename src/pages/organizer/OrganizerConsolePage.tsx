@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   UserCheck,
   TrendingUp,
-  BarChart3
+  BarChart3,
+  UserCog
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -290,6 +291,14 @@ export const OrganizerConsolePage: React.FC = () => {
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             <span>Refresh</span>
           </button>
+
+          <Link
+            to="/organizer/profile"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors"
+          >
+            <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
+            <span>Edit Profile</span>
+          </Link>
 
           <Link
             to="/organizer/fests"
@@ -581,6 +590,16 @@ export const OrganizerConsolePage: React.FC = () => {
               <div className="pt-2 border-t border-[#242730] flex items-center justify-between text-[11px]">
                 <span className="text-[#656c80] font-mono">Organization ID:</span>
                 <span className="font-mono text-zinc-300">{activeOrganization.id}</span>
+              </div>
+
+              <div className="pt-1">
+                <Link
+                  to="/organizer/profile"
+                  className="w-full py-2 px-3 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                  <span>Edit Profile & Organization Info</span>
+                </Link>
               </div>
             </div>
           </section>

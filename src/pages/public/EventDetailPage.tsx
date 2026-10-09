@@ -18,7 +18,8 @@ import {
   CreditCard,
   Tag,
   Eye,
-  EyeOff
+  EyeOff,
+  MessageCircle
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getEventById } from '../../services/eventService';
@@ -27,6 +28,7 @@ import { getOrganizationById } from '../../services/organizationService';
 import { EventItem, Fest, Organization } from '../../types';
 import { formatDateTime, getDeadlineText } from '../../utils/dateUtils';
 import { getVisitorAccessDisplay } from '../../utils/visitorUtils';
+import { buildWhatsAppLink } from '../../utils/phoneUtils';
 import { DetailSkeleton } from '../../components/common/LoadingSkeleton';
 import { ErrorState } from '../../components/common/EmptyState';
 import { PageContainer } from '../../components/common/PageContainer';
@@ -266,7 +268,7 @@ export const EventDetailPage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleRegisterClick}
-                className="w-full min-h-11 px-6 py-3 rounded-xl font-heading text-sm font-bold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full min-h-11 px-6 py-3 rounded-xl font-heading text-sm font-bold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-[#ff4f1a]/20"
               >
                 <span>Register Now</span>
                 <ArrowRight className="w-4 h-4" />
@@ -304,6 +306,19 @@ export const EventDetailPage: React.FC = () => {
                   </>
                 )}
               </button>
+            )}
+
+            {/* Direct WhatsApp Contact Organizer Button */}
+            {event.organizerWhatsApp && (
+              <a
+                href={buildWhatsAppLink(event.organizerWhatsApp, event.name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full min-h-10 px-4 py-2.5 rounded-xl text-xs font-semibold text-emerald-300 bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/80 transition-colors flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-400" />
+                <span>Contact Organizer on WhatsApp</span>
+              </a>
             )}
           </div>
 

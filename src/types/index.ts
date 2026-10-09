@@ -45,6 +45,13 @@ export interface CreateOrganizationRequestInput {
   institution?: string;
 }
 
+export interface UpdateOrganizationInput {
+  name?: string;
+  description?: string;
+  logoUrl?: string;
+  institution?: string;
+}
+
 export type OrgMemberRole = 'owner' | 'organizer';
 
 export interface OrganizationMember {
@@ -154,6 +161,7 @@ export interface EventItem {
   requiresApproval?: boolean;
   customFormFields?: EventFormField[];
   isRegistrationClosed?: boolean;
+  organizerWhatsApp?: string;
 }
 
 export interface CreateEventInput {
@@ -177,6 +185,7 @@ export interface CreateEventInput {
   isPaid?: boolean;
   baseFee?: number;
   topics?: string[];
+  organizerWhatsApp?: string;
 }
 
 export interface UpdateEventInput {
@@ -200,6 +209,7 @@ export interface UpdateEventInput {
   isPaid?: boolean;
   baseFee?: number;
   topics?: string[];
+  organizerWhatsApp?: string;
 }
 
 export type RegistrationStatus = 'pending' | 'confirmed' | 'waitlisted' | 'cancelled' | 'completed' | 'checked_in';

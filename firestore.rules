@@ -352,7 +352,7 @@ service cloud.firestore {
                 'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
                 'customFormFields', 'isRegistrationClosed', 'updatedAt',
                 'festName', 'categoryName', 'organizationName',
-                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics'
+                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics', 'organizerWhatsApp'
               ])
             ) ||
             // 2. Metadata update on published event
@@ -367,7 +367,7 @@ service cloud.firestore {
                 'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
                 'customFormFields', 'isRegistrationClosed', 'updatedAt',
                 'festName', 'categoryName', 'organizationName',
-                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics'
+                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics', 'organizerWhatsApp'
               ])
             ) ||
             // 3. Lifecycle Transition: draft -> published (requires parent fest to be published)
@@ -382,7 +382,8 @@ service cloud.firestore {
                 'status', 'festStatus', 'updatedAt', 'name', 'description', 'categoryId', 'bannerUrl', 'venue',
                 'startTime', 'endTime', 'registrationDeadline', 'capacity',
                 'registrationType', 'minTeamSize', 'maxTeamSize', 'requiresApproval',
-                'customFormFields', 'isRegistrationClosed', 'festName', 'categoryName', 'organizationName'
+                'customFormFields', 'isRegistrationClosed', 'festName', 'categoryName', 'organizationName',
+                'visitorAccess', 'participantCategories', 'isPaid', 'baseFee', 'topics', 'organizerWhatsApp'
               ])
             ) ||
             // 4. Lifecycle Transition: published -> completed

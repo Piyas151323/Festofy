@@ -1,6 +1,6 @@
-import { collection, getDocs, doc, getDoc, setDoc, query, orderBy, where, runTransaction } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, setDoc, updateDoc, query, orderBy, where, runTransaction } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase/config';
-import { Organization, OrganizationMember, OrganizationStatus, CreateOrganizationRequestInput } from '../types';
+import { Organization, OrganizationMember, OrganizationStatus, CreateOrganizationRequestInput, UpdateOrganizationInput } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
 
 const COLLECTION_NAME = 'organizations';
@@ -505,3 +505,98 @@ export async function rejectOrganization(
     throw error;
   }
 }
+
+/**
+ * Phase 3 / Phase 6: Organizer & Admin Organization Profile Update
+ *
+ * Allows authorized members/owners of an approved organization (or platform admins)
+ * to update editable organization metadata: name, description, logoUrl, institution.
+ * Protected fields (id, status, requestedBy, requestedAt, createdAt) remain strictly immutable.
+ */
+export async function updateOrganization(
+  organizationId: string,
+  input: UpdateOrganizationInput
+): Promise<Organization> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('Authentication required. Please sign in.');
+  }
+
+  const existingOrg = await getOrganizationById(organizationId);
+  if (!existingOrg) {
+    throw new Error('Organization not found.');
+  }
+
+  // Check user authorization: must be org member or admin
+  const membership = await getUserOrgMembership(organizationId, currentUser.uid);
+  let isPlatformAdmin = false;
+  try {
+    const roleSnap = await getDoc(doc(db, 'userRoles', currentUser.uid));
+    if (roleSnap.exists() && roleSnap.data()?.role === 'admin') {
+      isPlatformAdmin = true;
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  if (!membership && !isPlatformAdmin) {
+    throw new Error('You do not have permission to manage this organization.');
+  }
+
+  const updates: Record<string, any> = {
+    updatedAt: new Date().toISOString()
+  };
+
+  if (input.name !== undefined) {
+    const trimmedName = input.name.trim();
+    if (trimmedName.length < 2 || trimmedName.length > 120) {
+      throw new Error('Organization name must be between 2 and 120 characters.');
+    }
+    updates.name = trimmedName;
+  }
+
+  if (input.description !== undefined) {
+    const trimmedDesc = input.description.trim();
+    if (trimmedDesc.length > 2000) {
+      throw new Error('Organization description cannot exceed 2000 characters.');
+    }
+    updates.description = trimmedDesc;
+  }
+
+  if (input.institution !== undefined) {
+    const trimmedInst = input.institution.trim();
+    if (trimmedInst.length > 150) {
+      throw new Error('Institution name cannot exceed 150 characters.');
+    }
+    updates.institution = trimmedInst;
+  }
+
+  if (input.logoUrl !== undefined) {
+    const trimmedLogo = input.logoUrl.trim();
+    if (trimmedLogo) {
+      if (!trimmedLogo.startsWith('http://') && !trimmedLogo.startsWith('https://')) {
+        throw new Error('Logo URL must be a valid http or https web address.');
+      }
+      if (trimmedLogo.length > 500) {
+        throw new Error('Logo URL cannot exceed 500 characters.');
+      }
+      updates.logoUrl = trimmedLogo;
+    } else {
+      updates.logoUrl = '';
+    }
+  }
+
+  try {
+    const orgRef = doc(db, COLLECTION_NAME, organizationId);
+    await updateDoc(orgRef, updates);
+
+    return {
+      ...existingOrg,
+      ...updates
+    } as Organization;
+  } catch (error: any) {
+    handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${organizationId}`);
+    throw error;
+  }
+}
+

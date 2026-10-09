@@ -21,11 +21,10 @@ import { FOCUS_RING, NavEntry, NavGroup } from '../components/navigation/navUtil
 
 const studentNavItems: NavEntry[] = [
   { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-  { label: 'Explore Events', to: '/events', icon: Compass },
+  { label: 'Events', to: '/events', icon: Compass },
   { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
   { label: 'History', to: '/dashboard/history', icon: History },
-  { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
-  { label: 'Club Requests', to: '/dashboard/organizations', icon: Building2 }
+  { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
 ];
 
 export const StudentLayout: React.FC = () => {
