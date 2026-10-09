@@ -56,14 +56,20 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
     }
   };
 
+  const isOrg = roleLabel?.toLowerCase() === 'organizer';
+  const isAdmin = roleLabel?.toLowerCase() === 'admin';
+  const profileUrl = isOrg ? '/organizer/profile' : isAdmin ? '/admin' : '/dashboard/profile';
+  const consoleUrl = isOrg ? '/organizer' : isAdmin ? '/admin' : '/dashboard';
+  const consoleLabel = isOrg ? 'Console' : isAdmin ? 'Admin' : 'Dashboard';
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 rounded-xl border border-[#242730] bg-[#14161a] p-3">
-        <Link to="/dashboard/profile" aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
+        <Link to={profileUrl} aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
           <Avatar name={user?.displayName} fallback={fallbackName[0]} />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link to="/dashboard/profile" className="truncate text-[13px] font-semibold text-white hover:underline block">
+          <Link to={profileUrl} className="truncate text-[13px] font-semibold text-white hover:underline block">
             {name}
           </Link>
           {user?.email && <div className="truncate text-xs text-[#656c80]">{user.email}</div>}
@@ -74,16 +80,16 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Link
-          to="/dashboard/profile"
+          to={profileUrl}
           className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
         >
           My Profile
         </Link>
         <Link
-          to="/dashboard"
+          to={consoleUrl}
           className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
         >
-          Dashboard
+          {consoleLabel}
         </Link>
       </div>
       <button
@@ -174,6 +180,10 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
     }
   };
 
+  const isOrg = roleLabel?.toLowerCase() === 'organizer';
+  const isAdmin = roleLabel?.toLowerCase() === 'admin';
+  const profileUrl = isOrg ? '/organizer/profile' : isAdmin ? '/admin' : '/dashboard/profile';
+
   return (
     <div
       ref={rootRef}
@@ -183,7 +193,7 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
       }}
     >
       <Link
-        to="/dashboard/profile"
+        to={profileUrl}
         aria-label="My Profile"
         title="My Profile"
         className={`grid h-8 w-8 place-items-center rounded-full transition-opacity hover:opacity-85 ${FOCUS_RING}`}
@@ -218,11 +228,11 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
           className="menu-pop absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-[#2e3442] bg-[#14161a] p-1.5 shadow-lg shadow-black/40 outline-none"
         >
           <div className="flex items-center gap-2.5 px-2 pb-2.5 pt-1.5">
-            <Link to="/dashboard/profile" onClick={close} aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
+            <Link to={profileUrl} onClick={close} aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
               <Avatar name={user?.displayName} fallback={fallbackName[0]} />
             </Link>
             <div className="min-w-0 flex-1">
-              <Link to="/dashboard/profile" onClick={close} className="truncate text-[13px] font-semibold leading-tight text-white hover:underline block">
+              <Link to={profileUrl} onClick={close} className="truncate text-[13px] font-semibold leading-tight text-white hover:underline block">
                 {name}
               </Link>
               {user?.email && <div className="truncate text-xs leading-tight text-[#656c80]">{user.email}</div>}
@@ -231,10 +241,10 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
           </div>
           {items.length > 0 && (
             <div className="border-t border-[#242730] py-1">
-              {items.map((item: NavEntry) => {
+              {items.map((item: NavEntry, idx: number) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.to} to={item.to} role="menuitem" onClick={close} className={itemClass}>
+                  <Link key={`${item.to}-${item.label}-${idx}`} to={item.to} role="menuitem" onClick={close} className={itemClass}>
                     <Icon className="h-4 w-4 text-[#656c80]" aria-hidden="true" />
                     {item.label}
                   </Link>

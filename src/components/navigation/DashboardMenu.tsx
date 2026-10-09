@@ -57,12 +57,12 @@ export const DashboardMenu: React.FC<DashboardMenuProps> = ({ pathname, items })
           <div className="px-2.5 pb-1.5 pt-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-[#656c80]">
             Your activity
           </div>
-          {items.map((item) => {
+          {items.map((item, idx) => {
             const Icon = item.icon;
             const active = isEntryActive(pathname, item);
             return (
               <Link
-                key={item.to}
+                key={`${item.to}-${item.label}-${idx}`}
                 to={item.to}
                 role="menuitem"
                 aria-current={active ? 'page' : undefined}

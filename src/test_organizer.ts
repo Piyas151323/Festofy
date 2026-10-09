@@ -43,8 +43,8 @@ function testOrganizerFoundation() {
   const orgLayout = readFileSync('src/layouts/OrganizerLayout.tsx', 'utf-8');
   assert(orgLayout.includes('OrganizerProvider'), 'OrganizerLayout mounts OrganizerProvider');
   assert(orgLayout.includes('activeOrganization'), 'OrganizerLayout renders active organization dynamically');
-  assert(orgLayout.includes('Back to Events'), 'OrganizerLayout provides Back to Events link');
-  assert(orgLayout.includes('Student View'), 'OrganizerLayout provides Student View link');
+  assert(orgLayout.includes('Back to Home'), 'OrganizerLayout provides Back to Home link');
+  assert(!orgLayout.includes('Student View'), 'OrganizerLayout does not provide Student View link');
   assert(orgLayout.includes('/organizer/fests'), 'OrganizerLayout navigation has Fests link');
   assert(orgLayout.includes('/organizer/events'), 'OrganizerLayout navigation has Events link');
   assert(orgLayout.includes('/organizer/participants'), 'OrganizerLayout navigation has Participants link');

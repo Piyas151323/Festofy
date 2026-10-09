@@ -234,11 +234,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   }, [classField, customResponses, classGrade]);
 
   // Filter out redundant profile questions so they never appear twice to the student.
-  // Note: Class/grade questions with options are NEVER redundant.
+  // When an event defines participant categories, any class/grade or category questionnaire fields
+  // are already covered by the dedicated "Participant Category" section.
+  const hasParticipantCategories = Boolean(event.participantCategories && event.participantCategories.length > 0);
+
   const eventSpecificFields = useMemo(() => {
     if (!event.customFormFields || event.customFormFields.length === 0) return [];
-    return event.customFormFields.filter((f) => !isRedundantProfileField(f));
-  }, [event.customFormFields]);
+    return event.customFormFields.filter((f) => {
+      if (hasParticipantCategories) {
+        if (isClassGradeField(f)) return false;
+        const lbl = (f.label || '').toLowerCase();
+        const id = (f.id || '').toLowerCase();
+        if (lbl.includes('category') || id.includes('category')) return false;
+      }
+      return !isRedundantProfileField(f);
+    });
+  }, [event.customFormFields, hasParticipantCategories]);
 
   // Prepopulate redundant questionnaire fields from student profile behind the scenes
   // and smart-autofill event-specific fields (e.g. classGrade) when saved profile data matches
@@ -248,7 +259,28 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         let changed = false;
         const updated = { ...prev };
         event.customFormFields?.forEach((f) => {
-          if (isRedundantProfileField(f)) {
+          const isCategoryOrGrade =
+            isClassGradeField(f) ||
+            (f.label || '').toLowerCase().includes('category') ||
+            (f.id || '').toLowerCase().includes('category');
+
+          if (hasParticipantCategories && isCategoryOrGrade) {
+            // Keep category/grade field synchronized with selected participant category behind the scenes
+            const effectiveCategory = participantCategory || classGrade;
+            if (effectiveCategory) {
+              if (f.options && f.options.length > 0) {
+                const matched = normalizeSelectOption(effectiveCategory, f.options, f.label);
+                const targetVal = matched || effectiveCategory || f.options[0];
+                if (updated[f.id] !== targetVal) {
+                  updated[f.id] = targetVal;
+                  changed = true;
+                }
+              } else if (updated[f.id] !== effectiveCategory) {
+                updated[f.id] = effectiveCategory;
+                changed = true;
+              }
+            }
+          } else if (isRedundantProfileField(f)) {
             const val = getProfileValueForField(f, {
               studentName,
               studentEmail,
@@ -280,7 +312,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         return changed ? updated : prev;
       });
     }
-  }, [event.customFormFields, studentName, studentEmail, studentPhone, institution, classGrade, studentId]);
+  }, [event.customFormFields, hasParticipantCategories, participantCategory, studentName, studentEmail, studentPhone, institution, classGrade, studentId]);
 
   // If fee changes to 0, reset payment requirements
   useEffect(() => {
@@ -497,18 +529,17 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
     try {
       setIsSubmitting(true);
 
-      // Ensure classGrade passed in registration snapshot aligns with any custom question answer
-      let resolvedClassGrade = classGrade;
+      // Ensure classGrade passed in registration snapshot aligns with any custom question answer or participantCategory
+      let resolvedClassGrade = participantCategory || classGrade;
       if (classField) {
         const customAnswer = customResponses[classField.id];
         if (customAnswer && typeof customAnswer === 'string' && customAnswer.trim()) {
           resolvedClassGrade = customAnswer.trim();
         } else if (classField.options && classField.options.length > 0) {
-          const matched = normalizeSelectOption(classGrade, classField.options, classField.label);
+          const matched = normalizeSelectOption(participantCategory || classGrade, classField.options, classField.label);
           if (matched) {
             resolvedClassGrade = matched;
           } else if (!classField.required) {
-            // If field is optional and profile does not match, omit invalid arbitrary string
             resolvedClassGrade = '';
           }
         }
@@ -582,7 +613,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   const missingRequiredFields: string[] = [];
   if (!studentName.trim()) missingRequiredFields.push('Full Name');
   if (!studentEmail.trim()) missingRequiredFields.push('Email Address');
-  if (classField?.required && !customResponses[classField.id] && !classFieldMatchedOption) {
+  if (!hasParticipantCategories && classField?.required && !customResponses[classField.id] && !classFieldMatchedOption) {
     missingRequiredFields.push(classField.label || 'Class / Grade / Academic Year');
   }
 
@@ -798,7 +829,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
               </div>
               <div>
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Profile Status</span>
-                {classField?.required && !customResponses[classField.id] && !classFieldMatchedOption ? (
+                {!hasParticipantCategories && classField?.required && !customResponses[classField.id] && !classFieldMatchedOption ? (
                   <span className="text-amber-400 font-medium flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>Select Tier Below</span>
@@ -871,7 +902,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                     {errors.studentEmail && <p className="text-[10px] text-red-400">{errors.studentEmail}</p>}
                   </div>
                 )}
-                {classField?.required && !customResponses[classField.id] && !classFieldMatchedOption && classField.options && (
+                {!hasParticipantCategories && classField?.required && !customResponses[classField.id] && !classFieldMatchedOption && classField.options && (
                   <div className="space-y-1 sm:col-span-2 md:col-span-1">
                     <label className="text-[11px] font-medium text-amber-100">{classField.label} *</label>
                     <select

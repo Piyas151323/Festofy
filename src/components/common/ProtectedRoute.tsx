@@ -39,6 +39,11 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
 
+  // Organizers cannot open student dashboard or student portal - redirect to organizer console
+  if (role === 'organizer' && location.pathname.startsWith('/dashboard')) {
+    return <Navigate to="/organizer" replace />;
+  }
+
   // If applicant is awaiting organization review and accessing organizer area
   if (allowedRoles?.includes('organizer') && !allowedRoles.includes(role) && role !== 'admin' && hasPendingOrgRequest) {
     return (

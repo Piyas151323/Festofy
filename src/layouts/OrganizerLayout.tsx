@@ -6,7 +6,7 @@ import {
   CalendarCheck2,
   Users2,
   BarChart3,
-  Compass,
+  Home,
   UserCog,
   ShieldCheck,
   ChevronDown,
@@ -126,8 +126,7 @@ const OrganizerLayoutInner: React.FC = () => {
       label: 'Account & Links',
       items: [
         { label: 'Edit Profile', to: '/organizer/profile', icon: UserCog },
-        { label: 'Student View', to: '/dashboard', icon: Compass },
-        { label: 'Back to Events', to: '/events', icon: Compass },
+        { label: 'Back to Home', to: '/', icon: Home, exact: true },
         ...(role === 'admin' ? [{ label: 'Admin Console', to: '/admin', icon: ShieldCheck }] : [])
       ]
     }

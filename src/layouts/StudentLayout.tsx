@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Compass,
   CalendarCheck,
   History,
-  Building2,
   Ticket,
   ShieldCheck,
   Terminal,
@@ -29,7 +27,6 @@ export const StudentLayout: React.FC = () => {
   const isAdmin = role === 'admin';
   const isOrganizer = role === 'organizer';
   const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : 'Student';
-  const isStudentOnly = !isAdmin && !isOrganizer;
 
   const handleSignOut = async () => {
     await signOutUser();
@@ -52,14 +49,10 @@ export const StudentLayout: React.FC = () => {
     { label: 'Organizer Console', to: '/organizer', icon: Terminal }
   ];
 
-  // Account menu items
+  // Account menu items (laptop view)
   const accountMenuItems: NavEntry[] = [
     { label: 'My Profile', to: '/dashboard/profile', icon: UserCircle },
     { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
-    ...(isStudentOnly
-      ? [{ label: 'Become an Organizer', to: '/dashboard/organizations/apply', icon: Compass }]
-      : []),
     ...(isAdmin ? adminLinks : isOrganizer ? organizerLinks : [])
   ];
 

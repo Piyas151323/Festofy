@@ -86,7 +86,7 @@ export const AuthPage: React.FC = () => {
 
   const getPostLoginDestination = (userRole: string) => {
     const requested = searchParams.get('redirect');
-    if (requested) return requested;
+    if (requested && !(userRole === 'organizer' && requested.startsWith('/dashboard'))) return requested;
     if (userRole === 'admin') return '/admin';
     if (userRole === 'organizer') return '/organizer';
     return '/dashboard';

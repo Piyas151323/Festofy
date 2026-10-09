@@ -33,20 +33,8 @@ const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) =
     <p className="text-xs leading-relaxed text-[#9da3b4] sm:text-sm md:text-base">
       One home for festivals, events, registrations and participants, built for the clubs that run them and the students who show up.
     </p>
-    <div className="pointer-events-auto mt-2 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
-      <Link
-        to="/events"
-        className="inline-flex items-center gap-2 rounded-xl bg-[#ff4f1a] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff4f1a]/20 transition-colors hover:bg-[#ff6838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
-      >
-        Explore Events <ArrowRight className="h-4 w-4" />
-      </Link>
-      <Link
-        to="/organizer/apply"
-        className="inline-flex items-center gap-2 rounded-xl border border-[#2e3442] bg-[#14161a] px-5 py-2.5 text-xs font-semibold text-[#f4f5f7] transition-colors hover:bg-[#1e222b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
-      >
-        Run Your Fest
-      </Link>
-      {onStepInside && (
+    {onStepInside && (
+      <div className="pointer-events-auto mt-2 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={onStepInside}
@@ -56,8 +44,8 @@ const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) =
           <span>Step inside</span>
           <ArrowDownRight className="h-3.5 w-3.5" />
         </button>
-      )}
-    </div>
+      </div>
+    )}
   </div>
 );
 

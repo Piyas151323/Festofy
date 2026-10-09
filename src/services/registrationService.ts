@@ -325,19 +325,21 @@ export async function submitAtomicRegistration(
         for (const field of eventData.customFormFields) {
           let val = normalizedAnswers[field.id];
 
-          // If empty but this is a class/grade field and top-level classGrade was passed, fallback to it
-          // only if it matches one of the configured options or if the field is free-form text.
-          if ((val === undefined || val === null || val === '') && isClassGradeField(field) && resolvedClassGrade) {
-            if (field.options && field.options.length > 0) {
-              const matched = normalizeSelectOption(resolvedClassGrade, field.options, field.label);
-              if (matched) {
-                val = matched;
-                normalizedAnswers[field.id] = matched;
-                resolvedClassGrade = matched;
+          // If empty but this is a class/grade or category field and top-level participantCategory or classGrade was passed, fallback to it
+          const isCategoryOrGrade = isClassGradeField(field) || field.label?.toLowerCase().includes('category') || field.id?.toLowerCase().includes('category');
+          if ((val === undefined || val === null || val === '') && isCategoryOrGrade) {
+            const candidate = input.participantCategory?.trim() || resolvedClassGrade;
+            if (candidate) {
+              if (field.options && field.options.length > 0) {
+                const matched = normalizeSelectOption(candidate, field.options, field.label);
+                val = matched || field.options[0];
+                normalizedAnswers[field.id] = val;
+                resolvedClassGrade = String(val);
+              } else {
+                val = candidate;
+                normalizedAnswers[field.id] = val;
+                resolvedClassGrade = candidate;
               }
-            } else {
-              val = resolvedClassGrade;
-              normalizedAnswers[field.id] = val;
             }
           }
 

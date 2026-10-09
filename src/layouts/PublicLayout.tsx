@@ -36,16 +36,30 @@ export const PublicLayout: React.FC = () => {
 
   const otherPortals = isAdmin
     ? [organizerLink, studentLink]
-    : isOrganizer
-    ? [studentLink]
     : [];
 
-  const accountItems: NavEntry[] = [
-    { label: 'View Profile', to: '/dashboard/profile', icon: UserCircle },
-    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+  const rawAccountItems: NavEntry[] = [
+    {
+      label: 'View Profile',
+      to: isOrganizer ? '/organizer/profile' : '/dashboard/profile',
+      icon: UserCircle
+    },
+    ...(isOrganizer
+      ? [{ label: 'Organizer Console', to: '/organizer', icon: Terminal }]
+      : isAdmin
+      ? [{ label: 'Admin Console', to: '/admin', icon: ShieldCheck }]
+      : [{ label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true }]),
     ...(hasPendingOrgRequest ? [{ label: 'Application Status', to: '/organizer/status', icon: Clock }] : []),
     ...otherPortals
   ];
+
+  // Deduplicate items by destination route to avoid duplicate key conflicts
+  const seenUrls = new Set<string>();
+  const accountItems = rawAccountItems.filter((item) => {
+    if (seenUrls.has(item.to)) return false;
+    seenUrls.add(item.to);
+    return true;
+  });
   const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : hasPendingOrgRequest ? 'Applicant' : 'Student';
 
   return (
@@ -203,11 +217,13 @@ export const PublicLayout: React.FC = () => {
                 </li>
                 {isAuthenticated ? (
                   <>
-                    <li>
-                      <Link to="/dashboard" className="hover:text-white transition-colors">
-                        Student Portal
-                      </Link>
-                    </li>
+                    {!isOrganizer && (
+                      <li>
+                        <Link to="/dashboard" className="hover:text-white transition-colors">
+                          Student Portal
+                        </Link>
+                      </li>
+                    )}
                     <li>
                       <Link to="/organizer" className="hover:text-white transition-colors">
                         Organizer Console
