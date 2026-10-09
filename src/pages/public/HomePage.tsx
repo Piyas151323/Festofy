@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { getPublishedFests } from '../../services/festService';
 import { getPublishedEvents } from '../../services/eventService';
 import { Fest, EventItem } from '../../types';
-import { FestCard, EventCard } from '../../components/common/Cards';
+import { FestCard, EventRow } from '../../components/common/Cards';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { ErrorState, EmptyState } from '../../components/common/EmptyState';
 import { FestofyPortal } from '../../components/home/FestofyPortal';
@@ -49,13 +49,13 @@ export const HomePage: React.FC = () => {
   }, []);
 
   return (
-    <div className="space-y-24 pb-16">
+    <div className="space-y-12 sm:space-y-16 pb-16">
       {/* PORTAL HERO: scroll-driven FESTOFY intro + feature reveal */}
       <FestofyPortal />
 
       {/* FESTIVALS SECTION */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-[#ff4f1a] mb-1">
               Curated Directory
@@ -94,9 +94,9 @@ export const HomePage: React.FC = () => {
         )}
       </section>
 
-      {/* FEATURED EVENTS SECTION */}
+      {/* FEATURED EVENTS SECTION: Distinct compact dated rows */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6 sm:mb-8">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-[#ff4f1a] mb-1">
               Active Competitions & Workshops
@@ -118,7 +118,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         {loading ? (
-          <CardSkeleton count={6} />
+          <CardSkeleton count={4} />
         ) : error ? (
           <ErrorState message={error} />
         ) : events.length === 0 ? (
@@ -127,9 +127,9 @@ export const HomePage: React.FC = () => {
             description="Events created by organizers will be listed here."
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-4">
             {events.map((evt) => (
-              <EventCard key={evt.id} event={evt} />
+              <EventRow key={evt.id} event={evt} />
             ))}
           </div>
         )}

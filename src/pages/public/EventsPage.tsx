@@ -62,10 +62,15 @@ export const EventsPage: React.FC = () => {
       <div className="space-y-4">
         {/* Search */}
         <div className="relative max-w-md">
-          <Search className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <label htmlFor="event-search-input" className="sr-only">
+            Search events
+          </label>
+          <Search className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
+            id="event-search-input"
             type="text"
             placeholder="Search events, venues, or festival names..."
+            aria-label="Search events, venues, or festival names"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[#14161a] border border-[#242730] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a] transition-colors"
@@ -73,10 +78,16 @@ export const EventsPage: React.FC = () => {
         </div>
 
         {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div
+          role="group"
+          aria-label="Filter events by category"
+          className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none"
+        >
           <button
+            type="button"
             onClick={() => setSelectedCategory('all')}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${
+            aria-pressed={selectedCategory === 'all'}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
               selectedCategory === 'all'
                 ? 'bg-[#ff4f1a] text-white font-semibold'
                 : 'bg-[#14161a] text-[#9da3b4] hover:text-white border border-[#242730]'
@@ -90,8 +101,10 @@ export const EventsPage: React.FC = () => {
             return (
               <button
                 key={cat.id}
+                type="button"
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 ${
+                aria-pressed={active}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
                   active
                     ? 'bg-[#ff4f1a] text-white font-semibold'
                     : 'bg-[#14161a] text-[#9da3b4] hover:text-white border border-[#242730]'
@@ -99,7 +112,7 @@ export const EventsPage: React.FC = () => {
               >
                 <span>{cat.name}</span>
                 <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded ${
+                  className={`text-xs px-1.5 py-0.5 rounded ${
                     active ? 'bg-black/20 text-white' : 'bg-[#1e222b] text-[#656c80]'
                   }`}
                 >
@@ -108,6 +121,28 @@ export const EventsPage: React.FC = () => {
               </button>
             );
           })}
+        </div>
+
+        {/* Result Count and Clear Filters Indicator */}
+        <div className="flex items-center justify-between text-xs text-[#9da3b4] pt-1">
+          <span>
+            Showing <strong className="text-white font-semibold">{filteredEvents.length}</strong> {filteredEvents.length === 1 ? 'event' : 'events'}
+            {(searchQuery || selectedCategory !== 'all') && (
+              <span className="text-[#656c80] ml-1">(filtered from {events.length})</span>
+            )}
+          </span>
+          {(searchQuery || selectedCategory !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className="text-xs font-semibold text-[#ff4f1a] hover:text-[#ff6838] transition-colors cursor-pointer"
+            >
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -119,12 +154,20 @@ export const EventsPage: React.FC = () => {
       ) : filteredEvents.length === 0 ? (
         <EmptyState
           title="No events found"
-          description="Try changing your search keywords or choosing a different category."
-          actionLabel="Reset Filters"
-          onAction={() => {
-            setSearchQuery('');
-            setSelectedCategory('all');
-          }}
+          description={
+            searchQuery || selectedCategory !== 'all'
+              ? 'No competitions matched your current filter criteria. Try clearing your search keyword or switching category.'
+              : 'Events created by organizers will be listed here.'
+          }
+          actionLabel={searchQuery || selectedCategory !== 'all' ? 'Clear All Filters' : undefined}
+          onAction={
+            searchQuery || selectedCategory !== 'all'
+              ? () => {
+                  setSearchQuery('');
+                  setSelectedCategory('all');
+                }
+              : undefined
+          }
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

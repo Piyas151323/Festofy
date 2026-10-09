@@ -76,7 +76,29 @@ export const EventDetailPage: React.FC = () => {
   }, [eventId]);
 
   if (loading) return <DetailSkeleton wide />;
-  if (error || !event) return <ErrorState message={error || 'Event not found.'} />;
+  if (error || !event) {
+    return (
+      <PageContainer className="py-12">
+        <div className="max-w-md mx-auto text-center space-y-4 p-8 rounded-2xl border border-[#242730] bg-[#14161a]">
+          <div className="w-12 h-12 rounded-2xl bg-red-500/10 text-red-400 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="font-heading text-lg font-bold text-white">Event Not Found</h2>
+          <p className="text-xs text-[#9da3b4] leading-relaxed">
+            {error || 'The requested event could not be found or may have been removed.'}
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/events"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs font-semibold text-white hover:border-[#ff4f1a] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Back to Event Directory
+            </Link>
+          </div>
+        </div>
+      </PageContainer>
+    );
+  }
 
   // Canonical Public Visibility Policy:
   // Event must have status === 'published' AND festStatus === 'published'
@@ -115,6 +137,7 @@ export const EventDetailPage: React.FC = () => {
   const isClosed = event.isRegistrationClosed || isPastDeadline || isCompleted || isCancelled || isDraft;
   const isFull = (event.capacity ?? 0) > 0 && (event.currentRegistrations ?? 0) >= (event.capacity ?? 0);
   const canRegister = !isClosed && !isFull && event.status === 'published';
+  const deadlineInfo = getDeadlineText(event.registrationDeadline);
 
   const handleRegisterClick = () => {
     if (!isAuthenticated) {
@@ -137,7 +160,7 @@ export const EventDetailPage: React.FC = () => {
   );
 
   return (
-    <PageContainer className="space-y-5 sm:space-y-6">
+    <PageContainer className="space-y-5 sm:space-y-6 pb-24 lg:pb-6">
       {/* Navigation Breadcrumb */}
       <Link
         to="/events"
@@ -201,7 +224,7 @@ export const EventDetailPage: React.FC = () => {
                 Registration Status
               </span>
               {event.registrationType && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#242730] text-[#d1d5db]">
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#242730] text-[#d1d5db]">
                   {event.registrationType === 'both'
                     ? 'Individual or Team'
                     : event.registrationType === 'team'
@@ -210,7 +233,7 @@ export const EventDetailPage: React.FC = () => {
                 </span>
               )}
               {event.requiresApproval && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300">
                   Approval Required
                 </span>
               )}
@@ -232,15 +255,15 @@ export const EventDetailPage: React.FC = () => {
                   </span>
                 </div>
                 {event.participantCategories && event.participantCategories.length > 0 && (
-                  <div className="mt-2 space-y-1 text-[11px] text-[#9da3b4]">
-                    <span className="text-[10px] uppercase font-mono text-[#656c80] block">
+                  <div className="mt-2 space-y-1 text-xs text-[#9da3b4]">
+                    <span className="text-xs uppercase font-mono text-[#656c80] block">
                       Eligible Categories:
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {event.participantCategories.map((c) => (
                         <span
                           key={c.id}
-                          className="px-2 py-0.5 rounded bg-[#14161a] border border-[#242730] text-[10px] text-zinc-300 font-mono"
+                          className="px-2 py-0.5 rounded bg-[#14161a] border border-[#242730] text-xs text-zinc-300 font-mono"
                         >
                           {c.name}
                           {c.fee !== undefined ? ` (৳${c.fee})` : ''}
@@ -275,38 +298,63 @@ export const EventDetailPage: React.FC = () => {
                 <ArrowRight className="w-4 h-4" />
               </button>
             ) : (
-              <button
-                type="button"
-                disabled
-                className="w-full min-h-11 px-6 py-3 rounded-xl text-xs font-semibold text-zinc-500 bg-[#1e222b] border border-[#2e3442] cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isCompleted ? (
-                  <>
-                    <Lock className="w-4 h-4" />
-                    <span>Event Completed</span>
-                  </>
-                ) : isCancelled ? (
-                  <>
-                    <CalendarX className="w-4 h-4" />
-                    <span>Event Cancelled</span>
-                  </>
-                ) : isFull ? (
-                  <>
-                    <Users className="w-4 h-4" />
-                    <span>Registration Full</span>
-                  </>
-                ) : isPastDeadline ? (
-                  <>
-                    <Clock className="w-4 h-4" />
-                    <span>Registration Closed</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4" />
-                    <span>Registration Not Available</span>
-                  </>
-                )}
-              </button>
+              <div className="space-y-2.5">
+                <button
+                  type="button"
+                  disabled
+                  className="w-full min-h-11 px-6 py-3 rounded-xl text-xs font-semibold text-zinc-500 bg-[#1e222b] border border-[#2e3442] cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {isCompleted ? (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Event Completed</span>
+                    </>
+                  ) : isCancelled ? (
+                    <>
+                      <CalendarX className="w-4 h-4" />
+                      <span>Event Cancelled</span>
+                    </>
+                  ) : isFull ? (
+                    <>
+                      <Users className="w-4 h-4" />
+                      <span>Registration Full</span>
+                    </>
+                  ) : isPastDeadline ? (
+                    <>
+                      <Clock className="w-4 h-4" />
+                      <span>Registration Closed</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4" />
+                      <span>Registration Not Available</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Explicit Explanation of Unavailable Status */}
+                <div className="p-3 rounded-xl bg-[#14161a] border border-[#2e3442] text-xs text-[#9da3b4] space-y-1">
+                  <div className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                    <span>Registration Status</span>
+                  </div>
+                  <p className="text-xs leading-relaxed">
+                    {isCompleted
+                      ? 'This competition has concluded. New registrations are closed.'
+                      : isCancelled
+                      ? 'This event has been cancelled by the host organization.'
+                      : isFull
+                      ? `All ${event.capacity} seats have been reserved. Capacity limit has been reached.`
+                      : isPastDeadline
+                      ? `The registration deadline passed on ${formatDateTime(event.registrationDeadline)}.`
+                      : event.isRegistrationClosed
+                      ? 'The organizer has closed new registrations for this event.'
+                      : event.status !== 'published'
+                      ? 'This event is not published yet and is not accepting participants.'
+                      : 'Registrations are currently closed.'}
+                  </p>
+                </div>
+              </div>
             )}
 
             {/* Direct WhatsApp Contact Organizer Button */}
@@ -359,7 +407,7 @@ export const EventDetailPage: React.FC = () => {
                 <span>Visitor Policy</span>
               </dt>
               <dd className="text-xs font-semibold">
-                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold font-mono ${
+                <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold font-mono ${
                   getVisitorAccessDisplay(event, fest).status === 'allowed'
                     ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800'
                     : 'bg-amber-950/60 text-amber-300 border border-amber-800'
@@ -367,7 +415,7 @@ export const EventDetailPage: React.FC = () => {
                   {getVisitorAccessDisplay(event, fest).badgeText}
                 </span>
               </dd>
-              <p className="text-[11px] text-[#9da3b4] leading-relaxed">
+              <p className="text-xs text-[#9da3b4] leading-relaxed">
                 {getVisitorAccessDisplay(event, fest).description}
               </p>
             </div>
@@ -396,7 +444,7 @@ export const EventDetailPage: React.FC = () => {
             <p className="text-xs text-[#9da3b4] leading-relaxed">
               Registrations for this competition are secured through Festofy verified student accounts. Once registered, your official ticket pass and credential will be accessible anytime from your My Registrations dashboard.
             </p>
-            <div className="flex flex-wrap gap-2 text-[11px] text-[#656c80] font-mono">
+            <div className="flex flex-wrap gap-2 text-xs text-[#656c80] font-mono">
               <span className="bg-[#1c1f26] px-2 py-1 rounded">Category: {event.categoryName || 'Competition'}</span>
               <span className="bg-[#1c1f26] px-2 py-1 rounded break-words">Venue: {event.venue}</span>
               <span className="bg-[#1c1f26] px-2 py-1 rounded">Status: {event.status}</span>
@@ -404,6 +452,31 @@ export const EventDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Mobile Fixed Bottom Action Bar */}
+      {canRegister && (
+        <div className="fixed bottom-0 inset-x-0 z-30 lg:hidden border-t border-[#242730] bg-[#14161a]/95 backdrop-blur-md px-4 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-2xl">
+          <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+            <div className="min-w-0">
+              <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider font-semibold">
+                {event.isPaid ? `৳${event.baseFee || 0} BDT` : 'Free Entry (৳0)'}
+              </div>
+              <div className="text-xs text-[#9da3b4] truncate flex items-center gap-1 mt-0.5">
+                <Clock className="w-3.5 h-3.5 shrink-0 text-[#656c80]" />
+                <span className="truncate">{deadlineInfo.label}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleRegisterClick}
+              className="px-5 py-2.5 rounded-xl font-heading text-xs font-bold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors shrink-0 flex items-center gap-1.5 shadow-md shadow-[#ff4f1a]/20 cursor-pointer"
+            >
+              <span>Register Now</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
     </PageContainer>
   );
 };

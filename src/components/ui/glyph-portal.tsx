@@ -80,7 +80,7 @@ export const GlyphPortal: React.FC<Props> = (props) => {
 const PortalStage: React.FC<Props & { onError: () => void }> = ({
   word, above, below, scene, children, onError,
   overlayColor = '#090a0b', textColor,
-  scrollLengthVh = 320, defaultIndex = 3, topOffset = '0px', scrollContainer,
+  scrollLengthVh = 200, defaultIndex = 3, topOffset = '0px', scrollContainer,
 }) => {
   const letters = useMemo(() => Array.from(word), [word]);
   const maskId = 'gp' + useId().replace(/[^a-zA-Z0-9]/g, '');
@@ -90,6 +90,15 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
   );
   const [selected, setSelected] = useState(Math.min(defaultIndex, letters.length - 1));
   const [slots, setSlots] = useState(equalSlots);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const activeLengthVh = isMobile ? Math.min(scrollLengthVh, 140) : scrollLengthVh;
 
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -182,10 +191,9 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
     const section = sectionRef.current, stage = stageRef.current;
     if (!section || !stage) return;
     const total = Math.max(1, section.offsetHeight - stage.offsetHeight);
-    const { top } = geomRef.current;
-    const delta = section.getBoundingClientRect().top - top + total * 0.9;
-    const target: HTMLElement | Window = scrollContainer ?? window;
-    target.scrollBy({ top: delta, behavior: 'smooth' });
+    const sectionTop = section.getBoundingClientRect().top + window.scrollY;
+    const targetY = sectionTop + total;
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
   }, [scrollContainer]);
 
   useLayoutEffect(() => {
@@ -228,7 +236,7 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
     <section
       ref={sectionRef}
       className="relative border-b border-[#242730]"
-      style={{ height: `${scrollLengthVh}vh`, ['--gw' as string]: 'min(92vw, 1200px)' }}
+      style={{ height: `${activeLengthVh}vh`, ['--gw' as string]: 'min(92vw, 1200px)' }}
     >
       <h1 className="sr-only">{word}</h1>
       <div
@@ -276,6 +284,7 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
                   <button
                     key={i}
                     type="button"
+                    tabIndex={-1}
                     aria-label={`Zoom into letter ${ch}`}
                     aria-pressed={i === selected}
                     onClick={() => setSelected(i)}

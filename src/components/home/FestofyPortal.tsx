@@ -19,7 +19,7 @@ const FEATURES = [
 ];
 
 const Eyebrow: React.FC = () => (
-  <div className="inline-flex items-center gap-2 rounded-full border border-[#2e3442] bg-[#191b20] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#ff4f1a] sm:text-[11px]">
+  <div className="inline-flex items-center gap-2 rounded-full border border-[#2e3442] bg-[#191b20] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff4f1a]">
     <span className="h-1.5 w-1.5 rounded-full bg-[#ff4f1a]" />
     Event operations for student organizations
   </div>
@@ -33,15 +33,31 @@ const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) =
     <p className="text-xs leading-relaxed text-[#9da3b4] sm:text-sm md:text-base">
       One home for festivals, events, registrations and participants, built for the clubs that run them and the students who show up.
     </p>
-    {onStepInside && (
-      <button
-        type="button"
-        onClick={onStepInside}
-        className="pointer-events-auto mt-1 inline-flex items-center gap-2 rounded-xl bg-[#ff4f1a] px-6 py-3 text-xs font-semibold text-white shadow-lg shadow-[#ff4f1a]/20 transition-colors hover:bg-[#ff6838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
+    <div className="pointer-events-auto mt-2 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
+      <Link
+        to="/events"
+        className="inline-flex items-center gap-2 rounded-xl bg-[#ff4f1a] px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-[#ff4f1a]/20 transition-colors hover:bg-[#ff6838] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
       >
-        Step inside <ArrowDownRight className="h-4 w-4" />
-      </button>
-    )}
+        Explore Events <ArrowRight className="h-4 w-4" />
+      </Link>
+      <Link
+        to="/organizer/apply"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#2e3442] bg-[#14161a] px-5 py-2.5 text-xs font-semibold text-[#f4f5f7] transition-colors hover:bg-[#1e222b] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm"
+      >
+        Run Your Fest
+      </Link>
+      {onStepInside && (
+        <button
+          type="button"
+          onClick={onStepInside}
+          aria-label="Step inside interactive portal"
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#242730] bg-[#191b20]/90 px-4 py-2.5 text-xs font-medium text-[#9da3b4] transition-colors hover:bg-[#242730] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm cursor-pointer"
+        >
+          <span>Step inside</span>
+          <ArrowDownRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
   </div>
 );
 
@@ -56,7 +72,7 @@ const Features: React.FC<{ showHeading?: boolean }> = ({ showHeading = true }) =
       {FEATURES.map(({ title, body }, i) => (
         <div key={title} className="border-t border-[#ff4f1a]/40 pt-3 md:pt-4">
           <div className="flex items-baseline gap-3">
-            <span className="text-[11px] font-semibold text-[#ff4f1a]">0{i + 1}</span>
+            <span className="text-xs font-semibold text-[#ff4f1a]">0{i + 1}</span>
             <h3 className="font-heading text-base font-semibold text-white md:text-lg">{title}</h3>
           </div>
           <p className="mt-1.5 text-xs leading-relaxed text-[#9da3b4] md:mt-2 md:text-sm">{body}</p>
@@ -106,6 +122,7 @@ export const FestofyPortal: React.FC = () => (
     above={<Eyebrow />}
     below={({ stepInside }) => <Supporting onStepInside={stepInside} />}
     fallback={<StaticHero />}
+    scrollLengthVh={200}
     scene={
       <>
         {/* Letters show this gradient: light top-left, deeper bottom-right */}
