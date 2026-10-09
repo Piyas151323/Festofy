@@ -181,6 +181,7 @@ service cloud.firestore {
     // Ordinary students CANNOT enumerate all memberships or self-assign ownership.
     match /organizationMembers/{membershipId} {
       allow get: if isSignedIn() && (
+        resource == null ||
         resource.data.userId == request.auth.uid ||
         isOrgMember(resource.data.organizationId) ||
         isAdmin()
@@ -453,6 +454,7 @@ service cloud.firestore {
     // Deterministic key {eventId}_{userId} prevents duplicate concurrent records.
     match /registrations/{registrationId} {
       allow get: if isSignedIn() && (
+        resource == null ||
         resource.data.userId == request.auth.uid ||
         isAdmin() ||
         isOrgMember(resource.data.organizationId)
