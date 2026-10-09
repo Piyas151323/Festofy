@@ -13,7 +13,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 

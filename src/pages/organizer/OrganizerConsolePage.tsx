@@ -93,6 +93,7 @@ export const OrganizerConsolePage: React.FC = () => {
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     // Status metrics
+    const activeRegistrations = registrations.filter((r) => r.status !== 'cancelled').length;
     const confirmed = registrations.filter((r) => r.status === 'confirmed').length;
     const checkedIn = registrations.filter((r) => r.status === 'checked_in').length;
     const pending = registrations.filter((r) => r.status === 'pending').length;

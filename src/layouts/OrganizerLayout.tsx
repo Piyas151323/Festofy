@@ -126,7 +126,8 @@ const OrganizerLayoutInner: React.FC = () => {
       label: 'Account & Links',
       items: [
         { label: 'Edit Profile', to: '/organizer/profile', icon: UserCog },
-        { label: 'Public Events', to: '/events', icon: Compass },
+        { label: 'Student View', to: '/dashboard', icon: Compass },
+        { label: 'Back to Events', to: '/events', icon: Compass },
         ...(role === 'admin' ? [{ label: 'Admin Console', to: '/admin', icon: ShieldCheck }] : [])
       ]
     }

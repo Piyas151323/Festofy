@@ -227,7 +227,8 @@ service cloud.firestore {
           isValidFestPayload(request.resource.data) &&
           request.resource.data.keys().hasAll(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'createdAt', 'updatedAt']) &&
           (request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'createdAt', 'updatedAt']) ||
-           request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'eventCount', 'createdAt', 'updatedAt'])) &&
+           request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'eventCount', 'createdAt', 'updatedAt']) ||
+           request.resource.data.keys().hasOnly(['id', 'organizationId', 'name', 'description', 'startDate', 'endDate', 'status', 'bannerUrl', 'organizationName', 'organizationLogo', 'eventCount', 'visitorAccess', 'participantCategories', 'createdAt', 'updatedAt'])) &&
           (!('eventCount' in request.resource.data) || request.resource.data.eventCount == 0)
         )
       );

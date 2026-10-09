@@ -66,7 +66,7 @@ export const AuthPage: React.FC = () => {
       if (searchParams.get('redirect')) {
         navigate(searchParams.get('redirect')!, { replace: true });
       } else {
-        const target = role === 'admin' ? '/admin' : role === 'organizer' ? '/organizer' : '/dashboard';
+        const target = role.toString() === 'admin' ? '/admin' : role.toString() === 'organizer' ? '/organizer' : '/dashboard';
         navigate(target, { replace: true });
       }
     }

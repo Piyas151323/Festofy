@@ -182,7 +182,7 @@ export async function createFest(input: CreateFestInput, organizationId: string)
 
   try {
     const docRef = doc(db, COLLECTION_NAME, docId);
-    await setDoc(docRef, payload);
+    await setDoc(docRef, sanitizeForFirestore(payload));
     return payload;
   } catch (error) {
     handleFirestoreError(error, OperationType.CREATE, `${COLLECTION_NAME}/${docId}`);
