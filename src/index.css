@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface: #090a0b;
+  --color-surface-raised: #14161a;
+  --color-surface-overlay: #191b20;
+  --color-border: #242730;
+  --color-border-strong: #2e3442;
+  --color-text: #f4f5f7;
+  --color-text-muted: #8a91a6;
+  --color-text-subtle: #656c80;
+  --color-accent: #ff4f1a;
+  --color-accent-hover: #ff6838;
+  --color-accent-dark: #e04006;
+  --color-danger: #ef4444;
+  --color-danger-hover: #dc2626;
+  --color-warning: #f59e0b;
+  --color-success: #10b981;
+  --color-info: #3b82f6;
+}
+
 @layer base {
   :root {
     --bg-primary: #090a0b;
@@ -7,10 +26,11 @@
     --bg-tertiary: #191b20;
     --bg-card: #14161a;
     --border-subtle: #242730;
-    --border-strong: #323744;
+    --border-strong: #2e3442;
     --text-primary: #f4f5f7;
-    --text-secondary: #9da3b4;
-    --text-muted: #656c80;
+    --text-secondary: #8a91a6;
+    --text-muted: #8a91a6;
+    --text-subtle: #656c80;
     --accent: #ff4f1a;
     --accent-hover: #ff6838;
     --accent-glow: rgba(255, 79, 26, 0.15);
@@ -20,12 +40,24 @@
     background-color: var(--bg-primary);
     color: var(--text-primary);
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.875rem; /* 14px default body copy */
+    line-height: 1.5;
     overflow-x: hidden;
   }
 
   h1, h2, h3, h4, h5, h6, .font-heading {
     font-family: 'Manrope', 'Inter', sans-serif;
     letter-spacing: -0.025em;
+  }
+
+  /* Accessible mobile input sizing: 16px on mobile prevents iOS auto-zoom */
+  input, select, textarea {
+    font-size: 1rem;
+  }
+  @media (min-width: 640px) {
+    input, select, textarea {
+      font-size: 0.875rem;
+    }
   }
 
   @keyframes page-enter {
@@ -50,6 +82,47 @@
   @media (prefers-reduced-motion: reduce) {
     .animate-page-enter,
     .animate-menu-in { animation: none; }
+  }
+}
+
+/* Accessible animation utilities for dialogs, modals, and tooltips */
+.animate-in {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+  animation-fill-mode: both;
+}
+.fade-in {
+  animation-name: anim-fade-in;
+}
+.zoom-in-95 {
+  animation-name: anim-zoom-in-95;
+}
+.slide-in-from-top-2 {
+  animation-name: anim-slide-top;
+}
+.slide-in-from-bottom-2 {
+  animation-name: anim-slide-bottom;
+}
+@keyframes anim-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes anim-zoom-in-95 {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes anim-slide-top {
+  from { opacity: 0; transform: translateY(-0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes anim-slide-bottom {
+  from { opacity: 0; transform: translateY(0.5rem); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-in, .fade-in, .zoom-in-95, .slide-in-from-top-2, .slide-in-from-bottom-2 {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

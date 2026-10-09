@@ -10,26 +10,26 @@ import {
   CalendarDays,
   ShieldCheck,
   Terminal,
-  UserCircle
+  UserCircle,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
 import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
-import { NavGroupList } from '../components/navigation/NavLinks';
-import { DashboardMenu } from '../components/navigation/DashboardMenu';
+import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
 import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
 import { FOCUS_RING, NavEntry, NavGroup } from '../components/navigation/navUtils';
 
-const dashboardItems: NavEntry[] = [
-  { label: 'Overview', to: '/dashboard', icon: LayoutDashboard, exact: true },
+const studentNavItems: NavEntry[] = [
+  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+  { label: 'Events', to: '/events', icon: Compass },
   { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-  { label: 'History', to: '/dashboard/history', icon: History },
   { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
 ];
 
 export const StudentLayout: React.FC = () => {
-  const { currentUser, signOutUser, role } = useAuth();
+  const { currentUser, signOutUser, role, isOrganizer } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -49,10 +49,36 @@ export const StudentLayout: React.FC = () => {
     { label: 'Organizer Console', to: '/organizer', icon: Terminal }
   ];
 
+  // Drawer entries: full list including history, organizations, and apply
+  const drawerPortalItems: NavEntry[] = [
+    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
+    { label: 'History', to: '/dashboard/history', icon: History },
+    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
+    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
+    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
+    ...(!isOrganizer
+      ? [{ label: 'Become an organizer', to: '/dashboard/organizations/apply', icon: Sparkles }]
+      : [])
+  ];
+
   const drawerGroups: NavGroup[] = [
-    { label: 'Student portal', items: dashboardItems },
+    { label: 'Student portal', items: drawerPortalItems },
     { label: 'Discover', items: [fests, { label: 'Events', to: '/events', icon: Compass }] },
     ...(isAdmin ? [{ label: 'Switch console', items: adminLinks }] : [])
+  ];
+
+  // Account menu items
+  const accountMenuItems: NavEntry[] = [
+    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
+    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
+    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
+    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
+    ...(!isOrganizer
+      ? [{ label: 'Become an organizer', to: '/dashboard/organizations/apply', icon: Sparkles }]
+      : []),
+    ...(isAdmin ? adminLinks : isOrganizer ? [{ label: 'Organizer Console', to: '/organizer', icon: Terminal }] : [])
   ];
 
   return (
@@ -64,37 +90,19 @@ export const StudentLayout: React.FC = () => {
         brand={<BrandLogo to="/" label="Student" />}
         nav={
           <div className="flex items-center gap-1">
-            <DashboardMenu pathname={pathname} items={dashboardItems} />
-            <Link
-              to="/fests"
-              className={`inline-flex h-10 items-center rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
-            >
-              Fests
-            </Link>
-            <Link
-              to="/events"
-              className={`inline-flex h-10 items-center rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
-            >
-              Events
-            </Link>
+            {studentNavItems.map((item) => (
+              <TopNavLink key={item.to} item={item} pathname={pathname} />
+            ))}
           </div>
         }
         actions={
-          <>
-            <Link
-              to={fests.to}
-              className={`hidden xl:inline-flex h-10 items-center whitespace-nowrap rounded-lg px-3 text-[13px] font-medium text-[#9da3b4] transition-all duration-200 hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
-            >
-              {fests.label}
-            </Link>
-            <AccountMenu
-              user={currentUser}
-              fallbackName="Student"
-              roleLabel={roleLabel}
-              items={[{ label: 'View Profile', to: '/dashboard/profile', icon: UserCircle }, { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true }, ...(isAdmin ? adminLinks : [])]}
-              onSignOut={handleSignOut}
-            />
-          </>
+          <AccountMenu
+            user={currentUser}
+            fallbackName="Student"
+            roleLabel={roleLabel}
+            items={accountMenuItems}
+            onSignOut={handleSignOut}
+          />
         }
         trigger={
           <MenuButton open={menuOpen} onClick={() => setMenuOpen(true)} controls="student-drawer" label="Open student menu" />

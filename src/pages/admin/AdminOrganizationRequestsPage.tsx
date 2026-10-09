@@ -16,6 +16,7 @@ import {
 import { getAdminOrganizationRequests } from '../../services/organizationService';
 import { Organization, OrganizationStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { PageHeader } from '../../components/ui';
 
 export const AdminOrganizationRequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<Organization[]>([]);
@@ -131,30 +132,22 @@ export const AdminOrganizationRequestsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-red-500 uppercase tracking-wider mb-1">
-            Verification Queue
-          </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-white">
-            Organization Applications
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Review submitted student club applications, verify collegiate credentials, and authorize organizer privileges.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={loadRequests}
-          disabled={loading}
-          aria-label="Refresh applications"
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#17191e] hover:bg-[#1f2229] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50 self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Organization Applications"
+        description="Review submitted student club applications, verify collegiate credentials, and authorize organizer privileges."
+        actions={
+          <button
+            type="button"
+            onClick={loadRequests}
+            disabled={loading}
+            aria-label="Refresh applications"
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#17191e] hover:bg-[#1f2229] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
       {/* Error Notice */}
       {error && (

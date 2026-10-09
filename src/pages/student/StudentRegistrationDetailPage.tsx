@@ -31,6 +31,7 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 import { formatDateTime } from '../../utils/dateUtils';
 import { DetailSkeleton } from '../../components/common/LoadingSkeleton';
 import { DigitalPassModal } from '../../components/common/DigitalPassModal';
+import { Modal, Button } from '../../components/ui';
 
 export const StudentRegistrationDetailPage: React.FC = () => {
   const { registrationId } = useParams<{ registrationId: string }>();
@@ -588,92 +589,86 @@ export const StudentRegistrationDetailPage: React.FC = () => {
       </div>
 
       {/* Cancellation Confirmation Dialog Modal */}
-      {showCancelModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
-        >
-          <div className="bg-[#14161a] border border-[#242730] rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            {/* Modal Header */}
-            <div className="flex items-start gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-heading text-lg font-bold text-white">
-                  Cancel this registration?
-                </h3>
-                <p className="text-xs text-[#9da3b4] leading-relaxed">
-                  This will release your reserved seat for <strong className="text-white">{registration.eventName}</strong>. This action cannot be undone.
-                </p>
-              </div>
+      <Modal
+        isOpen={showCancelModal}
+        onClose={handleCloseCancelModal}
+        size="md"
+        hideCloseButton
+        closeOnEscape={!cancelling}
+        closeOnBackdropClick={!cancelling}
+      >
+        <div className="p-6 sm:p-8 space-y-5">
+          {/* Modal Header */}
+          <div className="flex items-start gap-3.5">
+            <div className="w-11 h-11 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-400 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" />
             </div>
-
-            {/* Optional Reason Form Field */}
-            <div className="space-y-1.5">
-              <label
-                htmlFor="cancelReason"
-                className="block text-xs font-semibold text-[#9da3b4]"
-              >
-                Why are you cancelling? <span className="text-[#656c80] font-normal">(Optional)</span>
-              </label>
-              <textarea
-                id="cancelReason"
-                value={cancellationReason}
-                onChange={(e) => setCancellationReason(e.target.value)}
-                maxLength={500}
-                rows={3}
-                disabled={cancelling}
-                placeholder="e.g., Schedule conflict, unable to attend..."
-                className="w-full rounded-xl bg-[#191b20] border border-[#2e3442] px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a] resize-none disabled:opacity-50"
-              />
-              <span className="text-[10px] text-[#656c80] block text-right">
-                {cancellationReason.length}/500
-              </span>
-            </div>
-
-            {/* Cancellation Error Banner if any */}
-            {cancelError && (
-              <div className="p-3.5 rounded-xl bg-red-950/60 border border-red-900 flex items-start gap-2.5 text-xs text-red-200">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{cancelError}</span>
-              </div>
-            )}
-
-            {/* Modal Actions */}
-            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={handleCloseCancelModal}
-                disabled={cancelling}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
-              >
-                Keep Registration
-              </button>
-
-              <button
-                type="button"
-                onClick={handleConfirmCancellation}
-                disabled={cancelling}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5 shadow-lg shadow-red-900/20"
-              >
-                {cancelling ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Cancelling...</span>
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="w-3.5 h-3.5" />
-                    <span>Cancel Registration</span>
-                  </>
-                )}
-              </button>
+            <div className="space-y-1">
+              <h3 className="font-heading text-lg font-bold text-white">
+                Cancel this registration?
+              </h3>
+              <p className="text-xs text-[#9da3b4] leading-relaxed">
+                This will release your reserved seat for <strong className="text-white">{registration?.eventName}</strong>. This action cannot be undone.
+              </p>
             </div>
           </div>
+
+          {/* Optional Reason Form Field */}
+          <div className="space-y-1.5">
+            <label
+              htmlFor="cancelReason"
+              className="block text-xs font-semibold text-[#9da3b4]"
+            >
+              Why are you cancelling? <span className="text-[#656c80] font-normal">(Optional)</span>
+            </label>
+            <textarea
+              id="cancelReason"
+              value={cancellationReason}
+              onChange={(e) => setCancellationReason(e.target.value)}
+              maxLength={500}
+              rows={3}
+              disabled={cancelling}
+              placeholder="e.g., Schedule conflict, unable to attend..."
+              className="w-full rounded-xl bg-[#191b20] border border-[#2e3442] px-3.5 py-2.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#ff4f1a] resize-none disabled:opacity-50"
+            />
+            <span className="text-[10px] text-[#656c80] block text-right">
+              {cancellationReason.length}/500
+            </span>
+          </div>
+
+          {/* Cancellation Error Banner if any */}
+          {cancelError && (
+            <div className="p-3.5 rounded-xl bg-red-950/60 border border-red-900 flex items-start gap-2.5 text-xs text-red-200">
+              <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+              <span className="leading-relaxed">{cancelError}</span>
+            </div>
+          )}
+
+          {/* Modal Actions */}
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 pt-2 border-t border-[#242730]">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleCloseCancelModal}
+              disabled={cancelling}
+              className="w-full sm:w-auto"
+            >
+              Keep Registration
+            </Button>
+
+            <Button
+              variant="danger"
+              size="md"
+              onClick={handleConfirmCancellation}
+              loading={cancelling}
+              leftIcon={<XCircle className="w-4 h-4" />}
+              className="w-full sm:w-auto"
+            >
+              Cancel Registration
+            </Button>
+          </div>
         </div>
-      )}
+      </Modal>
 
       {/* Digital Event Pass & QR Modal */}
       <DigitalPassModal

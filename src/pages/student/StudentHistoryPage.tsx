@@ -23,6 +23,7 @@ import { getStudentRegistrations } from '../../services/registrationService';
 import { Registration, RegistrationStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
+import { PageHeader } from '../../components/ui';
 
 export const StudentHistoryPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -140,30 +141,21 @@ export const StudentHistoryPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Page Header */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-[#14161a] border border-[#242730] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="text-xs font-mono uppercase text-[#ff4f1a] tracking-wider mb-1 flex items-center gap-1.5">
-            <History className="w-3.5 h-3.5" />
-            <span>Archive & Ledger</span>
-          </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-            Registration & Participation History
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Permanent record of your event registrations, upcoming challenges, check-in timestamps, and simulated payment receipts.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={loadHistory}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer self-start sm:self-auto disabled:opacity-50"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Ledger</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Participation History"
+        description="Permanent record of your event registrations, challenges, check-in timestamps, and receipts."
+        actions={
+          <button
+            type="button"
+            onClick={loadHistory}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[#242730] pb-3">

@@ -20,6 +20,7 @@ import {
 } from '../../services/organizationService';
 import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { PageHeader } from '../../components/ui';
 
 export const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState({
@@ -58,41 +59,32 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-red-500 uppercase tracking-wider flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-            <span>PLATFORM GOVERNANCE</span>
+      <PageHeader
+        title="Admin Overview"
+        description="Platform governance for student club verifications, organizer authorizations, and festival networks."
+        actions={
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              aria-label="Refresh overview"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#17191e] hover:bg-[#1f2229] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+
+            <Link
+              to="/admin/organization-requests"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors shadow-md shadow-red-600/20"
+            >
+              <Inbox className="w-3.5 h-3.5" />
+              <span>Review Requests ({stats.pending})</span>
+            </Link>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Main Admin Console
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Platform-level governance for student club verifications, organizer authorizations, and festival networks.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={loadData}
-            disabled={loading}
-            aria-label="Refresh telemetry"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#17191e] hover:bg-[#1f2229] border border-[#272b35] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
-          <Link
-            to="/admin/organization-requests"
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors shadow-md shadow-red-600/20"
-          >
-            <Inbox className="w-3.5 h-3.5" />
-            <span>Review Requests ({stats.pending})</span>
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Error Notice */}
       {error && (

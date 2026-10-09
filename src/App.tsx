@@ -6,6 +6,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from './components/ui/Toast';
 import { PublicLayout } from './layouts/PublicLayout';
 import { StudentLayout } from './layouts/StudentLayout';
 import { OrganizerLayout } from './layouts/OrganizerLayout';
@@ -55,9 +56,10 @@ import { AdminLoginPage } from './pages/admin/AdminLoginPage';
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
+      <ToastProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <Routes>
           {/* Public Routes */}
           <Route element={<PublicLayout />}>
             <Route path="/" element={<HomePage />} />
@@ -68,6 +70,16 @@ export default function App() {
             <Route path="/events/:eventId/register" element={<RegistrationPage />} />
             <Route path="/auth" element={<AuthPage />} />
           </Route>
+
+          {/* Standalone Student Profile (Keeps /dashboard/profile path, outside StudentLayout) */}
+          <Route
+            path="/dashboard/profile"
+            element={
+              <ProtectedRoute>
+                <StudentProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Student Protected Routes */}
           <Route
@@ -82,7 +94,6 @@ export default function App() {
             <Route path="registrations" element={<StudentRegistrationsPage />} />
             <Route path="registrations/:registrationId" element={<StudentRegistrationDetailPage />} />
             <Route path="history" element={<StudentHistoryPage />} />
-            <Route path="profile" element={<StudentProfilePage />} />
             <Route path="passes" element={<StudentPassesPage />} />
             <Route path="organizations" element={<StudentOrgRequestsPage />} />
             <Route path="organizations/apply" element={<StudentOrgApplyPage />} />
@@ -144,6 +155,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </AuthProvider>
+    </ToastProvider>
+  </AuthProvider>
   );
 }

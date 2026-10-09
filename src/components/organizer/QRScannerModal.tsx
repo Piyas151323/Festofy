@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import {
   X,
   Camera,
@@ -274,25 +276,23 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     };
   }, [isOpen, startCamera, stopCameraStream]);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const containerRef = useDialogFocus<HTMLDivElement>({
+    isOpen,
+    onClose,
+    closeOnEscape: true,
+    lockScroll: true,
+  });
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  return createPortal(
     <div
+      ref={containerRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="qr-scanner-title"
+      tabIndex={-1}
     >
       {/* Invisible Canvas for Frame Processing */}
       <canvas ref={canvasRef} className="hidden" aria-hidden="true" />
@@ -526,6 +526,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

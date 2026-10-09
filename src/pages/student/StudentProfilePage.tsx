@@ -25,10 +25,14 @@ import {
 } from '../../services/userService';
 import { uploadDirectImage } from '../../services/imageUploadService';
 import { UserProfile } from '../../types';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { BrandLogo } from '../../components/navigation/BrandLogo';
+import { AccountMenu } from '../../components/navigation/Account';
+import { FOCUS_RING } from '../../components/navigation/navUtils';
 
 export const StudentProfilePage: React.FC = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, signOutUser, role } = useAuth();
+  const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -77,6 +81,22 @@ export const StudentProfilePage: React.FC = () => {
     }
     load();
   }, [currentUser]);
+
+  useEffect(() => {
+    document.title = 'Student Profile · Festofy';
+  }, []);
+
+  const handleSignOut = async () => {
+    await signOutUser();
+    navigate('/');
+  };
+
+  const roleLabel = role === 'admin' ? 'Admin' : role === 'organizer' ? 'Organizer' : 'Student';
+  const accountMenuItems = [
+    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
+    { label: 'Dashboard', to: '/dashboard', icon: Layers, exact: true },
+    { label: 'Organizations', to: '/dashboard/organizations', icon: School }
+  ];
 
   // Live profile completion calculation
   const completion = calculateProfileCompletion({
@@ -167,23 +187,55 @@ export const StudentProfilePage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto py-10 px-4 text-center text-xs text-[#9da3b4] animate-pulse">
+      <div className="min-h-screen flex items-center justify-center bg-[#090a0b] text-xs text-[#9da3b4] animate-pulse">
         Loading profile information...
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Navigation Breadcrumb */}
-      <div>
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
-      </div>
+    <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
+      {/* Standalone Profile Navigation Bar */}
+      <header className="sticky top-0 z-40 border-b border-[#242730] bg-[#0d0e11]/95 backdrop-blur-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <BrandLogo to="/" />
+            <Link
+              to="/"
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors ${FOCUS_RING}`}
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Back to Home</span>
+            </Link>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/dashboard"
+              className={`inline-flex h-9 items-center rounded-lg border border-[#2e3442] bg-[#14161a] px-3.5 text-xs font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+            >
+              Dashboard
+            </Link>
+            <AccountMenu
+              user={currentUser}
+              fallbackName="Student"
+              roleLabel={roleLabel}
+              items={accountMenuItems}
+              onSignOut={handleSignOut}
+            />
+          </div>
+        </div>
+      </header>
+
+      <main className="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        {/* Navigation Breadcrumb */}
+        <div>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Home
+          </Link>
+        </div>
 
       {/* Header and Progress Indicator */}
       <div className="p-6 sm:p-8 rounded-3xl bg-[#14161a] border border-[#242730] space-y-6">
@@ -521,6 +573,7 @@ export const StudentProfilePage: React.FC = () => {
           </button>
         </div>
       </form>
+      </main>
     </div>
   );
 };

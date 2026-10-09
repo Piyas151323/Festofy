@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useDialogFocus } from '../../hooks/useDialogFocus';
 import {
   Ticket,
   Printer,
@@ -31,18 +33,14 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  // Close on Escape key
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const containerRef = useDialogFocus<HTMLDivElement>({
+    isOpen,
+    onClose,
+    closeOnEscape: true,
+    lockScroll: true,
+  });
 
-  if (!isOpen || !registration) return null;
+  if (!isOpen || !registration || typeof document === 'undefined') return null;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(registration.ticketCode);
@@ -61,12 +59,14 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
   const isValidPass = isConfirmed || isCheckedIn;
   const isTeam = registration.registrationType === 'team';
 
-  return (
+  return createPortal(
     <div
+      ref={containerRef}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm print:p-0 print:bg-white animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pass-modal-title"
+      tabIndex={-1}
     >
       <div className="relative w-full max-w-xl mx-auto my-auto py-4 print:my-0 print:py-0">
         {/* Floating Actions outside the pass (hidden during printing) */}
@@ -358,6 +358,7 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

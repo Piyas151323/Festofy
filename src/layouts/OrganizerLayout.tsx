@@ -123,7 +123,7 @@ const OrganizerLayoutInner: React.FC = () => {
       ]
     },
     {
-      label: 'Settings & quick links',
+      label: 'Account & links',
       items: [
         { label: 'Edit Profile', to: '/organizer/profile', icon: UserCog },
         { label: 'Public Events', to: '/events', icon: Compass },

@@ -13,6 +13,7 @@ import {
   Info
 } from 'lucide-react';
 import { PaymentMethod } from '../../types';
+import { Modal } from '../ui/Modal';
 
 interface DemoPaymentModalProps {
   isOpen: boolean;
@@ -44,8 +45,6 @@ export const DemoPaymentModal: React.FC<DemoPaymentModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentState, setPaymentState] = useState<'form' | 'success' | 'failed'>('form');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  if (!isOpen) return null;
 
   const generateDemoTrxId = () => {
     const prefix = selectedMethod === 'bkash' ? 'BK' : 'NG';
@@ -94,23 +93,28 @@ export const DemoPaymentModal: React.FC<DemoPaymentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="w-full max-w-lg rounded-3xl bg-[#14161a] border border-[#2e3442] shadow-2xl overflow-hidden flex flex-col">
-        {/* Environment Alert Header */}
-        <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 flex items-center justify-between text-xs text-amber-300">
-          <div className="flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="font-semibold uppercase tracking-wider text-[11px]">
-              Simulated Demo Environment — No Real Money
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      size="lg"
+      hideCloseButton
+    >
+      {/* Environment Alert Header */}
+      <div className="bg-amber-500/10 border-b border-amber-500/20 px-5 py-3 flex items-center justify-between text-xs text-amber-300">
+        <div className="flex items-center gap-2">
+          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0" />
+          <span className="font-semibold uppercase tracking-wider text-[11px]">
+            Simulated Demo Environment — No Real Money
+          </span>
         </div>
+        <button
+          onClick={onClose}
+          aria-label="Close dialog"
+          className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-white/10 cursor-pointer"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
 
         <div className="p-6 space-y-6">
           {/* Order Snapshot Header */}
@@ -354,7 +358,6 @@ export const DemoPaymentModal: React.FC<DemoPaymentModalProps> = ({
             </div>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 };

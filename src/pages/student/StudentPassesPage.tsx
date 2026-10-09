@@ -23,6 +23,7 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 import { DigitalPassModal } from '../../components/common/DigitalPassModal';
 import { QRCodeSVG } from '../../components/common/QRCodeSVG';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
+import { PageHeader } from '../../components/ui';
 
 export const StudentPassesPage: React.FC = () => {
   const { currentUser, loading: authLoading } = useAuth();
@@ -74,30 +75,21 @@ export const StudentPassesPage: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono uppercase tracking-wider text-[#ff4f1a] flex items-center gap-2 mb-1">
-            <Ticket className="w-3.5 h-3.5" />
-            <span>Fast-Track Festival Gate Credentials</span>
-          </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Digital Event Passes
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1 max-w-xl">
-            Official QR passes and verification codes for your confirmed registrations. Present these at campus registration desks for instant check-in.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={fetchPasses}
-          disabled={loading}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#14161a] hover:bg-[#1e2128] border border-[#242730] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50 self-start sm:self-auto"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
-      </div>
+      <PageHeader
+        title="Digital Event Passes"
+        description="Official QR passes and verification codes for your confirmed registrations. Present these at check-in desks."
+        actions={
+          <button
+            type="button"
+            onClick={fetchPasses}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#14161a] hover:bg-[#1e2128] border border-[#242730] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        }
+      />
 
       {error && (
         <div className="p-4 rounded-2xl bg-red-950/40 border border-red-900/50 flex items-center gap-3 text-xs text-red-200">

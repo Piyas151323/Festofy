@@ -28,6 +28,7 @@ import {
 } from '../../services/festService';
 import { Fest, FestStatus } from '../../types';
 import { formatDateTime, formatDateRange } from '../../utils/dateUtils';
+import { ConfirmDialog, useToast } from '../../components/ui';
 
 type SortOption = 'updated_desc' | 'start_asc' | 'start_desc' | 'name_asc';
 
@@ -104,18 +105,28 @@ export const OrganizerFestsPage: React.FC = () => {
     }
   };
 
-  const handleQuickDelete = async (festId: string, festName: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete draft festival "${festName}"?`)) {
-      return;
-    }
+  const toast = useToast();
+  const [festToDelete, setFestToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!festToDelete) return;
     try {
+      setDeleteLoading(true);
       setErrorMsg(null);
-      await deleteDraftFest(festId);
-      setSuccessMsg(`Draft festival "${festName}" was deleted.`);
+      await deleteDraftFest(festToDelete.id);
+      toast.success(`Draft festival "${festToDelete.name}" was permanently deleted.`);
+      setFestToDelete(null);
       await loadFests();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to delete festival.');
+      toast.error(err.message || 'Failed to delete festival.');
+    } finally {
+      setDeleteLoading(false);
     }
+  };
+
+  const handleQuickDelete = (festId: string, festName: string) => {
+    setFestToDelete({ id: festId, name: festName });
   };
 
   // Status Metrics
@@ -529,6 +540,30 @@ export const OrganizerFestsPage: React.FC = () => {
           })}
         </div>
       )}
+
+      {/* Accessible Confirmation Dialog for Draft Festival Deletion */}
+      <ConfirmDialog
+        isOpen={!!festToDelete}
+        onClose={() => setFestToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Draft Festival"
+        description={
+          festToDelete ? (
+            <span>
+              Are you sure you want to permanently delete draft festival{' '}
+              <strong className="text-white">"{festToDelete.name}"</strong>? All
+              draft configurations will be removed immediately. This action cannot be
+              undone.
+            </span>
+          ) : (
+            'Are you sure you want to delete this draft festival?'
+          )
+        }
+        confirmLabel="Delete Draft"
+        cancelLabel="Cancel"
+        variant="danger"
+        loading={deleteLoading}
+      />
     </div>
   );
 };

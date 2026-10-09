@@ -215,10 +215,16 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
           </div>
           {items.length > 0 && (
             <div className="border-t border-[#242730] py-1">
-              {items.map((item: NavEntry) => {
+              {items.map((item: NavEntry, index: number) => {
                 const Icon = item.icon;
                 return (
-                  <Link key={item.to} to={item.to} role="menuitem" onClick={close} className={itemClass}>
+                  <Link
+                    key={`${item.to}-${item.label || index}`}
+                    to={item.to}
+                    role="menuitem"
+                    onClick={close}
+                    className={itemClass}
+                  >
                     <Icon className="h-4 w-4 text-[#656c80]" aria-hidden="true" />
                     {item.label}
                   </Link>
