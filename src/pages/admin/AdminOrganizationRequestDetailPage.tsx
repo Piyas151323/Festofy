@@ -57,6 +57,7 @@ export const AdminOrganizationRequestDetailPage: React.FC = () => {
       }
       setOrg(res.organization);
       setRequester(res.requesterProfile || null);
+      document.title = `${res.organization.name || 'Request Details'} · Festofy`;
     } catch (err: any) {
       console.warn('Notice loading organization request:', err?.message || err);
       setError('Unable to load application details.');

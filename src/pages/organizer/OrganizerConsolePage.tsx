@@ -31,6 +31,7 @@ import { getOrganizationRegistrations } from '../../services/registrationService
 import { Fest, EventItem, Registration } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const OrganizerConsolePage: React.FC = () => {
   const { activeOrganization, loading: orgLoading, error: orgError, refetchOrganizations } = useOrganizer();
@@ -264,51 +265,48 @@ export const OrganizerConsolePage: React.FC = () => {
         </div>
       )}
 
-      {/* 1. Header / Workspace Cockpit */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div className="space-y-1">
-          <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#ff4f1a] animate-pulse" />
-            <span>OPERATIONS DESK • {activeOrganization.name.toUpperCase()}</span>
+      {/* 1. Header */}
+      <PageHeader
+        title="Organizer Dashboard"
+        documentTitle="Organizer Dashboard"
+        description="Event operations for club festivals, schedules, and participant registrations."
+        badge={
+          <span className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider">
+            {activeOrganization.name.toUpperCase()}
+          </span>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={loadDashboardData}
+              disabled={loading}
+              title="Refresh workspace overview"
+              aria-label="Refresh workspace overview"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+
+            <Link
+              to="/organizer/profile"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors"
+            >
+              <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
+              <span>Edit Profile</span>
+            </Link>
+
+            <Link
+              to="/organizer/fests"
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center gap-1.5 shadow-md shadow-[#ff4f1a]/20"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Manage Fests</span>
+            </Link>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Organizer Command Center
-          </h1>
-          <p className="text-xs text-[#9da3b4]">
-            Real-time management cockpit for club festivals, event timelines, and participant operations.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={loadDashboardData}
-            disabled={loading}
-            title="Refresh workspace telemetry"
-            aria-label="Refresh workspace telemetry"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
-          <Link
-            to="/organizer/profile"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-[#d1d5db] hover:text-white transition-colors"
-          >
-            <UserCog className="w-3.5 h-3.5 text-[#ff4f1a]" />
-            <span>Edit Profile</span>
-          </Link>
-
-          <Link
-            to="/organizer/fests"
-            className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-colors flex items-center gap-1.5 shadow-md shadow-[#ff4f1a]/20"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Manage Fests</span>
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Error Banner if any */}
       {fetchError && (

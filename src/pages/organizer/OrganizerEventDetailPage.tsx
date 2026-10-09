@@ -67,6 +67,7 @@ export const OrganizerEventDetailPage: React.FC = () => {
       }
 
       setEvent(evtData);
+      document.title = `${evtData.name || 'Event'} · Festofy`;
 
       if (evtData.festId) {
         const festData = await getFestById(evtData.festId);

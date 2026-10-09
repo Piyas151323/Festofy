@@ -20,7 +20,6 @@ import {
   deleteFormTemplate,
   getDefaultParticipantQuestions
 } from '../../services/templateService';
-import { Modal, ConfirmDialog, useToast } from '../ui';
 
 interface TemplateSelectorModalProps {
   isOpen: boolean;
@@ -37,7 +36,6 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
   onSelectTemplate,
   currentFieldsToSave
 }) => {
-  const toast = useToast();
   const [templates, setTemplates] = useState<RegistrationFormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -57,10 +55,6 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState<string | null>(null);
 
-  // Deletion confirmation state
-  const [templateToDelete, setTemplateToDelete] = useState<RegistrationFormTemplate | null>(null);
-  const [deletingTemplate, setDeletingTemplate] = useState(false);
-
   useEffect(() => {
     async function load() {
       if (!isOpen || !organizationId) return;
@@ -79,6 +73,8 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
     }
     load();
   }, [isOpen, organizationId]);
+
+  if (!isOpen) return null;
 
   const activeTemplate = templates.find((t) => t.id === selectedTemplateId) || templates[0];
 
@@ -172,34 +168,24 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
     }
   };
 
-  const handleDeleteCustomTemplate = async (template: RegistrationFormTemplate) => {
+  const handleDeleteCustomTemplate = async (templateId: string) => {
     try {
-      setDeletingTemplate(true);
-      await deleteFormTemplate(template.id);
-      setTemplates((prev) => prev.filter((t) => t.id !== template.id));
-      if (selectedTemplateId === template.id) {
+      await deleteFormTemplate(templateId);
+      setTemplates((prev) => prev.filter((t) => t.id !== templateId));
+      if (selectedTemplateId === templateId) {
         setSelectedTemplateId(templates[0]?.id || null);
       }
-      if (editingTemplateId === template.id) {
+      if (editingTemplateId === templateId) {
         setEditingTemplateId(null);
       }
-      setTemplateToDelete(null);
-      toast.success(`Template "${template.name}" has been deleted.`);
     } catch (err: any) {
-      toast.error(err.message || 'Could not delete template.');
-    } finally {
-      setDeletingTemplate(false);
+      alert(err.message || 'Could not delete template.');
     }
   };
 
   return (
-    <>
-      <Modal
-        isOpen={isOpen}
-        onClose={onClose}
-        size="2xl"
-        hideCloseButton
-      >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="w-full max-w-4xl rounded-3xl bg-[#14161a] border border-[#2e3442] shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Header */}
         <div className="p-5 border-b border-[#242730] flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -227,7 +213,6 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
             </button>
             <button
               onClick={onClose}
-              aria-label="Close template selector"
               className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 cursor-pointer"
             >
               <X className="w-4 h-4" />
@@ -312,9 +297,11 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setTemplateToDelete(tpl);
+                                if (confirm(`Delete template "${tpl.name}"?`)) {
+                                  handleDeleteCustomTemplate(tpl.id);
+                                }
                               }}
-                              className="text-zinc-500 hover:text-red-400 p-1 cursor-pointer"
+                              className="text-zinc-500 hover:text-red-400 p-1"
                               title="Delete template"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -563,36 +550,8 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
             )}
           </div>
         </div>
-      </Modal>
-
-      {/* Accessible Confirmation Dialog for Template Deletion */}
-      <ConfirmDialog
-        isOpen={!!templateToDelete}
-        onClose={() => setTemplateToDelete(null)}
-        onConfirm={() => {
-          if (templateToDelete) {
-            handleDeleteCustomTemplate(templateToDelete);
-          }
-        }}
-        title="Delete Registration Template"
-        description={
-          templateToDelete ? (
-            <span>
-              Are you sure you want to permanently delete custom template{' '}
-              <strong className="text-white">"{templateToDelete.name}"</strong>? Any
-              existing events already using these questions will remain unaffected, but
-              this template will no longer be available for future events.
-            </span>
-          ) : (
-            'Are you sure you want to delete this template?'
-          )
-        }
-        confirmLabel="Delete Template"
-        cancelLabel="Keep Template"
-        variant="danger"
-        loading={deletingTemplate}
-      />
-    </>
+      </div>
+    </div>
   );
 };
 

@@ -121,6 +121,7 @@ export const OrganizerEditEventPage: React.FC = () => {
         }
 
         setEvent(evtData);
+        document.title = `Edit: ${evtData.name || 'Event'} · Festofy`;
         setCategoriesTaxonomy(catList || []);
 
         setName(evtData.name || '');

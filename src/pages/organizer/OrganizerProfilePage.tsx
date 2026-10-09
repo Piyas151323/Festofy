@@ -24,6 +24,7 @@ import { updateOrganization } from '../../services/organizationService';
 import { uploadDirectImage } from '../../services/imageUploadService';
 import { validatePhoneNumber } from '../../utils/phoneUtils';
 import { UserProfile, Organization } from '../../types';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const OrganizerProfilePage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -235,22 +236,13 @@ export const OrganizerProfilePage: React.FC = () => {
   return (
     <div className="space-y-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div className="space-y-1">
-          <Link
-            to="/organizer"
-            className="inline-flex items-center gap-1.5 text-xs text-[#656c80] hover:text-[#ff4f1a] transition-colors mb-1 font-mono"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" /> Back to Console
-          </Link>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Organizer & Workspace Settings
-          </h1>
-          <p className="text-xs text-[#9da3b4]">
-            Manage your personal organizer profile and official club workspace details.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Organizer & Workspace Settings"
+        documentTitle="Organizer Profile"
+        description="Manage your personal organizer profile and official club workspace details."
+        backTo="/organizer"
+        backLabel="Back to Organizer Console"
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
         {/* SECTION 1: Personal Organizer Profile */}

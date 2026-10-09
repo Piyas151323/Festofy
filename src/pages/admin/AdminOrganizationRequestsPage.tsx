@@ -16,7 +16,7 @@ import {
 import { getAdminOrganizationRequests } from '../../services/organizationService';
 import { Organization, OrganizationStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
-import { PageHeader } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const AdminOrganizationRequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<Organization[]>([]);
@@ -134,6 +134,7 @@ export const AdminOrganizationRequestsPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         title="Organization Applications"
+        documentTitle="Organization Requests"
         description="Review submitted student club applications, verify collegiate credentials, and authorize organizer privileges."
         actions={
           <button

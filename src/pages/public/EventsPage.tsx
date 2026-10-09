@@ -5,6 +5,7 @@ import { EventItem, EventCategory } from '../../types';
 import { EventCard } from '../../components/common/Cards';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState, ErrorState } from '../../components/common/EmptyState';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<EventItem[]>([]);
@@ -51,17 +52,11 @@ export const EventsPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header */}
-      <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wider text-[#ff4f1a]">
-          Competitions & Challenges
-        </div>
-        <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          Event Directory
-        </h1>
-        <p className="text-sm text-[#9da3b4] max-w-2xl">
-          Discover hackathons, algorithmic speedruns, autonomous robotics, CTFs, and tech quizzes across collegiate festivals.
-        </p>
-      </div>
+      <PageHeader
+        title="Event Directory"
+        documentTitle="Events"
+        description="Discover hackathons, algorithmic speedruns, autonomous robotics, CTFs, and tech quizzes across collegiate festivals."
+      />
 
       {/* Category Pills & Search */}
       <div className="space-y-4">

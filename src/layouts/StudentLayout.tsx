@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Compass,
@@ -10,8 +10,7 @@ import {
   CalendarDays,
   ShieldCheck,
   Terminal,
-  UserCircle,
-  Sparkles
+  UserCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
@@ -19,66 +18,80 @@ import { BrandLogo } from '../components/navigation/BrandLogo';
 import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
 import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
 import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
-import { FOCUS_RING, NavEntry, NavGroup } from '../components/navigation/navUtils';
-
-const studentNavItems: NavEntry[] = [
-  { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-  { label: 'Events', to: '/events', icon: Compass },
-  { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-  { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
-];
+import { NavEntry, NavGroup } from '../components/navigation/navUtils';
 
 export const StudentLayout: React.FC = () => {
-  const { currentUser, signOutUser, role, isOrganizer } = useAuth();
+  const { currentUser, signOutUser, role } = useAuth();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
 
   const isAdmin = role === 'admin';
-  const roleLabel = isAdmin ? 'Admin' : role === 'organizer' ? 'Organizer' : 'Student';
+  const isOrganizer = role === 'organizer';
+  const roleLabel = isAdmin ? 'Admin' : isOrganizer ? 'Organizer' : 'Student';
+  const isStudentOnly = !isAdmin && !isOrganizer;
 
   const handleSignOut = async () => {
     await signOutUser();
     navigate('/');
   };
 
-  const fests: NavEntry = { label: 'Browse Fests', to: '/fests', icon: CalendarDays };
+  // Top navigation items: Dashboard, Events, My Registrations, Passes
+  const topNavItems: NavEntry[] = [
+    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+    { label: 'Events', to: '/events', icon: Compass },
+    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
+    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
+  ];
+
   const adminLinks: NavEntry[] = [
     { label: 'Admin Console', to: '/admin', icon: ShieldCheck },
     { label: 'Organizer Console', to: '/organizer', icon: Terminal }
   ];
 
-  // Drawer entries: full list including history, organizations, and apply
+  const organizerLinks: NavEntry[] = [
+    { label: 'Organizer Console', to: '/organizer', icon: Terminal }
+  ];
+
+  // Account menu items
+  const accountMenuItems: NavEntry[] = [
+    { label: 'My Profile', to: '/dashboard/profile', icon: UserCircle },
+    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
+    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
+    ...(isStudentOnly
+      ? [{ label: 'Become an Organizer', to: '/dashboard/organizations/apply', icon: Compass }]
+      : []),
+    ...(isAdmin ? adminLinks : isOrganizer ? organizerLinks : [])
+  ];
+
+  // Drawer items
   const drawerPortalItems: NavEntry[] = [
     { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
     { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-    { label: 'History', to: '/dashboard/history', icon: History },
     { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
-    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
+    { label: 'History', to: '/dashboard/history', icon: History },
     { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
-    ...(!isOrganizer
-      ? [{ label: 'Become an organizer', to: '/dashboard/organizations/apply', icon: Sparkles }]
+    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
+    ...(isStudentOnly
+      ? [{ label: 'Become an Organizer', to: '/dashboard/organizations/apply', icon: Compass }]
       : [])
   ];
 
   const drawerGroups: NavGroup[] = [
     { label: 'Student portal', items: drawerPortalItems },
-    { label: 'Discover', items: [fests, { label: 'Events', to: '/events', icon: Compass }] },
-    ...(isAdmin ? [{ label: 'Switch console', items: adminLinks }] : [])
-  ];
-
-  // Account menu items
-  const accountMenuItems: NavEntry[] = [
-    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle },
-    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
-    { label: 'Organizations', to: '/dashboard/organizations', icon: Building2 },
-    ...(!isOrganizer
-      ? [{ label: 'Become an organizer', to: '/dashboard/organizations/apply', icon: Sparkles }]
-      : []),
-    ...(isAdmin ? adminLinks : isOrganizer ? [{ label: 'Organizer Console', to: '/organizer', icon: Terminal }] : [])
+    {
+      label: 'Discover',
+      items: [
+        { label: 'Browse Fests', to: '/fests', icon: CalendarDays },
+        { label: 'Events', to: '/events', icon: Compass }
+      ]
+    },
+    ...(isAdmin
+      ? [{ label: 'Switch console', items: adminLinks }]
+      : isOrganizer
+      ? [{ label: 'Switch console', items: organizerLinks }]
+      : [])
   ];
 
   return (
@@ -90,7 +103,7 @@ export const StudentLayout: React.FC = () => {
         brand={<BrandLogo to="/" label="Student" />}
         nav={
           <div className="flex items-center gap-1">
-            {studentNavItems.map((item) => (
+            {topNavItems.map((item) => (
               <TopNavLink key={item.to} item={item} pathname={pathname} />
             ))}
           </div>

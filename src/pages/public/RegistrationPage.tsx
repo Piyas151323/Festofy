@@ -40,6 +40,7 @@ export const RegistrationPage: React.FC = () => {
           return;
         }
         setEvent(eventData);
+        document.title = `${eventData.name ? `Register: ${eventData.name}` : 'Event Registration'} · Festofy`;
 
         if (eventData.festId) {
           const festData = await getFestById(eventData.festId);

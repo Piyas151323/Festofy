@@ -30,6 +30,7 @@ import { Fest, EventCategory, EventFormField, FormFieldType, ParticipantCategory
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 import { TemplateSelectorModal } from '../../components/registration/TemplateSelectorModal';
 import { validatePhoneNumber } from '../../utils/phoneUtils';
+import { PageHeader } from '../../components/common/PageHeader';
 
 const DEFAULT_PRESET_CATEGORIES = [
   'Junior',
@@ -430,23 +431,13 @@ export const OrganizerCreateEventPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* HEADER */}
-      <div className="flex items-center justify-between pb-6 border-b border-[#242730]">
-        <div>
-          <Link
-            to="/organizer/events"
-            className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors mb-2"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to Managed Events</span>
-          </Link>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-white">
-            Create Competition / Event
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Configure schedule, venue, seat quota, and participant requirements. Events are initially saved in <strong>Draft</strong> status.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Create Competition / Event"
+        documentTitle="Create Event"
+        description="Configure schedule, venue, seat quota, and participant requirements. Events are initially saved in Draft status."
+        backTo="/organizer/events"
+        backLabel="Back to Managed Events"
+      />
 
       {/* ERROR BANNER */}
       {errorMsg && (

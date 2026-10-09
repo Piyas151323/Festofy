@@ -22,8 +22,8 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 import { formatDateTime } from '../../utils/dateUtils';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { DigitalPassModal } from '../../components/common/DigitalPassModal';
+import { PageHeader } from '../../components/common/PageHeader';
 import { Printer } from 'lucide-react';
-import { PageHeader } from '../../components/ui';
 
 type FilterTab = 'all' | 'upcoming' | 'past' | 'cancelled';
 

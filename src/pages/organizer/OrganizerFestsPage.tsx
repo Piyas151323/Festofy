@@ -28,7 +28,7 @@ import {
 } from '../../services/festService';
 import { Fest, FestStatus } from '../../types';
 import { formatDateTime, formatDateRange } from '../../utils/dateUtils';
-import { ConfirmDialog, useToast } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 type SortOption = 'updated_desc' | 'start_asc' | 'start_desc' | 'name_asc';
 
@@ -105,28 +105,18 @@ export const OrganizerFestsPage: React.FC = () => {
     }
   };
 
-  const toast = useToast();
-  const [festToDelete, setFestToDelete] = useState<{ id: string; name: string } | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
-
-  const handleConfirmDelete = async () => {
-    if (!festToDelete) return;
+  const handleQuickDelete = async (festId: string, festName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete draft festival "${festName}"?`)) {
+      return;
+    }
     try {
-      setDeleteLoading(true);
       setErrorMsg(null);
-      await deleteDraftFest(festToDelete.id);
-      toast.success(`Draft festival "${festToDelete.name}" was permanently deleted.`);
-      setFestToDelete(null);
+      await deleteDraftFest(festId);
+      setSuccessMsg(`Draft festival "${festName}" was deleted.`);
       await loadFests();
     } catch (err: any) {
-      toast.error(err.message || 'Failed to delete festival.');
-    } finally {
-      setDeleteLoading(false);
+      setErrorMsg(err.message || 'Failed to delete festival.');
     }
-  };
-
-  const handleQuickDelete = (festId: string, festName: string) => {
-    setFestToDelete({ id: festId, name: festName });
   };
 
   // Status Metrics
@@ -174,20 +164,11 @@ export const OrganizerFestsPage: React.FC = () => {
   return (
     <div className="space-y-6 pb-12">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider mb-1">
-            {activeOrganization?.name || 'Workspace'} • Festival Operations
-          </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Festivals
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Create, manage lifecycle states, and oversee collegiate festivals for {activeOrganization?.name || 'your club'}.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Festivals"
+        documentTitle="Festivals"
+        description={`Create, manage lifecycle states, and oversee collegiate festivals for ${activeOrganization?.name || 'your club'}.`}
+        actions={
           <Link
             to="/organizer/fests/new"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white transition-colors shadow-lg shadow-[#ff4f1a]/20 cursor-pointer"
@@ -195,8 +176,8 @@ export const OrganizerFestsPage: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>Create Fest</span>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Notifications */}
       {successMsg && (
@@ -540,30 +521,6 @@ export const OrganizerFestsPage: React.FC = () => {
           })}
         </div>
       )}
-
-      {/* Accessible Confirmation Dialog for Draft Festival Deletion */}
-      <ConfirmDialog
-        isOpen={!!festToDelete}
-        onClose={() => setFestToDelete(null)}
-        onConfirm={handleConfirmDelete}
-        title="Delete Draft Festival"
-        description={
-          festToDelete ? (
-            <span>
-              Are you sure you want to permanently delete draft festival{' '}
-              <strong className="text-white">"{festToDelete.name}"</strong>? All
-              draft configurations will be removed immediately. This action cannot be
-              undone.
-            </span>
-          ) : (
-            'Are you sure you want to delete this draft festival?'
-          )
-        }
-        confirmLabel="Delete Draft"
-        cancelLabel="Cancel"
-        variant="danger"
-        loading={deleteLoading}
-      />
     </div>
   );
 };

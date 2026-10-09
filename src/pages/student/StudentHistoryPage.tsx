@@ -23,7 +23,7 @@ import { getStudentRegistrations } from '../../services/registrationService';
 import { Registration, RegistrationStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
-import { PageHeader } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const StudentHistoryPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -142,8 +142,9 @@ export const StudentHistoryPage: React.FC = () => {
     <div className="space-y-8">
       {/* Page Header */}
       <PageHeader
-        title="Participation History"
-        description="Permanent record of your event registrations, challenges, check-in timestamps, and receipts."
+        title="Registration & Participation History"
+        documentTitle="Participation History"
+        description="Permanent record of your event registrations, upcoming challenges, check-in timestamps, and simulated payment receipts."
         actions={
           <button
             type="button"
@@ -152,7 +153,7 @@ export const StudentHistoryPage: React.FC = () => {
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
+            <span>Refresh Ledger</span>
           </button>
         }
       />

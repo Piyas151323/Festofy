@@ -2,6 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Building2,
+  Users2,
   Inbox,
   Terminal,
   GraduationCap,
@@ -12,9 +14,11 @@ import { ConsoleShell } from '../components/navigation/ConsoleShell';
 import { NavGroup } from '../components/navigation/navUtils';
 
 const groups: NavGroup[] = [
-  { items: [{ label: 'Overview', to: '/admin', icon: LayoutDashboard, exact: true }] },
   {
-    label: 'Organizations',
+    items: [{ label: 'Dashboard', to: '/admin', icon: LayoutDashboard, exact: true }]
+  },
+  {
+    label: 'Management',
     items: [
       { label: 'Organization Requests', to: '/admin/organization-requests', icon: Inbox }
     ]

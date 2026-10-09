@@ -30,6 +30,7 @@ import {
 import { getOrganizationFests } from '../../services/festService';
 import { EventItem, Fest, EventStatus } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const OrganizerEventsPage: React.FC = () => {
   const { activeOrganization, loading: orgLoading } = useOrganizer();
@@ -157,7 +158,7 @@ export const OrganizerEventsPage: React.FC = () => {
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
             Draft
           </span>
         );
@@ -167,20 +168,11 @@ export const OrganizerEventsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider mb-1">
-            {activeOrganization?.name || 'Workspace'} • Competitions
-          </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-white">
-            Managed Events & Competitions
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Schedule hackathons, contests, workshops, enforce seat capacities, and control publishing.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
+      <PageHeader
+        title="Managed Events & Competitions"
+        documentTitle="Events"
+        description="Schedule hackathons, contests, workshops, enforce seat capacities, and control publishing."
+        actions={
           <Link
             to="/organizer/events/new"
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white transition-all shadow-lg shadow-[#ff4f1a]/20 cursor-pointer"
@@ -188,8 +180,8 @@ export const OrganizerEventsPage: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>Create Event</span>
           </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* FEEDBACK BANNERS */}
       {errorMsg && (

@@ -45,6 +45,10 @@ export const StudentDashboardPage: React.FC = () => {
   }, [currentUser?.uid]);
 
   useEffect(() => {
+    document.title = 'Dashboard · Festofy';
+  }, []);
+
+  useEffect(() => {
     if (!authLoading) {
       loadDashboardData();
     }
@@ -179,7 +183,7 @@ export const StudentDashboardPage: React.FC = () => {
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-md bg-[#191b20] border border-[#2e3442] text-[11px] font-semibold text-[#ff4f1a]">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Student Command Center</span>
+              <span>Student Overview</span>
             </div>
             <h1 id="dashboard-welcome-heading" className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
               {greeting}

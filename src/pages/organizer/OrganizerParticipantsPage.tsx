@@ -39,7 +39,7 @@ import { formatDateTime } from '../../utils/dateUtils';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
 import { QRScannerModal } from '../../components/organizer/QRScannerModal';
 import { extractTicketCodeFromQR } from '../../utils/ticketCodeUtils';
-import { Modal, Button, Textarea } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const OrganizerParticipantsPage: React.FC = () => {
   const { activeOrganization, loading: orgLoading } = useOrganizer();
@@ -458,41 +458,34 @@ export const OrganizerParticipantsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider mb-1">
-            {activeOrganization?.name || 'Workspace'} • Operations
+      <PageHeader
+        title="Participant Operations & Check-in"
+        documentTitle="Participants"
+        description="Gate check-in, applicant approval review, roster verification, and attendee data export."
+        actions={
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={fetchRegistrations}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={filteredRegistrations.length === 0}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-[#ff4f1a]/20"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV</span>
+            </button>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-bold text-white">
-            Participant Operations & Check-in
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Real-time gate check-in, applicant approval review, roster verification, and attendee data export.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={fetchRegistrations}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleExportCSV}
-            disabled={filteredRegistrations.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-[#ff4f1a]/20"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Export CSV</span>
-          </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Alert Notices */}
       {error && (
@@ -1384,20 +1377,24 @@ export const OrganizerParticipantsPage: React.FC = () => {
       )}
 
       {/* Reject / Decline Reason Modal */}
-      <Modal
-        isOpen={!!rejectingReg}
-        onClose={() => setRejectingReg(null)}
-        title={
-          <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Decline Registration Entry</span>
-          </div>
-        }
-        size="md"
-      >
-        {rejectingReg && (
-          <div className="p-6 space-y-4">
-            <p className="text-xs text-[#9da3b4] leading-relaxed">
+      {rejectingReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-red-400 font-bold text-sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Decline Registration Entry</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectingReg(null)}
+                className="text-[#656c80] hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#9da3b4]">
               Are you sure you want to decline the entry for{' '}
               <strong className="text-white">
                 {rejectingReg.studentName || rejectingReg.teamName}
@@ -1418,42 +1415,46 @@ export const OrganizerParticipantsPage: React.FC = () => {
               />
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-[#242730]">
-              <Button
-                variant="secondary"
-                size="md"
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
                 onClick={() => setRejectingReg(null)}
+                className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#242730] text-xs font-semibold text-zinc-300"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="danger"
-                size="md"
+              </button>
+              <button
+                type="button"
                 onClick={handleRejectConfirm}
-                loading={actionLoading}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-bold text-white shadow-md"
               >
-                Confirm Rejection
-              </Button>
+                {actionLoading ? 'Processing...' : 'Confirm Rejection'}
+              </button>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
 
       {/* Organizer Notes Modal */}
-      <Modal
-        isOpen={!!editingNotesReg}
-        onClose={() => setEditingNotesReg(null)}
-        title={
-          <div className="flex items-center gap-2 text-white font-bold text-sm">
-            <FileSpreadsheet className="w-4 h-4 text-[#ff4f1a]" />
-            <span>Operational Notes</span>
-          </div>
-        }
-        size="md"
-      >
-        {editingNotesReg && (
-          <div className="p-6 space-y-4">
-            <p className="text-xs text-[#9da3b4] leading-relaxed">
+      {editingNotesReg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white font-bold text-sm">
+                <FileSpreadsheet className="w-4 h-4 text-[#ff4f1a]" />
+                <span>Operational Notes</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingNotesReg(null)}
+                className="text-[#656c80] hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-[#9da3b4]">
               Internal organizer note for{' '}
               <strong className="text-white">
                 {editingNotesReg.studentName || editingNotesReg.teamName}
@@ -1478,26 +1479,26 @@ export const OrganizerParticipantsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-[#242730]">
-              <Button
-                variant="secondary"
-                size="md"
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
                 onClick={() => setEditingNotesReg(null)}
+                className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#242730] text-xs font-semibold text-zinc-300"
               >
                 Cancel
-              </Button>
-              <Button
-                variant="primary"
-                size="md"
+              </button>
+              <button
+                type="button"
                 onClick={handleSaveNotes}
-                loading={actionLoading}
+                disabled={actionLoading}
+                className="px-4 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white shadow-md shadow-[#ff4f1a]/20"
               >
-                Save Note
-              </Button>
+                {actionLoading ? 'Saving...' : 'Save Note'}
+              </button>
             </div>
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
 
       {/* Real Camera QR Scanner Modal */}
       <QRScannerModal

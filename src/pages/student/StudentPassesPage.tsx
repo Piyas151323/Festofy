@@ -23,7 +23,7 @@ import { RegistrationStatusBadge } from '../../components/registration/Registrat
 import { DigitalPassModal } from '../../components/common/DigitalPassModal';
 import { QRCodeSVG } from '../../components/common/QRCodeSVG';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
-import { PageHeader } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const StudentPassesPage: React.FC = () => {
   const { currentUser, loading: authLoading } = useAuth();
@@ -77,7 +77,7 @@ export const StudentPassesPage: React.FC = () => {
       {/* Header */}
       <PageHeader
         title="Digital Event Passes"
-        description="Official QR passes and verification codes for your confirmed registrations. Present these at check-in desks."
+        description="Official QR passes and verification codes for your confirmed registrations. Present these at campus registration desks for instant check-in."
         actions={
           <button
             type="button"

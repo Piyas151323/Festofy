@@ -79,9 +79,9 @@ export const NavGroupList: React.FC<NavGroupListProps> = ({ groups, pathname, ac
           </div>
         )}
         <div className="space-y-0.5">
-          {group.items.map((item, index) => (
+          {group.items.map((item) => (
             <NavLinkItem
-              key={`${item.to}-${item.label || index}`}
+              key={item.to}
               item={item}
               pathname={pathname}
               accent={accent}

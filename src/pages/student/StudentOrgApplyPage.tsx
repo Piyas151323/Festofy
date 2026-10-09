@@ -17,6 +17,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { createOrganizationRequest } from '../../services/organizationService';
 import { Organization } from '../../types';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const StudentOrgApplyPage: React.FC = () => {
   const { currentUser } = useAuth();
@@ -164,30 +165,13 @@ export const StudentOrgApplyPage: React.FC = () => {
   // 2. Organization Application Form
   return (
     <div className="max-w-2xl mx-auto py-6 sm:py-10 px-4 sm:px-6 space-y-6">
-      {/* Breadcrumb Navigation */}
-      <div>
-        <Link
-          to="/dashboard"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
-        </Link>
-      </div>
-
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff4f1a]/10 border border-[#ff4f1a]/20 text-[#ff4f1a] text-xs font-semibold font-mono">
-          <Building2 className="w-3.5 h-3.5" />
-          <span>Club Registration</span>
-        </div>
-        <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-          Start an Organization
-        </h1>
-        <p className="text-xs sm:text-sm text-[#9da3b4] leading-relaxed">
-          Submit your college tech club, society, or festival committee for review. Once approved, you'll be able to publish festivals and organize competitions on Festofy.
-        </p>
-      </div>
+      <PageHeader
+        title="Start an Organization"
+        documentTitle="Apply for Organization"
+        description="Submit your college tech club, society, or festival committee for review. Once approved, you'll be able to publish festivals and organize competitions on Festofy."
+        backTo="/dashboard"
+        backLabel="Back to Dashboard"
+      />
 
       {/* Important Workflow Notice */}
       <div className="p-4 rounded-2xl bg-[#14161a] border border-[#242730] flex items-start gap-3 text-xs text-[#9da3b4]">

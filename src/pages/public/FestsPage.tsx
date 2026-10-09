@@ -5,6 +5,7 @@ import { Fest } from '../../types';
 import { FestCard } from '../../components/common/Cards';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState, ErrorState } from '../../components/common/EmptyState';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const FestsPage: React.FC = () => {
   const [fests, setFests] = useState<Fest[]>([]);
@@ -45,17 +46,11 @@ export const FestsPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header */}
-      <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wider text-[#ff4f1a]">
-          Directory
-        </div>
-        <h1 className="font-heading text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-          Festival Directory
-        </h1>
-        <p className="text-sm text-[#9da3b4] max-w-2xl">
-          Browse major technology carnivals, innovation summits, and collegiate festivals hosted by verified student organizations.
-        </p>
-      </div>
+      <PageHeader
+        title="Festival Directory"
+        documentTitle="Festivals"
+        description="Browse major technology carnivals, innovation summits, and collegiate festivals hosted by verified student organizations."
+      />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-[#14161a] border border-[#242730]">

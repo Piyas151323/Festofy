@@ -71,6 +71,7 @@ export const OrganizerFestDetailPage: React.FC = () => {
       }
 
       setFest(data);
+      document.title = `${data.name || 'Festival'} · Festofy`;
 
       const [count, eventsList] = await Promise.all([
         getFestEventCount(festId),

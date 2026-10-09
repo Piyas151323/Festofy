@@ -59,9 +59,13 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 rounded-xl border border-[#242730] bg-[#14161a] p-3">
-        <Avatar name={user?.displayName} fallback={fallbackName[0]} />
+        <Link to="/dashboard/profile" aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
+          <Avatar name={user?.displayName} fallback={fallbackName[0]} />
+        </Link>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[13px] font-semibold text-white">{name}</div>
+          <Link to="/dashboard/profile" className="truncate text-[13px] font-semibold text-white hover:underline block">
+            {name}
+          </Link>
           {user?.email && <div className="truncate text-xs text-[#656c80]">{user.email}</div>}
         </div>
         <span className="shrink-0 rounded-md bg-[#1c1f26] px-2 py-1 font-mono text-[10px] uppercase tracking-wider text-[#9da3b4]">
@@ -73,7 +77,7 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
           to="/dashboard/profile"
           className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
         >
-          Profile
+          My Profile
         </Link>
         <Link
           to="/dashboard"
@@ -142,12 +146,12 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
         return;
       }
       if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
-      const items = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
-      if (!items.length) return;
+      const menuItems = Array.from(rootRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? []);
+      if (!menuItems.length) return;
       event.preventDefault();
-      const index = items.indexOf(document.activeElement as HTMLElement);
-      const next = event.key === 'ArrowDown' ? (index + 1) % items.length : (index - 1 + items.length) % items.length;
-      items[next].focus();
+      const index = menuItems.indexOf(document.activeElement as HTMLElement);
+      const next = event.key === 'ArrowDown' ? (index + 1) % menuItems.length : (index - 1 + menuItems.length) % menuItems.length;
+      menuItems[next].focus();
     };
     document.addEventListener('pointerdown', onPointer);
     document.addEventListener('keydown', onKey);
@@ -173,11 +177,20 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
   return (
     <div
       ref={rootRef}
-      className="relative"
+      className="relative flex items-center gap-1.5"
       onBlur={(event) => {
         if (open && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
       }}
     >
+      <Link
+        to="/dashboard/profile"
+        aria-label="My Profile"
+        title="My Profile"
+        className={`grid h-8 w-8 place-items-center rounded-full transition-opacity hover:opacity-85 ${FOCUS_RING}`}
+      >
+        <Avatar name={user?.displayName} fallback={fallbackName[0]} />
+      </Link>
+
       <button
         ref={buttonRef}
         type="button"
@@ -189,10 +202,9 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
         aria-expanded={open}
         aria-controls={mounted ? menuId : undefined}
         aria-label={`Account menu for ${name}`}
-        className={`flex h-10 items-center gap-2 rounded-full border border-transparent py-1 pl-1 pr-2 transition-colors hover:border-[#2e3442] hover:bg-white/5 cursor-pointer ${FOCUS_RING} ${open ? 'border-[#2e3442] bg-white/5' : ''}`}
+        className={`flex h-10 items-center gap-1.5 rounded-lg border border-transparent py-1 px-2 transition-colors hover:border-[#2e3442] hover:bg-white/5 cursor-pointer ${FOCUS_RING} ${open ? 'border-[#2e3442] bg-white/5' : ''}`}
       >
-        <Avatar name={user?.displayName} fallback={fallbackName[0]} />
-        <span className="hidden max-w-[9rem] truncate text-[13px] font-medium text-[#c3c8d6] xl:block">{name}</span>
+        <span className="hidden max-w-[8.5rem] truncate text-[13px] font-medium text-[#c3c8d6] xl:block">{name}</span>
         <ChevronDown className={`h-3.5 w-3.5 text-[#656c80] transition-transform duration-150 motion-reduce:transition-none ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
       </button>
 
@@ -206,25 +218,23 @@ export const AccountMenu: React.FC<AccountMenuProps> = ({ user, fallbackName, ro
           className="menu-pop absolute right-0 top-full z-50 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-xl border border-[#2e3442] bg-[#14161a] p-1.5 shadow-lg shadow-black/40 outline-none"
         >
           <div className="flex items-center gap-2.5 px-2 pb-2.5 pt-1.5">
-            <Avatar name={user?.displayName} fallback={fallbackName[0]} />
+            <Link to="/dashboard/profile" onClick={close} aria-label="My Profile" className="shrink-0 transition-opacity hover:opacity-85">
+              <Avatar name={user?.displayName} fallback={fallbackName[0]} />
+            </Link>
             <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold leading-tight text-white">{name}</div>
+              <Link to="/dashboard/profile" onClick={close} className="truncate text-[13px] font-semibold leading-tight text-white hover:underline block">
+                {name}
+              </Link>
               {user?.email && <div className="truncate text-xs leading-tight text-[#656c80]">{user.email}</div>}
             </div>
             <span className="shrink-0 self-start text-[11px] font-medium text-[#9da3b4]">{roleLabel}</span>
           </div>
           {items.length > 0 && (
             <div className="border-t border-[#242730] py-1">
-              {items.map((item: NavEntry, index: number) => {
+              {items.map((item: NavEntry) => {
                 const Icon = item.icon;
                 return (
-                  <Link
-                    key={`${item.to}-${item.label || index}`}
-                    to={item.to}
-                    role="menuitem"
-                    onClick={close}
-                    className={itemClass}
-                  >
+                  <Link key={item.to} to={item.to} role="menuitem" onClick={close} className={itemClass}>
                     <Icon className="h-4 w-4 text-[#656c80]" aria-hidden="true" />
                     {item.label}
                   </Link>

@@ -16,6 +16,7 @@ export const HomePage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    document.title = 'Home · Festofy';
     let mounted = true;
     async function loadData() {
       try {

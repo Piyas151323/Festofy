@@ -30,6 +30,7 @@ import { getOrganizationEvents } from '../../services/eventService';
 import { getOrganizationRegistrations } from '../../services/registrationService';
 import { Fest, EventItem, Registration } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const OrganizerAnalyticsPage: React.FC = () => {
   const { activeOrganization, loading: orgLoading } = useOrganizer();
@@ -232,40 +233,37 @@ export const OrganizerAnalyticsPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* 1. Cockpit Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#242730]">
-        <div>
-          <div className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider mb-1 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#ff4f1a]" />
-            <span>{activeOrganization.name.toUpperCase()} • TELEMETRY & ANALYTICS</span>
+      {/* 1. Header */}
+      <PageHeader
+        title="Analytics & Insights"
+        documentTitle="Analytics"
+        description="Enrollment rates, check-in completion, capacity utilization, and festival performance."
+        badge={
+          <span className="text-xs font-mono text-[#ff4f1a] uppercase tracking-wider">
+            {activeOrganization.name.toUpperCase()}
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </button>
+            <Link
+              to="/organizer/participants"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors shadow-sm"
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Participants</span>
+            </Link>
           </div>
-          <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Organizer Operations Intelligence
-          </h1>
-          <p className="text-xs text-[#9da3b4] mt-1">
-            Real-time enrollment velocity, venue check-in rates, quota fulfillment, and festival performance.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 self-start sm:self-auto">
-          <button
-            type="button"
-            onClick={loadData}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#191b20] hover:bg-[#1e222b] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Telemetry</span>
-          </button>
-          <Link
-            to="/organizer/participants"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-semibold text-white transition-colors shadow-sm"
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Gate Operations</span>
-          </Link>
-        </div>
-      </div>
+        }
+      />
 
       {/* Error state if query failed */}
       {errorMsg && (

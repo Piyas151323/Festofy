@@ -111,6 +111,7 @@ export const OrganizerEditFestPage: React.FC = () => {
         }
 
         setFest(data);
+        document.title = `Edit: ${data.name || 'Festival'} · Festofy`;
         setName(data.name || '');
         setDescription(data.description || '');
         setStartDate(formatForInput(data.startDate));

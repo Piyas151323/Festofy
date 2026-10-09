@@ -56,6 +56,7 @@ export const EventDetailPage: React.FC = () => {
           return;
         }
         setEvent(eData);
+        document.title = `${eData.name || 'Event Details'} · Festofy`;
 
         const [festData, orgData] = await Promise.all([
           getFestById(eData.festId),

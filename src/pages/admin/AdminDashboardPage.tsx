@@ -20,7 +20,7 @@ import {
 } from '../../services/organizationService';
 import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
-import { PageHeader } from '../../components/ui';
+import { PageHeader } from '../../components/common/PageHeader';
 
 export const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState({
@@ -46,7 +46,7 @@ export const AdminDashboardPage: React.FC = () => {
       setPendingRequests(pendingData.slice(0, 5));
     } catch (err: any) {
       console.warn('Notice loading admin dashboard data:', err?.message || err);
-      setError('Unable to load administrative overview telemetry. Please check your connection.');
+      setError('Unable to load administrative overview. Please check your connection.');
     } finally {
       setLoading(false);
     }
@@ -60,8 +60,8 @@ export const AdminDashboardPage: React.FC = () => {
     <div className="space-y-8">
       {/* Header */}
       <PageHeader
-        title="Admin Overview"
-        description="Platform governance for student club verifications, organizer authorizations, and festival networks."
+        title="Admin Dashboard"
+        description="Platform-level governance for student club verifications, organizer authorizations, and festival networks."
         actions={
           <div className="flex items-center gap-2.5">
             <button
