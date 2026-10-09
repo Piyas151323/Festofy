@@ -16,7 +16,9 @@ import {
   AlertCircle,
   XCircle,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Printer,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -28,6 +30,7 @@ import { Registration } from '../../types';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
 import { formatDateTime } from '../../utils/dateUtils';
 import { DetailSkeleton } from '../../components/common/LoadingSkeleton';
+import { DigitalPassModal } from '../../components/common/DigitalPassModal';
 
 export const StudentRegistrationDetailPage: React.FC = () => {
   const { registrationId } = useParams<{ registrationId: string }>();
@@ -40,6 +43,7 @@ export const StudentRegistrationDetailPage: React.FC = () => {
 
   // Cancellation modal & state
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showPassModal, setShowPassModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
   const [cancelling, setCancelling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -201,16 +205,29 @@ export const StudentRegistrationDetailPage: React.FC = () => {
           </span>
         </nav>
 
-        {isEligibleForCancellation && (
-          <button
-            type="button"
-            onClick={handleOpenCancelModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/50 border border-red-900/50 text-xs font-semibold text-red-300 transition-colors cursor-pointer self-start sm:self-auto"
-          >
-            <XCircle className="w-3.5 h-3.5" />
-            <span>Cancel Registration</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          {!isCancelled && (
+            <button
+              type="button"
+              onClick={() => setShowPassModal(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#ff4f1a]/15 hover:bg-[#ff4f1a]/25 border border-[#ff4f1a]/40 text-xs font-semibold text-[#ff4f1a] hover:text-[#ff6838] transition-colors cursor-pointer"
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              <span>View & Print Pass</span>
+            </button>
+          )}
+
+          {isEligibleForCancellation && (
+            <button
+              type="button"
+              onClick={handleOpenCancelModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-950/40 hover:bg-red-900/50 border border-red-900/50 text-xs font-semibold text-red-300 transition-colors cursor-pointer"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span>Cancel Registration</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Success Notification Banner */}
@@ -326,6 +343,17 @@ export const StudentRegistrationDetailPage: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {!isCancelled && (
+              <button
+                type="button"
+                onClick={() => setShowPassModal(true)}
+                className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] hover:border-[#ff4f1a]/50 text-xs font-semibold text-white transition-colors cursor-pointer"
+              >
+                <Printer className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                <span>View / Print Pass</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -646,6 +674,13 @@ export const StudentRegistrationDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Digital Event Pass & QR Modal */}
+      <DigitalPassModal
+        registration={registration}
+        isOpen={showPassModal}
+        onClose={() => setShowPassModal(false)}
+      />
     </div>
   );
 };

@@ -21,6 +21,8 @@ import { Registration } from '../../types';
 import { RegistrationStatusBadge } from '../../components/registration/RegistrationStatusBadge';
 import { formatDateTime } from '../../utils/dateUtils';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
+import { DigitalPassModal } from '../../components/common/DigitalPassModal';
+import { Printer } from 'lucide-react';
 
 type FilterTab = 'all' | 'upcoming' | 'past' | 'cancelled';
 
@@ -29,6 +31,7 @@ export const StudentRegistrationsPage: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPass, setSelectedPass] = useState<Registration | null>(null);
 
   // Client-side filter and search states
   const [activeTab, setActiveTab] = useState<FilterTab>('all');
@@ -482,20 +485,42 @@ export const StudentRegistrationsPage: React.FC = () => {
                     </span>
                   </div>
 
-                  {/* View Details Action */}
-                  <Link
-                    to={`/dashboard/registrations/${reg.id}`}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#ff4f1a] hover:text-white border border-[#2e3442] hover:border-[#ff4f1a] text-xs font-semibold text-[#d1d5db] transition-all cursor-pointer shadow-sm group/btn"
-                  >
-                    <span>View Registration</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
-                  </Link>
+                  {/* Actions Row */}
+                  <div className="flex items-center gap-2">
+                    {!isCancelled && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPass(reg)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] hover:border-[#ff4f1a]/50 text-xs font-semibold text-white transition-all cursor-pointer shadow-sm"
+                        title="View & Print Digital Pass"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-[#ff4f1a]" />
+                        <span>Pass</span>
+                      </button>
+                    )}
+
+                    {/* View Details Action */}
+                    <Link
+                      to={`/dashboard/registrations/${reg.id}`}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#ff4f1a] hover:text-white border border-[#2e3442] hover:border-[#ff4f1a] text-xs font-semibold text-[#d1d5db] transition-all cursor-pointer shadow-sm group/btn"
+                    >
+                      <span>Details</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 transition-transform" />
+                    </Link>
+                  </div>
                 </div>
               </article>
             );
           })}
         </div>
       )}
+
+      {/* Digital Pass Modal */}
+      <DigitalPassModal
+        registration={selectedPass}
+        isOpen={selectedPass !== null}
+        onClose={() => setSelectedPass(null)}
+      />
     </div>
   );
 };

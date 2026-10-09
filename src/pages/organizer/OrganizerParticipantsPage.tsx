@@ -1247,9 +1247,9 @@ export const OrganizerParticipantsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between text-xs text-[#656c80] font-mono">
-                  <span>{reg.eventName}</span>
-                  <span>{reg.ticketCode}</span>
+                <div className="flex items-center justify-between text-xs text-[#656c80] font-mono gap-2">
+                  <span className="truncate min-w-0">{reg.eventName}</span>
+                  <span className="shrink-0 font-bold text-zinc-300">{reg.ticketCode}</span>
                 </div>
 
                 <div className="flex flex-wrap gap-2 pt-1">

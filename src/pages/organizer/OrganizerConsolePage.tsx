@@ -15,7 +15,12 @@ import {
   AlertCircle,
   ExternalLink,
   ChevronRight,
-  CalendarCheck
+  CalendarCheck,
+  Flame,
+  AlertTriangle,
+  UserCheck,
+  TrendingUp,
+  BarChart3
 } from 'lucide-react';
 import { useOrganizer } from '../../context/OrganizerContext';
 import { useAuth } from '../../hooks/useAuth';
@@ -92,9 +97,33 @@ export const OrganizerConsolePage: React.FC = () => {
       .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
 
     const totalCapacity = events.reduce((sum, e) => sum + (e.capacity || 0), 0);
-    // Real registrations count using atomic counter on events and registration records
-    const eventCountSum = events.reduce((sum, e) => sum + (e.currentRegistrations || 0), 0);
-    const totalRegistrations = Math.max(eventCountSum, registrations.length);
+    
+    // Status metrics
+    const confirmed = registrations.filter((r) => r.status === 'confirmed').length;
+    const checkedIn = registrations.filter((r) => r.status === 'checked_in').length;
+    const pending = registrations.filter((r) => r.status === 'pending').length;
+    const cancelled = registrations.filter((r) => r.status === 'cancelled').length;
+    const activeRegistrations = registrations.filter((r) => r.status !== 'cancelled').length;
+
+    // Attendance rate
+    const attendanceEligible = confirmed + checkedIn;
+    const attendanceRate = attendanceEligible > 0
+      ? Math.round((checkedIn / attendanceEligible) * 100)
+      : null;
+
+    // Events approaching capacity (>= 80%)
+    const approachingCapacityEvents = events.filter((e) => {
+      if (!e.capacity || e.capacity <= 0) return false;
+      const count = e.currentRegistrations || 0;
+      return (count / e.capacity) >= 0.8;
+    });
+
+    // Registration deadlines approaching within next 72 hours
+    const approachingDeadlines = events.filter((e) => {
+      if (e.isRegistrationClosed || e.status === 'cancelled' || e.status === 'completed') return false;
+      const dTime = new Date(e.registrationDeadline).getTime();
+      return !isNaN(dTime) && dTime > now && (dTime - now) <= (72 * 60 * 60 * 1000);
+    });
 
     return {
       totalFests,
@@ -105,7 +134,15 @@ export const OrganizerConsolePage: React.FC = () => {
       publishedEvents,
       upcomingEvents,
       totalCapacity,
-      totalRegistrations
+      totalRegistrations: registrations.length,
+      activeRegistrations,
+      confirmed,
+      checkedIn,
+      pending,
+      cancelled,
+      attendanceRate,
+      approachingCapacityEvents,
+      approachingDeadlines
     };
   }, [fests, events, registrations]);
 
@@ -332,29 +369,85 @@ export const OrganizerConsolePage: React.FC = () => {
             </div>
           </div>
 
-          {/* Total Registrations */}
+          {/* Active Registrations */}
           <div className="p-5 rounded-2xl border border-[#242730] bg-[#14161a] space-y-2 flex flex-col justify-between">
             <div className="flex justify-between items-center text-xs text-[#656c80]">
-              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Total Registrations</span>
+              <span className="font-mono uppercase tracking-wider text-[11px] font-semibold">Active Registrations</span>
               <Users className="w-4 h-4 text-emerald-400" />
             </div>
             <div>
               <div className="font-heading text-2xl sm:text-3xl font-extrabold text-white">
-                {stats.totalRegistrations}
+                {stats.activeRegistrations}
               </div>
               <p className="text-[11px] text-[#9da3b4] mt-0.5">
-                {stats.totalCapacity > 0 ? (
-                  <span>
-                    {Math.round((stats.totalRegistrations / stats.totalCapacity) * 100)}% of {stats.totalCapacity} total seats filled
-                  </span>
-                ) : (
-                  <span>Active student enrollments</span>
-                )}
+                {stats.confirmed} confirmed • {stats.checkedIn} checked in
               </p>
             </div>
           </div>
         </div>
       </section>
+
+      {/* 2.5 Operational Intelligence Highlights */}
+      {(stats.approachingCapacityEvents.length > 0 || stats.approachingDeadlines.length > 0 || stats.pending > 0) && (
+        <section aria-label="Operational Highlights" className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Pending reviews banner */}
+          {stats.pending > 0 && (
+            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-white block">{stats.pending} Pending Reviews</span>
+                  <span className="text-zinc-400 text-[11px]">Require organizer verification</span>
+                </div>
+              </div>
+              <Link
+                to="/organizer/participants"
+                className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-semibold transition-colors text-[11px] shrink-0"
+              >
+                Review →
+              </Link>
+            </div>
+          )}
+
+          {/* High Demand alert */}
+          {stats.approachingCapacityEvents.length > 0 && (
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <Flame className="w-4 h-4 text-red-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-white block">{stats.approachingCapacityEvents.length} Nearing Capacity</span>
+                  <span className="text-zinc-400 text-[11px]">≥80% seat quota fulfilled</span>
+                </div>
+              </div>
+              <Link
+                to="/organizer/analytics"
+                className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-300 font-semibold transition-colors text-[11px] shrink-0"
+              >
+                Inspect →
+              </Link>
+            </div>
+          )}
+
+          {/* Approaching Deadlines */}
+          {stats.approachingDeadlines.length > 0 && (
+            <div className="p-4 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-white block">{stats.approachingDeadlines.length} Closing Soon</span>
+                  <span className="text-zinc-400 text-[11px]">Deadlines within 72 hours</span>
+                </div>
+              </div>
+              <Link
+                to="/organizer/events"
+                className="px-3 py-1.5 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 font-semibold transition-colors text-[11px] shrink-0"
+              >
+                View →
+              </Link>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* 3. Main Dashboard 2-Column Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
