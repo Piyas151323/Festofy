@@ -112,35 +112,6 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
   const introRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const hitRef = useRef<HTMLDivElement>(null);
-  const aboveRef = useRef<HTMLDivElement>(null);
-  const belowRef = useRef<HTMLDivElement>(null);
-
-  // On phones the copy below the word is much taller than the label above it, which
-  // leaves the group sitting low with a large dead zone on top. Lift the word and its
-  // copy together so the whole group is vertically centred in the stage.
-  const [lift, setLift] = useState(0);
-  useLayoutEffect(() => {
-    const a = aboveRef.current, b = belowRef.current, stage = stageRef.current, svg = svgRef.current;
-    if (!isMobile || !a || !b || !stage || !svg) {
-      setLift(0);
-      return;
-    }
-    const measure = () => {
-      const gw = svg.getBoundingClientRect().width;
-      const balanced = (b.offsetHeight - a.offsetHeight) / 2;
-      // never push the top label closer than 12px to the stage edge
-      const room = stage.clientHeight / 2 - gw * 0.125 - a.offsetHeight - 12;
-      const next = Math.max(0, Math.round(Math.min(balanced, room)));
-      setLift((prev) => (prev === next ? prev : next));
-    };
-    measure();
-    if (typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(a);
-    ro.observe(b);
-    ro.observe(stage);
-    return () => ro.disconnect();
-  }, [isMobile]);
 
   const slotsRef = useRef(slots);
   const selectedRef = useRef(selected);
@@ -264,8 +235,8 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
   return (
     <section
       ref={sectionRef}
-      className="relative border-b border-[#242730] [--gw:clamp(15rem,80vw,22rem)] md:[--gw:min(92vw,1200px)]"
-      style={{ height: `${activeLengthVh}vh` }}
+      className="relative border-b border-[#242730]"
+      style={{ height: `${activeLengthVh}vh`, ['--gw' as string]: 'min(92vw, 1200px)' }}
     >
       <h1 className="sr-only">{word}</h1>
       <div
@@ -278,10 +249,7 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
           <div className="absolute inset-0" aria-hidden="true">{scene}</div>
 
           {/* Dark overlay with the word knocked out */}
-          <div
-            className="absolute inset-0 flex items-center justify-center"
-            style={lift ? { transform: `translateY(${-lift}px)` } : undefined}
-          >
+          <div className="absolute inset-0 flex items-center justify-center">
             <div className="relative" style={{ width: 'var(--gw)' }}>
               <svg
                 ref={svgRef}
@@ -356,16 +324,14 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
           {/* Opening-frame copy */}
           <div ref={introRef} className="pointer-events-none absolute inset-0">
             <div
-              ref={aboveRef}
               className="absolute inset-x-0 flex justify-center px-4 text-center"
-              style={{ bottom: `calc(50% + var(--gw) * 0.125 + ${lift}px)` }}
+              style={{ bottom: 'calc(50% + var(--gw) * 0.125)' }}
             >
               {above}
             </div>
             <div
-              ref={belowRef}
               className="absolute inset-x-0 flex justify-center px-4 text-center"
-              style={{ top: `calc(50% + var(--gw) * 0.125 - ${lift}px)` }}
+              style={{ top: 'calc(50% + var(--gw) * 0.125)' }}
             >
               {typeof below === 'function' ? below({ stepInside }) : below}
             </div>
@@ -374,11 +340,10 @@ const PortalStage: React.FC<Props & { onError: () => void }> = ({
           {/* Revealed content */}
           <div
             ref={contentRef}
-            className="absolute inset-0 flex overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-6"
+            className="absolute inset-0 flex items-center justify-center px-4 py-6 sm:px-6"
             style={{ opacity: 0, visibility: 'hidden', pointerEvents: 'none' }}
           >
-            {/* m-auto centres short content and lets tall content scroll instead of clipping */}
-            <div className="m-auto flex w-full justify-center">{children}</div>
+            {children}
           </div>
         </div>
       </div>

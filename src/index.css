@@ -14,12 +14,6 @@
     --accent: #ff4f1a;
     --accent-hover: #ff6838;
     --accent-glow: rgba(255, 79, 26, 0.15);
-    /* Sticky top bar: h-14 / sm:h-16 plus its 1px bottom border */
-    --app-header-h: 57px;
-  }
-
-  @media (min-width: 640px) {
-    :root { --app-header-h: 65px; }
   }
 
   body {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
 interface AppTopBarProps {
   brand: React.ReactNode;
@@ -57,29 +57,15 @@ export const AppTopBar: React.FC<AppTopBarProps> = ({
   tone = 'bg-[#090a0b]/90'
 }) => {
   const l = LAYOUT[`${placement}-${from}` as keyof typeof LAYOUT];
-  // Subtle state change once the page scrolls: firmer border so content slides under cleanly.
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
   return (
-    <header
-      data-nav-root
-      className={`sticky top-0 z-40 border-b backdrop-blur-xl transition-colors duration-200 ${
-        scrolled ? 'border-[#2e3442]' : 'border-[#242730]/90'
-      } ${tone}`}
-    >
-      {/* px-4 on phones: brand mark and menu icon sit the same distance from each screen edge */}
-      <div className={`mx-auto h-14 w-full max-w-7xl items-center gap-3 px-4 sm:h-16 sm:px-6 lg:px-8 ${l.row}`}>
-        <div className="-ml-1 min-w-0">{brand}</div>
+    <header data-nav-root className={`sticky top-0 z-40 border-b border-[#242730]/90 backdrop-blur-xl ${tone}`}>
+      <div className={`mx-auto h-14 w-full max-w-7xl items-center gap-3 px-3 sm:h-16 sm:px-6 lg:px-8 ${l.row}`}>
+        <div className="min-w-0">{brand}</div>
         <nav aria-label="Primary" className={`items-center gap-1 ${l.nav}`}>
           {nav}
         </nav>
         <div className={`items-center gap-2 ${l.actions}`}>{actions}</div>
-        <div className={`-mr-3 ${l.trigger}`}>{trigger}</div>
+        <div className={l.trigger}>{trigger}</div>
       </div>
     </header>
   );

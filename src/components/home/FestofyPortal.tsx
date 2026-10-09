@@ -2,7 +2,6 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowDownRight, ArrowRight } from 'lucide-react';
 import { GlyphPortal } from '../ui/glyph-portal';
-import { FOCUS_RING } from '../navigation/navUtils';
 
 const FEATURES = [
   {
@@ -20,30 +19,30 @@ const FEATURES = [
 ];
 
 const Eyebrow: React.FC = () => (
-  <div className="mb-1.5 inline-flex max-w-full items-center gap-2 rounded-xl border border-[#2e3442] bg-[#191b20] px-3 py-1.5 text-[10px] font-semibold uppercase leading-snug tracking-[0.08em] text-[#ff4f1a] min-[420px]:text-[11px] min-[420px]:tracking-[0.1em] sm:mb-0 sm:rounded-full sm:px-3.5 sm:text-xs sm:tracking-wider">
-    <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff4f1a]" />
-    <span className="text-balance text-center">Event operations for student organizations</span>
+  <div className="inline-flex items-center gap-2 rounded-full border border-[#2e3442] bg-[#191b20] px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider text-[#ff4f1a]">
+    <span className="h-1.5 w-1.5 rounded-full bg-[#ff4f1a]" />
+    Event operations for student organizations
   </div>
 );
 
 const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) => (
-  <div className="flex w-full max-w-2xl flex-col items-center">
-    <div className="font-heading text-[clamp(1.125rem,5.2vw,1.375rem)] font-semibold leading-tight text-[#f4f5f7] sm:text-2xl lg:text-3xl">
+  <div className="flex max-w-2xl flex-col items-center space-y-3 sm:space-y-4">
+    <div className="font-heading text-lg font-medium text-[#f4f5f7] sm:text-2xl lg:text-3xl">
       Plan. Discover. Participate.
     </div>
-    <p className="mt-2 max-w-[21rem] text-pretty text-[13.5px] leading-[1.6] text-[#9da3b4] sm:mt-3 sm:max-w-md sm:text-sm md:max-w-xl md:text-base">
+    <p className="text-xs leading-relaxed text-[#9da3b4] sm:text-sm md:text-base">
       One home for festivals, events, registrations and participants, built for the clubs that run them and the students who show up.
     </p>
     {onStepInside && (
-      <div className="pointer-events-auto mt-5 flex items-center justify-center sm:mt-6">
+      <div className="pointer-events-auto mt-2 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3">
         <button
           type="button"
           onClick={onStepInside}
           aria-label="Step inside interactive portal"
-          className={`inline-flex min-h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#ff4f1a] px-6 text-[13px] font-semibold text-white transition-[background-color,transform] duration-150 hover:bg-[#ff6838] active:scale-[0.98] active:bg-[#e8441a] sm:px-7 sm:text-sm ${FOCUS_RING}`}
+          className="inline-flex items-center gap-1.5 rounded-xl border border-[#242730] bg-[#191b20]/90 px-4 py-2.5 text-xs font-medium text-[#9da3b4] transition-colors hover:bg-[#242730] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:text-sm cursor-pointer"
         >
           <span>Step inside</span>
-          <ArrowDownRight className="h-4 w-4" aria-hidden="true" />
+          <ArrowDownRight className="h-3.5 w-3.5" />
         </button>
       </div>
     )}
@@ -53,42 +52,31 @@ const Supporting: React.FC<{ onStepInside?: () => void }> = ({ onStepInside }) =
 const Features: React.FC<{ showHeading?: boolean }> = ({ showHeading = true }) => (
   <div className="w-full max-w-5xl text-left">
     {showHeading && (
-      <h2 className="font-heading max-w-2xl text-balance text-[clamp(1.75rem,8.4vw,2.25rem)] font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl sm:leading-tight">
+      <h2 className="font-heading max-w-2xl text-3xl font-semibold leading-tight tracking-tight text-white sm:text-5xl">
         One home for every campus event.
       </h2>
     )}
-    <ol
-      className={`grid list-none grid-cols-1 border-b border-[#ff4f1a]/25 md:grid-cols-3 md:gap-10 md:border-b-0 ${
-        showHeading ? 'mt-4 sm:mt-6 md:mt-12' : ''
-      }`}
-    >
+    <div className={`grid grid-cols-1 gap-4 md:grid-cols-3 md:gap-10 ${showHeading ? 'mt-6 md:mt-12' : ''}`}>
       {FEATURES.map(({ title, body }, i) => (
-        <li
-          key={title}
-          className="grid grid-cols-[1.75rem_1fr] items-baseline border-t border-[#ff4f1a]/25 py-3 sm:grid-cols-[2.25rem_1fr] sm:py-4 md:grid-cols-[auto_1fr] md:gap-x-3 md:border-[#ff4f1a]/40 md:pb-0 md:pt-4"
-        >
-          <span className="text-[11px] font-semibold tabular-nums tracking-wider text-[#ff4f1a] md:text-xs">
-            0{i + 1}
-          </span>
-          <h3 className="font-heading text-[15px] font-semibold leading-snug text-white md:text-lg">
-            {title}
-          </h3>
-          <p className="col-start-2 mt-1 text-[13px] leading-[1.5] text-[#9da3b4] min-[380px]:text-sm md:col-span-2 md:col-start-1 md:mt-2 md:leading-relaxed">
-            {body}
-          </p>
-        </li>
+        <div key={title} className="border-t border-[#ff4f1a]/40 pt-3 md:pt-4">
+          <div className="flex items-baseline gap-3">
+            <span className="text-xs font-semibold text-[#ff4f1a]">0{i + 1}</span>
+            <h3 className="font-heading text-base font-semibold text-white md:text-lg">{title}</h3>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-[#9da3b4] md:mt-2 md:text-sm">{body}</p>
+        </div>
       ))}
-    </ol>
-    <div className="mt-5 grid grid-cols-2 gap-2.5 sm:mt-6 sm:flex sm:gap-4 md:mt-10">
+    </div>
+    <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:gap-4 md:mt-10">
       <Link
         to="/fests"
-        className={`flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#ff4f1a] px-3 text-[13px] font-semibold whitespace-nowrap text-white shadow-md min-[360px]:px-4 shadow-[#ff4f1a]/15 transition-[background-color,transform] duration-150 hover:bg-[#ff6838] active:scale-[0.98] active:bg-[#e8441a] sm:w-auto sm:px-7 sm:text-sm ${FOCUS_RING}`}
+        className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#ff4f1a] px-7 py-3 text-xs font-semibold text-white shadow-lg shadow-[#ff4f1a]/20 transition-all duration-200 hover:bg-[#ff6838] sm:w-auto sm:text-sm"
       >
-        Explore Fests <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        Explore Fests <ArrowRight className="h-4 w-4" />
       </Link>
       <Link
         to="/events"
-        className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border border-[#2e3442] bg-[#14161a] px-3 text-[13px] font-semibold whitespace-nowrap text-[#f4f5f7] min-[360px]:px-4 transition-[background-color,transform] duration-150 hover:bg-[#1e222b] active:scale-[0.98] sm:w-auto sm:px-7 sm:text-sm ${FOCUS_RING}`}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#2e3442] bg-[#14161a] px-7 py-3 text-xs font-semibold text-[#f4f5f7] transition-colors hover:bg-[#1e222b] sm:w-auto sm:text-sm"
       >
         View Events
       </Link>
@@ -98,11 +86,11 @@ const Features: React.FC<{ showHeading?: boolean }> = ({ showHeading = true }) =
 
 /** Static version: reduced motion, or if the animation can't initialise. */
 const StaticHero: React.FC = () => (
-  <section className="relative overflow-hidden border-b border-[#242730] bg-gradient-to-b from-[#121316] via-[#090a0b] to-[#090a0b] pb-10 pt-10 sm:pb-14 sm:pt-24">
+  <section className="relative overflow-hidden border-b border-[#242730] bg-gradient-to-b from-[#121316] via-[#090a0b] to-[#090a0b] pb-14 pt-16 sm:pt-24">
     <div className="pointer-events-none absolute left-1/2 top-1/4 h-[350px] w-[600px] max-w-full -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#ff4f1a]/10 blur-[130px]" />
-    <div className="relative z-10 mx-auto max-w-5xl space-y-6 px-4 text-center sm:space-y-8 sm:px-6 lg:px-8">
+    <div className="relative z-10 mx-auto max-w-5xl space-y-8 px-4 text-center sm:px-6 lg:px-8">
       <Eyebrow />
-      <h1 className="font-heading text-[clamp(2.25rem,12vw,3rem)] font-extrabold leading-none tracking-tight text-white sm:text-6xl lg:text-7xl">
+      <h1 className="font-heading text-4xl font-extrabold leading-none tracking-tight text-white sm:text-6xl lg:text-7xl">
         FESTOFY
       </h1>
       <div className="flex justify-center">
@@ -118,7 +106,7 @@ const StaticHero: React.FC = () => (
 export const FestofyPortal: React.FC = () => (
   <GlyphPortal
     word="FESTOFY"
-    topOffset="var(--app-header-h)" /* sticky PublicLayout header height, see index.css */
+    topOffset="4rem" /* PublicLayout header is sticky, h-16 */
     above={<Eyebrow />}
     below={({ stepInside }) => <Supporting onStepInside={stepInside} />}
     fallback={<StaticHero />}
