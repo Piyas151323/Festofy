@@ -18,6 +18,7 @@ import {
 } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
 import { dispatchRecommendationsForPublishedEvent } from './notificationService';
+import { sanitizeForFirestore } from '../utils/firestoreUtils';
 
 const EVENTS_COLLECTION = 'events';
 const CATEGORIES_COLLECTION = 'eventCategories';
@@ -319,7 +320,8 @@ export async function createEvent(input: CreateEventInput, organizationId: strin
       };
 
       // 3. Set event doc in draft status
-      transaction.set(eventRef, eventPayload);
+      const sanitizedPayload = sanitizeForFirestore(eventPayload);
+      transaction.set(eventRef, sanitizedPayload);
 
       // 4. Atomically increment eventCount on parent festival
       const currentCount = typeof festData.eventCount === 'number' ? festData.eventCount : 0;
@@ -499,10 +501,11 @@ export async function updateEvent(eventId: string, input: UpdateEventInput): Pro
 
   try {
     const docRef = doc(db, EVENTS_COLLECTION, eventId);
-    await updateDoc(docRef, updates);
+    const sanitizedUpdates = sanitizeForFirestore(updates);
+    await updateDoc(docRef, sanitizedUpdates);
     return {
       ...existing,
-      ...updates
+      ...sanitizedUpdates
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${EVENTS_COLLECTION}/${eventId}`);

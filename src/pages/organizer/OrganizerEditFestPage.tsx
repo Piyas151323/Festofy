@@ -194,7 +194,7 @@ export const OrganizerEditFestPage: React.FC = () => {
         endDate: new Date(endDate).toISOString(),
         visitorAccess,
         participantCategories: categories,
-        bannerUrl: bannerUrl.trim() || undefined
+        ...(bannerUrl.trim() ? { bannerUrl: bannerUrl.trim() } : { bannerUrl: '' })
       });
 
       navigate(`/organizer/fests/${festId}`);

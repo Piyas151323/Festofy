@@ -335,17 +335,39 @@ export const OrganizerCreateEventPage: React.FC = () => {
           endTime: new Date(endMs).toISOString(),
           registrationDeadline: new Date(deadlineMs).toISOString(),
           capacity: capNum,
-          bannerUrl: bannerUrl.trim() || undefined,
+          ...(bannerUrl.trim() ? { bannerUrl: bannerUrl.trim() } : {}),
           registrationType,
-          minTeamSize: registrationType === 'team' ? minTeam : undefined,
-          maxTeamSize: registrationType === 'team' ? maxTeam : undefined,
+          ...(registrationType === 'team' ? { minTeamSize: minTeam, maxTeamSize: maxTeam } : {}),
           requiresApproval,
           visitorAccess,
           isPaid,
           baseFee: parsedBaseFee,
           topics,
-          participantCategories: categories.filter(c => c.eligible !== false),
-          customFormFields: customFields.map(f => ({ ...f, options: f.options ? [...f.options] : undefined }))
+          participantCategories: categories
+            .filter(c => c.eligible !== false)
+            .map(c => {
+              const cleanC: ParticipantCategoryConfig = {
+                id: c.id,
+                name: c.name,
+                eligible: true
+              };
+              if (typeof c.fee === 'number') cleanC.fee = c.fee;
+              if (c.description) cleanC.description = c.description;
+              return cleanC;
+            }),
+          customFormFields: customFields.map(f => {
+            const cleanF: EventFormField = {
+              id: f.id,
+              label: f.label,
+              type: f.type,
+              required: Boolean(f.required)
+            };
+            if (f.placeholder) cleanF.placeholder = f.placeholder;
+            if (f.helpText) cleanF.helpText = f.helpText;
+            if (f.validationRule) cleanF.validationRule = f.validationRule;
+            if (f.options && f.options.length > 0) cleanF.options = [...f.options];
+            return cleanF;
+          })
         },
         activeOrganization.id
       );

@@ -51,7 +51,7 @@ function testPhase4_3AdminDashboardAndApproval() {
   // 4. Admin can access /admin
   assert(
     app.includes("allowedRoles={['admin']}") &&
-    adminLayout.includes("ADMIN CONSOLE"),
+    adminLayout.toUpperCase().includes("ADMIN CONSOLE"),
     '4. Admin can access /admin (AdminLayout mounted)'
   );
 

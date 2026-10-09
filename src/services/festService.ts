@@ -14,6 +14,7 @@ import {
 import { db, auth } from '../lib/firebase/config';
 import { Fest, CreateFestInput, UpdateFestInput, FestStatus } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
+import { sanitizeForFirestore } from '../utils/firestoreUtils';
 
 const COLLECTION_NAME = 'fests';
 
@@ -269,10 +270,11 @@ export async function updateFest(festId: string, input: UpdateFestInput): Promis
 
   try {
     const docRef = doc(db, COLLECTION_NAME, festId);
-    await updateDoc(docRef, updates);
+    const sanitizedUpdates = sanitizeForFirestore(updates);
+    await updateDoc(docRef, sanitizedUpdates);
     return {
       ...existing,
-      ...updates
+      ...sanitizedUpdates
     };
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${festId}`);
