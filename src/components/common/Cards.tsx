@@ -169,25 +169,27 @@ export const EventCard: React.FC<EventCardProps> = ({ event }) => {
 
           {/* Description */}
           <p className="text-xs sm:text-sm text-[#9da3b4] line-clamp-2 leading-relaxed mb-3">
-            {event.description}
+            {event.description || 'No description provided.'}
           </p>
 
           {/* Venue & Capacity */}
           <div className="space-y-1 text-xs text-[#9da3b4]">
             <div className="flex items-center gap-1.5 truncate">
               <MapPin className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
-              <span className="truncate text-xs">{event.venue}</span>
+              <span className="truncate text-xs">{event.venue || 'Venue TBA'}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-[#656c80] shrink-0" />
               <span className="text-xs">{formatDateTime(event.startTime)}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#656c80] shrink-0" />
-              <span className="text-xs text-[#656c80]">
-                Capacity: <span className="text-[#9da3b4] font-medium">{event.capacity} seats</span>
-              </span>
-            </div>
+            {event.capacity ? (
+              <div className="flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-[#656c80] shrink-0" />
+                <span className="text-xs text-[#656c80]">
+                  Capacity: <span className="text-[#9da3b4] font-medium">{event.capacity} seats</span>
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
 

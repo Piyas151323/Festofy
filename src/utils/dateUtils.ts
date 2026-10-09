@@ -2,7 +2,8 @@
  * Date formatting utilities with consistent Bangladesh Timezone (BST, UTC+6) support
  */
 
-export function formatDateTime(isoString: string): string {
+export function formatDateTime(isoString?: string): string {
+  if (!isoString) return 'Date TBA';
   try {
     const date = new Date(isoString);
     if (isNaN(date.getTime())) return isoString;
@@ -56,9 +57,15 @@ export function isDeadlinePassed(deadlineIso: string): boolean {
   }
 }
 
-export function getDeadlineText(deadlineIso: string): { label: string; isClosed: boolean } {
+export function getDeadlineText(deadlineIso?: string): { label: string; isClosed: boolean } {
+  if (!deadlineIso) {
+    return { label: 'Open', isClosed: false };
+  }
   try {
     const deadline = new Date(deadlineIso);
+    if (isNaN(deadline.getTime())) {
+      return { label: 'Open', isClosed: false };
+    }
     const diffMs = deadline.getTime() - Date.now();
     if (diffMs <= 0) {
       return { label: 'Registration Closed', isClosed: true };
@@ -69,6 +76,6 @@ export function getDeadlineText(deadlineIso: string): { label: string; isClosed:
     }
     return { label: `Closes in ${diffDays} days`, isClosed: false };
   } catch {
-    return { label: 'Closes soon', isClosed: false };
+    return { label: 'Open', isClosed: false };
   }
 }

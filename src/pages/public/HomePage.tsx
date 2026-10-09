@@ -4,7 +4,7 @@ import { ArrowRight } from 'lucide-react';
 import { getPublishedFests } from '../../services/festService';
 import { getPublishedEvents } from '../../services/eventService';
 import { Fest, EventItem } from '../../types';
-import { FestCard, EventRow } from '../../components/common/Cards';
+import { FestCard, EventCard } from '../../components/common/Cards';
 import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { ErrorState, EmptyState } from '../../components/common/EmptyState';
 import { FestofyPortal } from '../../components/home/FestofyPortal';
@@ -118,7 +118,7 @@ export const HomePage: React.FC = () => {
         </div>
 
         {loading ? (
-          <CardSkeleton count={4} />
+          <CardSkeleton count={6} />
         ) : error ? (
           <ErrorState message={error} />
         ) : events.length === 0 ? (
@@ -127,9 +127,9 @@ export const HomePage: React.FC = () => {
             description="Events created by organizers will be listed here."
           />
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {events.map((evt) => (
-              <EventRow key={evt.id} event={evt} />
+              <EventCard key={evt.id} event={evt} />
             ))}
           </div>
         )}
