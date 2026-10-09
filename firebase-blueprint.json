@@ -209,6 +209,25 @@
           "description": "URL-friendly category slug",
           "maxLength": 80
         },
+        "normalizedName": {
+          "type": "string",
+          "description": "Lower-case normalized category name for duplicate detection",
+          "maxLength": 80
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "UID of creator if custom category",
+          "maxLength": 128
+        },
+        "isCustom": {
+          "type": "boolean",
+          "description": "Flag indicating if category is an organizer custom category"
+        },
+        "group": {
+          "type": "string",
+          "description": "Category group or department classification",
+          "maxLength": 80
+        },
         "description": {
           "type": "string",
           "description": "Category description",

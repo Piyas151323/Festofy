@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,6 +29,7 @@ import { AVAILABLE_INTERESTS } from '../../services/userService';
 import { Fest, EventCategory, EventFormField, FormFieldType, ParticipantCategoryConfig, VisitorAccessType } from '../../types';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
 import { TemplateSelectorModal } from '../../components/registration/TemplateSelectorModal';
+import { AddCustomCategoryModal } from '../../components/organizer/AddCustomCategoryModal';
 import { validatePhoneNumber } from '../../utils/phoneUtils';
 import { PageHeader } from '../../components/common/PageHeader';
 
@@ -53,6 +54,7 @@ export const OrganizerCreateEventPage: React.FC = () => {
   const [loadingMeta, setLoadingMeta] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isCustomCatModalOpen, setIsCustomCatModalOpen] = useState(false);
 
   // Form State
   const [festId, setFestId] = useState(preselectedFestId || '');
@@ -66,6 +68,35 @@ export const OrganizerCreateEventPage: React.FC = () => {
   const [capacity, setCapacity] = useState('100');
   const [bannerUrl, setBannerUrl] = useState('');
   const [organizerWhatsApp, setOrganizerWhatsApp] = useState('');
+
+  // Grouped event categories
+  const groupedCategories = useMemo(() => {
+    const predefinedOrder = [
+      'Technology & Computing',
+      'Academic & Innovation',
+      'Creative & Media',
+      'Competitions & General Events',
+      'Custom Categories'
+    ];
+
+    const groupMap: { [key: string]: EventCategory[] } = {};
+    predefinedOrder.forEach(g => { groupMap[g] = []; });
+
+    categoriesTaxonomy.forEach((cat) => {
+      const g = cat.group || (cat.isCustom ? 'Custom Categories' : 'Competitions & General Events');
+      if (!groupMap[g]) {
+        groupMap[g] = [];
+      }
+      groupMap[g].push(cat);
+    });
+
+    return Object.entries(groupMap)
+      .filter(([_, items]) => items.length > 0)
+      .map(([groupName, items]) => ({
+        group: groupName,
+        items: items.sort((a, b) => a.name.localeCompare(b.name))
+      }));
+  }, [categoriesTaxonomy]);
 
   // Visitor Policy
   const [visitorAccess, setVisitorAccess] = useState<VisitorAccessType>('allowed');
@@ -171,6 +202,23 @@ export const OrganizerCreateEventPage: React.FC = () => {
 
   const handleRemoveCategory = (id: string) => {
     setCategories(prev => prev.filter(c => c.id !== id));
+  };
+
+  const handleCategorySelect = (val: string) => {
+    if (val === '__add_custom__') {
+      setIsCustomCatModalOpen(true);
+    } else {
+      setCategoryId(val);
+    }
+  };
+
+  const handleCustomCategoryCreated = (newCat: EventCategory) => {
+    setCategoriesTaxonomy(prev => {
+      if (prev.some(c => c.id === newCat.id)) return prev;
+      return [...prev, newCat];
+    });
+    setCategoryId(newCat.id);
+    setIsCustomCatModalOpen(false);
   };
 
   const handleToggleTopic = (topic: string) => {
@@ -336,10 +384,12 @@ export const OrganizerCreateEventPage: React.FC = () => {
     try {
       setSubmitting(true);
       const parsedBaseFee = isPaid ? Math.max(0, Number(baseFee) || 0) : 0;
+      const selectedCatObj = categoriesTaxonomy.find(c => c.id === categoryId);
       const created = await createEvent(
         {
           festId,
           categoryId,
+          categoryName: selectedCatObj?.name,
           name: trimmedName,
           description: trimmedDesc,
           venue: trimmedVenue,
@@ -522,20 +572,38 @@ export const OrganizerCreateEventPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1.5">
-                Category <span className="text-[#ff4f1a]">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-zinc-300">
+                  Category <span className="text-[#ff4f1a]">*</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsCustomCatModalOpen(true)}
+                  className="text-[11px] font-medium text-[#ff4f1a] hover:text-[#ff6838] transition-colors cursor-pointer flex items-center gap-1"
+                  title="Create a new custom category"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Custom</span>
+                </button>
+              </div>
               <select
                 value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
+                onChange={(e) => handleCategorySelect(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white focus:outline-none focus:border-[#ff4f1a]"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white focus:outline-none focus:border-[#ff4f1a] transition-colors cursor-pointer"
               >
-                {categoriesTaxonomy.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
+                {groupedCategories.map(({ group, items }) => (
+                  <optgroup key={group} label={group} className="bg-[#14161a] text-zinc-400 font-semibold">
+                    {items.map((c) => (
+                      <option key={c.id} value={c.id} className="bg-[#191b20] text-white font-normal">
+                        {c.name}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
+                <option value="__add_custom__" className="bg-[#242730] text-[#ff4f1a] font-semibold py-1">
+                  + Add Custom Category
+                </option>
               </select>
             </div>
           </div>
@@ -1247,6 +1315,14 @@ export const OrganizerCreateEventPage: React.FC = () => {
           currentFieldsToSave={customFields}
         />
       )}
+
+      {/* Add Custom Category Modal */}
+      <AddCustomCategoryModal
+        isOpen={isCustomCatModalOpen}
+        onClose={() => setIsCustomCatModalOpen(false)}
+        onCategoryCreated={handleCustomCategoryCreated}
+        existingCategories={categoriesTaxonomy}
+      />
     </div>
   );
 };

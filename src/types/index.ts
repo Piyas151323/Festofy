@@ -123,6 +123,10 @@ export interface EventCategory {
   slug: string;
   description?: string;
   createdAt: string;
+  normalizedName?: string;
+  createdBy?: string;
+  isCustom?: boolean;
+  group?: string;
 }
 
 export type EventStatus = 'draft' | 'published' | 'completed' | 'cancelled';
@@ -167,6 +171,7 @@ export interface EventItem {
 export interface CreateEventInput {
   festId: string;
   categoryId: string;
+  categoryName?: string;
   name: string;
   description: string;
   bannerUrl?: string;
@@ -190,6 +195,7 @@ export interface CreateEventInput {
 
 export interface UpdateEventInput {
   categoryId?: string;
+  categoryName?: string;
   name?: string;
   description?: string;
   bannerUrl?: string;

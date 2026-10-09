@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   updateDoc,
+  setDoc,
   query,
   where,
   runTransaction
@@ -20,10 +21,21 @@ import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandle
 import { dispatchRecommendationsForPublishedEvent } from './notificationService';
 import { sanitizeForFirestore } from '../utils/firestoreUtils';
 import { validatePhoneNumber } from '../utils/phoneUtils';
+import { INITIAL_CATEGORIES } from './seedService';
 
 const EVENTS_COLLECTION = 'events';
 const CATEGORIES_COLLECTION = 'eventCategories';
 const FESTS_COLLECTION = 'fests';
+
+function enrichEventCategory(event: EventItem): EventItem {
+  if (!event.categoryName && event.categoryId) {
+    const matched = INITIAL_CATEGORIES.find(c => c.id === event.categoryId);
+    if (matched) {
+      return { ...event, categoryName: matched.name };
+    }
+  }
+  return event;
+}
 
 /**
  * Fetch publicly published events.
@@ -50,7 +62,7 @@ export async function getPublishedEvents(festId?: string): Promise<EventItem[]> 
     }
 
     const snap = await getDocs(q);
-    const items = snap.docs.map(d => ({
+    const items = snap.docs.map(d => enrichEventCategory({
       id: d.id,
       ...d.data()
     } as EventItem));
@@ -70,10 +82,10 @@ export async function getEventById(id: string): Promise<EventItem | null> {
     const docRef = doc(db, EVENTS_COLLECTION, id);
     const snap = await getDoc(docRef);
     if (!snap.exists()) return null;
-    return {
+    return enrichEventCategory({
       id: snap.id,
       ...snap.data()
-    } as EventItem;
+    } as EventItem);
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `${EVENTS_COLLECTION}/${id}`);
     return null;
@@ -81,19 +93,128 @@ export async function getEventById(id: string): Promise<EventItem | null> {
 }
 
 /**
- * Fetch public taxonomy categories.
+ * Fetch public taxonomy categories (both default and custom categories).
+ * Automatically merges initial default categories to guarantee all 45 options are available,
+ * and sorts them logically by group hierarchy, then alphabetically by name.
  */
 export async function getEventCategories(): Promise<EventCategory[]> {
   try {
     const coll = collection(db, CATEGORIES_COLLECTION);
     const snap = await getDocs(coll);
-    return snap.docs.map(d => ({
+    const fetchedDocs = snap.docs.map(d => ({
       id: d.id,
       ...d.data()
-    } as EventCategory)).sort((a, b) => a.name.localeCompare(b.name));
+    } as EventCategory));
+
+    // Combine fetched docs with INITIAL_CATEGORIES to ensure all standard categories exist
+    const categoryMap = new Map<string, EventCategory>();
+
+    // Start with all INITIAL_CATEGORIES
+    for (const cat of INITIAL_CATEGORIES) {
+      categoryMap.set(cat.id, cat);
+    }
+
+    // Overlay or append documents from Firestore (e.g. custom categories created by organizers)
+    for (const docCat of fetchedDocs) {
+      const existing = categoryMap.get(docCat.id);
+      categoryMap.set(docCat.id, {
+        ...(existing || {}),
+        ...docCat,
+        group: docCat.group || existing?.group || (docCat.isCustom ? 'Custom Categories' : 'Competitions & General Events')
+      });
+    }
+
+    const allCategories = Array.from(categoryMap.values());
+
+    // Sort logically: group by group order, then alphabetically by name
+    const groupOrder: Record<string, number> = {
+      'Technology & Computing': 1,
+      'Academic & Innovation': 2,
+      'Creative & Media': 3,
+      'Competitions & General Events': 4,
+      'Custom Categories': 5
+    };
+
+    return allCategories.sort((a, b) => {
+      const orderA = groupOrder[a.group || ''] ?? 99;
+      const orderB = groupOrder[b.group || ''] ?? 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.name.localeCompare(b.name);
+    });
   } catch (error) {
     handleFirestoreError(error, OperationType.LIST, CATEGORIES_COLLECTION);
-    return [];
+    return INITIAL_CATEGORIES;
+  }
+}
+
+/**
+ * Create and persist a custom event category in Firestore.
+ * Performs validation:
+ * - Trims whitespace
+ * - Minimum 2 characters, maximum 80 characters
+ * - Case-insensitive uniqueness check against all existing categories and normalized names
+ * - Persists in eventCategories collection with normalizedName, createdBy, createdAt, isCustom
+ */
+export async function createCustomCategory(
+  name: string,
+  description?: string,
+  group: string = 'Custom Categories'
+): Promise<EventCategory> {
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    throw new Error('You must be signed in to create a custom category.');
+  }
+
+  const trimmed = name.trim();
+  if (!trimmed) {
+    throw new Error('Category name cannot be empty.');
+  }
+
+  if (trimmed.length < 2 || trimmed.length > 80) {
+    throw new Error('Category name must be between 2 and 80 characters.');
+  }
+
+  const normalized = trimmed.toLowerCase();
+
+  // 1. Fetch current categories to verify case-insensitive uniqueness
+  const existingCategories = await getEventCategories();
+  const duplicate = existingCategories.find(
+    c => c.name.toLowerCase() === normalized || (c.normalizedName && c.normalizedName.toLowerCase() === normalized)
+  );
+  if (duplicate) {
+    throw new Error(`Category "${duplicate.name}" already exists.`);
+  }
+
+  // 2. Generate slug and unique document ID
+  const slug = trimmed
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40) || 'custom';
+
+  const id = `cat_custom_${slug}_${Math.random().toString(36).substring(2, 6)}`;
+  const now = new Date().toISOString();
+
+  const customCategory: EventCategory = {
+    id,
+    name: trimmed,
+    normalizedName: normalized,
+    slug: `custom-${slug}`,
+    description: description?.trim() || `Custom category created by organizer.`,
+    createdBy: currentUser.uid,
+    isCustom: true,
+    group: group || 'Custom Categories',
+    createdAt: now
+  };
+
+  try {
+    const docRef = doc(db, CATEGORIES_COLLECTION, id);
+    const sanitized = sanitizeForFirestore(customCategory);
+    await setDoc(docRef, sanitized);
+    return customCategory;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.CREATE, `${CATEGORIES_COLLECTION}/${id}`);
+    throw error;
   }
 }
 
@@ -107,7 +228,7 @@ export async function getOrganizationEvents(organizationId: string): Promise<Eve
       where('organizationId', '==', organizationId)
     );
     const snapshot = await getDocs(q);
-    const events = snapshot.docs.map(d => ({
+    const events = snapshot.docs.map(d => enrichEventCategory({
       id: d.id,
       ...d.data()
     } as EventItem));
@@ -142,7 +263,7 @@ export async function getFestEvents(festId: string, includeUnpublished = false):
     }
 
     const snap = await getDocs(q);
-    const items = snap.docs.map(d => ({
+    const items = snap.docs.map(d => enrichEventCategory({
       id: d.id,
       ...d.data()
     } as EventItem));
@@ -296,11 +417,16 @@ export async function createEvent(input: CreateEventInput, organizationId: strin
         }
       }
 
+      const resolvedCategoryName = input.categoryName?.trim() ||
+        INITIAL_CATEGORIES.find(c => c.id === input.categoryId.trim())?.name ||
+        undefined;
+
       const eventPayload: EventItem = {
         id: eventId,
         festId: input.festId.trim(),
         organizationId: organizationId.trim(),
         categoryId: input.categoryId.trim(),
+        ...(resolvedCategoryName ? { categoryName: resolvedCategoryName } : {}),
         name: trimmedName,
         description: trimmedDesc,
         venue: trimmedVenue,
@@ -397,6 +523,12 @@ export async function updateEvent(eventId: string, input: UpdateEventInput): Pro
     const cat = input.categoryId.trim();
     if (!cat) throw new Error('Category cannot be empty.');
     updates.categoryId = cat;
+    const catName = input.categoryName?.trim() || INITIAL_CATEGORIES.find(c => c.id === cat)?.name;
+    if (catName) {
+      updates.categoryName = catName;
+    }
+  } else if (input.categoryName !== undefined && input.categoryName.trim()) {
+    updates.categoryName = input.categoryName.trim();
   }
 
   if (input.capacity !== undefined) {

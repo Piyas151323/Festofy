@@ -294,10 +294,23 @@ service cloud.firestore {
       );
     }
 
-    // EVENT CATEGORIES (Public Taxonomy)
+    // EVENT CATEGORIES (Public Taxonomy & Custom Categories)
     match /eventCategories/{categoryId} {
       allow get, list: if true;
-      allow create, update, delete: if isAdmin();
+      allow create: if isSignedIn() && (
+        isAdmin() ||
+        (
+          request.resource.data.keys().hasAll(['id', 'name', 'slug', 'createdAt']) &&
+          request.resource.data.keys().hasOnly(['id', 'name', 'normalizedName', 'slug', 'description', 'createdBy', 'isCustom', 'group', 'createdAt']) &&
+          request.resource.data.name is string &&
+          request.resource.data.name.size() >= 2 &&
+          request.resource.data.name.size() <= 80 &&
+          request.resource.data.slug is string &&
+          request.resource.data.slug.size() >= 2 &&
+          request.resource.data.slug.size() <= 80
+        )
+      );
+      allow update, delete: if isAdmin();
     }
 
     // EVENTS COLLECTION (Public Contests & Challenges Lifecycle)
