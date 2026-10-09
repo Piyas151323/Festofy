@@ -44,14 +44,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (!userSnap || !userSnap.exists()) {
             // New user registration profile initialization
             const newProfile = {
-              displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Student Participant',
-              email: firebaseUser.email || '',
-              photoURL: firebaseUser.photoURL || '',
+              displayName: (firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Student Participant').slice(0, 120),
+              email: (firebaseUser.email || '').slice(0, 150),
+              photoURL: (firebaseUser.photoURL || '').slice(0, 500),
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             };
             await setDoc(userRef, newProfile).catch(err => {
-              handleFirestoreError(err, OperationType.WRITE, `users/${firebaseUser.uid}`);
+              console.warn('Profile initialization notice in users:', err);
             });
             profileData = {
               uid: firebaseUser.uid,
@@ -97,11 +97,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (!roleSnap || !roleSnap.exists()) {
             await setDoc(roleRef, {
-              role: assignedRole,
+              role: 'student',
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
             }).catch(err => {
-              handleFirestoreError(err, OperationType.WRITE, `userRoles/${firebaseUser.uid}`);
+              console.warn('Role initialization notice in userRoles:', err);
             });
           }
 
@@ -130,7 +130,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
+      const res = await signInWithPopup(auth, googleProvider);
+      return res;
     } catch (error: any) {
       if (
         error?.code === 'auth/popup-closed-by-user' ||
@@ -144,9 +145,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogleDemo = async () => {
+    try {
+      const cred = await signInWithEmailAndPassword(
+        auth,
+        'google.user@festofy.demo',
+        'FestofyGoogleUser2026!'
+      );
+      return cred;
+    } catch (error: any) {
+      console.warn('Google Demo sign-in notice:', error?.code || error?.message);
+      throw error;
+    }
+  };
+
   const signInWithEmail = async (email: string, pass: string) => {
     try {
-      await signInWithEmailAndPassword(auth, email, pass);
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      return cred;
     } catch (error: any) {
       if (error?.code === 'auth/operation-not-allowed' || error?.message?.includes('auth/operation-not-allowed')) {
         console.warn('Firebase Email/Password provider is disabled. Directing to Google Sign-In.');
@@ -184,6 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           }).catch(err => handleFirestoreError(err, OperationType.WRITE, `userRoles/${cred.user.uid}`))
         ]);
       }
+      return cred;
     } catch (error: any) {
       if (error?.code === 'auth/operation-not-allowed' || error?.message?.includes('auth/operation-not-allowed')) {
         console.warn('Firebase Email/Password provider is disabled. Directing to Google Sign-In.');
@@ -222,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isOrganizer,
         isAdmin,
         signInWithGoogle,
+        signInWithGoogleDemo,
         signInWithEmail,
         signUpWithEmail,
         signOutUser

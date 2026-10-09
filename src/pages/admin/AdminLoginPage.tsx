@@ -44,10 +44,27 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
     }
   }, [isAuthenticated, role, navigate, targetDestination]);
 
-  const handleUseDemoCredentials = () => {
+  const handleUseDemoCredentials = async () => {
     setEmail('admin@festofy.demo');
     setPassword('FestofyAdminDemo2026!');
     setErrorMsg(null);
+    setLoading(true);
+
+    try {
+      const cred = await signInWithEmailAndPassword(auth, 'admin@festofy.demo', 'FestofyAdminDemo2026!');
+      const roleRef = doc(db, 'userRoles', cred.user.uid);
+      const roleSnap = await getDoc(roleRef);
+
+      if (!roleSnap.exists() || roleSnap.data()?.role !== 'admin') {
+        await signOut(auth);
+        throw new Error('Your account does not have platform administrator access.');
+      }
+      navigate(targetDestination, { replace: true });
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to authenticate admin demo credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCopyCredentials = () => {
@@ -232,11 +249,12 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
 
             <button
               type="button"
+              disabled={loading}
               onClick={handleUseDemoCredentials}
-              className="w-full py-2 px-3 rounded-lg text-xs font-semibold text-red-300 bg-red-950/40 hover:bg-red-900/40 border border-red-800/40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 rounded-lg text-xs font-semibold text-red-300 bg-red-950/40 hover:bg-red-900/40 border border-red-800/40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
               <Sparkles className="w-3.5 h-3.5 text-red-400" />
-              <span>Use Demo Credentials</span>
+              <span>{loading ? 'Signing In as Admin...' : '1-Click Sign In as Demo Admin'}</span>
             </button>
           </div>
         </div>

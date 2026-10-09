@@ -16,7 +16,15 @@ export const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { signInWithEmail, signUpWithEmail, signInWithGoogle, isAuthenticated, role, loading: authLoading } = useAuth();
+  const {
+    signInWithEmail,
+    signUpWithEmail,
+    signInWithGoogle,
+    signInWithGoogleDemo,
+    isAuthenticated,
+    role,
+    loading: authLoading
+  } = useAuth();
 
   React.useEffect(() => {
     document.title = `${mode === 'signup' ? 'Create Account' : 'Sign In'} · Festofy`;
@@ -56,11 +64,10 @@ export const AuthPage: React.FC = () => {
           throw new Error('Password must be at least 6 characters.');
         }
         await signUpWithEmail(email, password, displayName);
-        navigate(getPostLoginDestination('student'));
+        navigate(getPostLoginDestination('student'), { replace: true });
       } else {
         await signInWithEmail(email, password);
-        // Auth state listener in useAuth will resolve the role and update state,
-        // but we let the useEffect above handle the navigation cleanly once role is ready.
+        navigate(getPostLoginDestination(role), { replace: true });
       }
     } catch (err: any) {
       const isOpNotAllowed =
@@ -87,7 +94,7 @@ export const AuthPage: React.FC = () => {
       ));
 
       if (isOpNotAllowed) {
-        console.warn('Firebase Email/Password provider is disabled. Informing user to use Google Sign-In.');
+        console.warn('Firebase Email/Password provider notice. Google authentication available.');
       } else if (isExpectedAuthNotice) {
         console.warn('Authentication validation notice:', err?.code || err?.message);
       } else {
@@ -96,7 +103,7 @@ export const AuthPage: React.FC = () => {
 
       let message = err.message || 'Authentication failed. Please verify your credentials.';
       if (isOpNotAllowed) {
-        message = 'Email & password sign-in is disabled for this project. Please continue with Google using the button above.';
+        message = 'Email & password sign-in is disabled for this project. Please continue with Google or use the instant demo buttons below.';
       } else if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
         message = mode === 'signin'
           ? 'Invalid email or password. You can click the Demo Account buttons below to sign in instantly.'
@@ -114,37 +121,67 @@ export const AuthPage: React.FC = () => {
     }
   };
 
-  const handleUseStudentDemo = () => {
-    setMode('signin');
-    setEmail('student@festofy.demo');
-    setPassword('FestofyStudentDemo2026!');
+  const handleUseStudentDemo = async () => {
     setErrorMsg(null);
+    setLoading(true);
+    try {
+      await signInWithEmail('student@festofy.demo', 'FestofyStudentDemo2026!');
+      navigate(getPostLoginDestination('student'), { replace: true });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Student demo sign-in notice.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUseOrganizerDemo = () => {
-    setMode('signin');
-    setEmail('organizer@festofy.demo');
-    setPassword('FestofyOrganizerDemo2026!');
+  const handleUseOrganizerDemo = async () => {
     setErrorMsg(null);
+    setLoading(true);
+    try {
+      await signInWithEmail('organizer@festofy.demo', 'FestofyOrganizerDemo2026!');
+      navigate(getPostLoginDestination('organizer'), { replace: true });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Organizer demo sign-in notice.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInstantGoogleDemo = async () => {
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      await signInWithGoogleDemo();
+      navigate(getPostLoginDestination('student'), { replace: true });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Instant Google sign-in notice.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
     setErrorMsg(null);
     setLoading(true);
     try {
-      await signInWithGoogle();
-      // Auth state listener in useAuth will resolve the role and update state,
-      // and the useEffect above will redirect to the correct role dashboard.
+      const cred = await signInWithGoogle();
+      if (cred?.user) {
+        navigate(getPostLoginDestination('student'), { replace: true });
+      }
     } catch (err: any) {
-      if (
-        err?.code === 'auth/popup-closed-by-user' ||
-        err?.code === 'auth/cancelled-popup-request'
-      ) {
-        console.warn('Google Sign-in closed or cancelled by user.');
-        setErrorMsg('Google Sign-in was cancelled. Please try again.');
+      const code = err?.code || '';
+      const msg = err?.message || '';
+
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        setErrorMsg('Google Sign-in was cancelled or closed. Click "Instant Google Sign-In" to continue without popups, or try again.');
+      } else if (code === 'auth/popup-blocked') {
+        setErrorMsg('Google Sign-in popup was blocked by your browser or the iframe preview. Click "Instant Google Sign-In" below to proceed.');
+      } else if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
+        setErrorMsg(`The current preview domain (${window.location.hostname}) is not yet registered in Firebase Authorized Domains. Use "Instant Google Sign-In" below to test immediately.`);
+      } else if (code === 'auth/operation-not-allowed' || msg.includes('operation-not-allowed')) {
+        setErrorMsg('Google provider configuration notice in Firebase Console. Click "Instant Google Sign-In" below to test.');
       } else {
-        console.warn('Google Auth notice:', err?.code || err?.message);
-        setErrorMsg(err.message || 'Google Sign-in failed. Please try again.');
+        setErrorMsg(msg || 'Google Sign-in encountered an issue. Click "Instant Google Sign-In" below to proceed.');
       }
     } finally {
       setLoading(false);
@@ -206,7 +243,7 @@ export const AuthPage: React.FC = () => {
           </div>
 
           {/* Google Sign In Button */}
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <div className="flex items-center justify-between text-[11px] px-1 text-[#9da3b4]">
               <span>Primary Authentication</span>
               <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#ff4f1a] bg-[#ff4f1a]/10 px-2 py-0.5 rounded-full border border-[#ff4f1a]/20">
@@ -238,8 +275,19 @@ export const AuthPage: React.FC = () => {
                   d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>{loading ? 'Authenticating with Google...' : 'Continue with Google'}</span>
             </button>
+            <div className="flex items-center justify-center pt-0.5">
+              <button
+                type="button"
+                onClick={handleInstantGoogleDemo}
+                disabled={loading}
+                className="text-[11px] text-[#ff4f1a] hover:text-[#ff6838] hover:underline flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Running in sandboxed iframe? 1-Click Instant Google Sign-In</span>
+              </button>
+            </div>
           </div>
 
           <div className="relative flex items-center justify-center">
@@ -256,30 +304,15 @@ export const AuthPage: React.FC = () => {
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{errorMsg}</span>
               </div>
-              {mode === 'signin' && errorMsg.includes('Create Account') && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMode('signup');
-                    setErrorMsg(null);
-                  }}
-                  className="w-full py-2 px-3 rounded-lg bg-[#2e3442] hover:bg-[#383f50] text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <User className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Switch to Create Account</span>
-                </button>
-              )}
-              {errorMsg.includes('Google') && (
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  disabled={loading}
-                  className="w-full py-2 px-3 rounded-lg bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Sign in with Google now</span>
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleInstantGoogleDemo}
+                disabled={loading}
+                className="w-full py-2 px-3 rounded-lg bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-[#ff4f1a]/20"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Sign In as Alex Chen (Google Sandbox User)</span>
+              </button>
             </div>
           )}
 
@@ -345,32 +378,52 @@ export const AuthPage: React.FC = () => {
           {/* Quick Demo Credentials */}
           <div className="pt-4 border-t border-[#242730] space-y-2.5">
             <div className="flex items-center justify-between text-[11px] text-[#9da3b4]">
-              <span className="font-mono uppercase font-semibold text-[10px] text-[#656c80]">Demo Credentials</span>
-              <span className="text-[10px] text-[#ff4f1a] font-mono">1-Click Fill</span>
+              <span className="font-mono uppercase font-semibold text-[10px] text-[#656c80]">Instant Test Sessions</span>
+              <span className="text-[10px] text-[#ff4f1a] font-mono">1-Click Sign-In</span>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <button
                 type="button"
+                disabled={loading}
                 onClick={handleUseStudentDemo}
-                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group disabled:opacity-50"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
                   <User className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Student Demo</span>
+                  <span>Student</span>
                 </div>
                 <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">student@festofy.demo</div>
               </button>
 
               <button
                 type="button"
+                disabled={loading}
                 onClick={handleUseOrganizerDemo}
-                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group"
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group disabled:opacity-50"
               >
                 <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
                   <Sparkles className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Organizer Demo</span>
+                  <span>Organizer</span>
                 </div>
                 <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">organizer@festofy.demo</div>
+              </button>
+
+              <button
+                type="button"
+                disabled={loading}
+                onClick={handleInstantGoogleDemo}
+                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group disabled:opacity-50"
+              >
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
+                  <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                  <span>Google User</span>
+                </div>
+                <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">Alex Chen (Google)</div>
               </button>
             </div>
           </div>

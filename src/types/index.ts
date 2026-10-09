@@ -358,8 +358,9 @@ export interface AuthContextType {
   isStudent: boolean;
   isOrganizer: boolean;
   isAdmin: boolean;
-  signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string, pass: string) => Promise<void>;
-  signUpWithEmail: (email: string, pass: string, name: string) => Promise<void>;
+  signInWithGoogle: () => Promise<any>;
+  signInWithGoogleDemo: () => Promise<any>;
+  signInWithEmail: (email: string, pass: string) => Promise<any>;
+  signUpWithEmail: (email: string, pass: string, name: string) => Promise<any>;
   signOutUser: () => Promise<void>;
 }
