@@ -3,6 +3,8 @@ import {
   User as FirebaseUser,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -21,6 +23,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // Check for redirect result if the user was directed to Google login
+    getRedirectResult(auth)
+      .then((cred) => {
+        if (cred?.user) {
+          console.log('Google redirect sign-in completed successfully for:', cred.user.email);
+        }
+      })
+      .catch((err) => {
+        if (err?.code !== 'auth/null-user') {
+          console.warn('Google redirect sign-in resolution notice:', err?.code || err?.message);
+        }
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       setLoading(true);
       if (firebaseUser) {
@@ -145,6 +160,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogleRedirect = async () => {
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (error: any) {
+      console.warn('Google redirect initiation notice:', error?.code || error?.message);
+      throw error;
+    }
+  };
+
   const signInWithGoogleDemo = async () => {
     try {
       const cred = await signInWithEmailAndPassword(
@@ -239,6 +263,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isOrganizer,
         isAdmin,
         signInWithGoogle,
+        signInWithGoogleRedirect,
         signInWithGoogleDemo,
         signInWithEmail,
         signUpWithEmail,
