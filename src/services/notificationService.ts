@@ -279,6 +279,17 @@ export async function dispatchRecommendationsForPublishedEvent(event: EventItem)
   if (event.registrationDeadline && new Date(event.registrationDeadline).getTime() < Date.now()) return 0;
 
   try {
+    // Listing the private users collection is strictly restricted to platform administrators
+    const currentUser = auth.currentUser;
+    if (!currentUser) return 0;
+
+    const roleRef = doc(db, 'userRoles', currentUser.uid);
+    const roleSnap = await getDoc(roleRef).catch(() => null);
+    if (!roleSnap || roleSnap.data()?.role !== 'admin') {
+      // Non-admin organizers cannot enumerate private student profiles
+      return 0;
+    }
+
     // Query registered students with profile data
     const usersSnap = await getDocs(collection(db, 'users'));
     let notifiedCount = 0;

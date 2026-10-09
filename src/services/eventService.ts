@@ -245,14 +245,38 @@ export async function getOrganizationEvents(organizationId: string): Promise<Eve
  * If includeUnpublished is true, retrieves all events (requires organizer/admin permissions).
  * Otherwise, retrieves only public published or completed events.
  */
-export async function getFestEvents(festId: string, includeUnpublished = false): Promise<EventItem[]> {
+export async function getFestEvents(
+  festId: string,
+  includeUnpublished = false,
+  organizationId?: string
+): Promise<EventItem[]> {
   try {
     let q;
     if (includeUnpublished) {
-      q = query(
-        collection(db, EVENTS_COLLECTION),
-        where('festId', '==', festId)
-      );
+      let targetOrgId = organizationId;
+      if (!targetOrgId) {
+        try {
+          const parentFestDoc = await getDoc(doc(db, FESTS_COLLECTION, festId));
+          if (parentFestDoc.exists()) {
+            targetOrgId = parentFestDoc.data()?.organizationId;
+          }
+        } catch {
+          // Fallback if fest doc is inaccessible
+        }
+      }
+
+      if (targetOrgId) {
+        q = query(
+          collection(db, EVENTS_COLLECTION),
+          where('festId', '==', festId),
+          where('organizationId', '==', targetOrgId)
+        );
+      } else {
+        q = query(
+          collection(db, EVENTS_COLLECTION),
+          where('festId', '==', festId)
+        );
+      }
     } else {
       q = query(
         collection(db, EVENTS_COLLECTION),

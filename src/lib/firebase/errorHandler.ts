@@ -30,6 +30,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   const currentAuth = auth?.currentUser;
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
+    operationType,
+    path,
     authInfo: {
       userId: currentAuth?.uid ?? null,
       email: currentAuth?.email ?? null,
@@ -40,9 +42,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
         providerId: provider.providerId,
         email: provider.email,
       })) || []
-    },
-    operationType,
-    path
+    }
   };
   console.error('Firestore Error Details:', JSON.stringify(errInfo, null, 2));
   throw new Error(JSON.stringify(errInfo));

@@ -86,12 +86,33 @@ export async function getOrganizationFests(organizationId: string): Promise<Fest
 /**
  * Safe count of events belonging to a festival.
  */
-export async function getFestEventCount(festId: string): Promise<number> {
+export async function getFestEventCount(festId: string, organizationId?: string): Promise<number> {
   try {
-    const q = query(
-      collection(db, 'events'),
-      where('festId', '==', festId)
-    );
+    let targetOrgId = organizationId;
+    if (!targetOrgId) {
+      try {
+        const festDoc = await getDoc(doc(db, COLLECTION_NAME, festId));
+        if (festDoc.exists()) {
+          targetOrgId = festDoc.data()?.organizationId;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    let q;
+    if (targetOrgId) {
+      q = query(
+        collection(db, 'events'),
+        where('festId', '==', festId),
+        where('organizationId', '==', targetOrgId)
+      );
+    } else {
+      q = query(
+        collection(db, 'events'),
+        where('festId', '==', festId)
+      );
+    }
     const snap = await getDocs(q);
     return snap.docs.length;
   } catch {
@@ -377,7 +398,11 @@ export async function executeFestLifecycleTransition(
 
     // Synchronize festStatus on child events
     try {
-      const eventsQ = query(collection(db, 'events'), where('festId', '==', festId));
+      const eventsQ = query(
+        collection(db, 'events'),
+        where('festId', '==', festId),
+        where('organizationId', '==', updatedFest.organizationId)
+      );
       const eventsSnap = await getDocs(eventsQ);
       if (!eventsSnap.empty) {
         const batch = writeBatch(db);
@@ -468,7 +493,8 @@ export async function deleteDraftFest(festId: string): Promise<void> {
   try {
     const eventsQuery = query(
       collection(db, 'events'),
-      where('festId', '==', festId)
+      where('festId', '==', festId),
+      where('organizationId', '==', fest.organizationId)
     );
     const eventsSnap = await getDocs(eventsQuery);
     if (!eventsSnap.empty) {
