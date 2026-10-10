@@ -281,10 +281,11 @@ The application integrates with the following external services and APIs:
 
 ### AI Tools Disclosure (Development)
 
-In accordance with competition rules, the following AI tools assisted during the development of this project:
+In accordance with the competition rules, the following AI tools assisted during the development of Festofy:
 
-- **[Google AI Studio](https://aistudio.google.com/)**: Used during development for architecture design, rapid UI prototyping, TypeScript interface generation, Firestore security rule auditing, and writing automated test assertions.
-- **[Add any additional AI tools used during development here]**
+* [**Google AI Studio**](https://aistudio.google.com/): Used for application development, architecture design, UI prototyping, TypeScript code generation, Firestore security rule auditing, and automated test development.
+* [**ChatGPT**](https://chatgpt.com/): Used for prompt engineering, preparing structured development instructions, refining prompts for AI-assisted coding, and organizing implementation tasks into manageable phases.
+
 
 ### AI-Powered Features (Application Runtime)
 
