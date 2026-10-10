@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Ticket,
   Printer,
@@ -42,6 +43,16 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // Lock background scroll while the pass is open so the modal is the only thing that scrolls.
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [isOpen]);
+
   if (!isOpen || !registration) return null;
 
   const handleCopyCode = () => {
@@ -61,53 +72,56 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
   const isValidPass = isConfirmed || isCheckedIn;
   const isTeam = registration.registrationType === 'team';
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 overflow-y-auto bg-black/85 backdrop-blur-sm print:p-0 print:bg-white animate-in fade-in duration-200"
+      className="pass-print-root fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/85 backdrop-blur-sm animate-in fade-in duration-200"
       role="dialog"
       aria-modal="true"
       aria-labelledby="pass-modal-title"
     >
-      <div className="relative w-full max-w-xl mx-auto my-auto py-4 print:my-0 print:py-0">
-        {/* Floating Actions outside the pass (hidden during printing) */}
-        <div className="flex items-center justify-between mb-3 text-xs no-print">
-          <div className="flex items-center gap-2 text-zinc-300">
+      {/* min-h-full + items-start on phones: tall passes scroll from the top instead of being cropped */}
+      <div className="flex min-h-full items-start justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:items-center sm:p-6 print:block print:p-0">
+      <div className="relative w-full min-w-0 max-w-xl print:max-w-none">
+        {/* Status + close, outside the pass (hidden during printing) */}
+        <div className="mb-2 flex items-center justify-between gap-3 text-xs no-print">
+          <div className="flex min-w-0 items-center gap-2 text-zinc-300">
             {isValidPass ? (
               <>
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span className="font-semibold text-emerald-300">Official Entry Credential</span>
+                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-400" />
+                <span className="min-w-0 font-semibold text-emerald-300">Official Entry Credential</span>
               </>
             ) : isCancelled ? (
               <>
-                <ShieldAlert className="w-4 h-4 text-red-400" />
-                <span className="font-semibold text-red-400">Cancelled / Void Pass</span>
+                <ShieldAlert className="h-4 w-4 shrink-0 text-red-400" />
+                <span className="min-w-0 font-semibold text-red-400">Cancelled / Void Pass</span>
               </>
             ) : (
               <>
-                <AlertTriangle className="w-4 h-4 text-amber-400" />
-                <span className="font-semibold text-amber-300">Pending Application (Not Valid for Entry)</span>
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+                <span className="min-w-0 font-semibold text-amber-300">Pending Application (Not Valid for Entry)</span>
               </>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
+            {/* On phones Print lives in the bottom action area; keep the shortcut for larger screens */}
             <button
               type="button"
               onClick={handlePrint}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors cursor-pointer"
+              className="hidden items-center gap-1.5 rounded-xl border border-[#2e3442] bg-[#191b20] px-3 py-1.5 text-xs font-semibold text-white transition-colors hover:border-zinc-700 hover:bg-[#252830] cursor-pointer sm:inline-flex"
               title="Print pass or save to PDF"
             >
-              <Printer className="w-3.5 h-3.5 text-[#ff4f1a]" />
+              <Printer className="h-3.5 w-3.5 text-[#ff4f1a]" />
               <span>Print / Save PDF</span>
             </button>
 
             <button
               type="button"
               onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] text-[#9da3b4] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              className="flex h-11 w-11 items-center justify-center rounded-xl border border-[#2e3442] bg-[#191b20] text-[#9da3b4] transition-colors hover:bg-[#252830] hover:text-white cursor-pointer sm:h-8 sm:w-8"
               aria-label="Close pass modal"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -116,7 +130,7 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
         <div className="printable-pass-credential rounded-3xl bg-gradient-to-b from-[#14161a] to-[#0d0e11] border-2 border-[#2e3442] text-white shadow-2xl overflow-hidden print:border-black print:text-black">
           {/* Header Banner - Status Adaptive */}
           <div
-            className={`p-4 sm:p-5 flex items-center justify-between print:bg-none print:border-b-2 print:border-black ${
+            className={`grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-3 gap-y-2 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:p-5 print:bg-none print:border-b-2 print:border-black ${
               isValidPass
                 ? 'bg-gradient-to-r from-[#ff4f1a] to-[#ff6838]'
                 : isCancelled
@@ -124,40 +138,37 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
                 : 'bg-gradient-to-r from-amber-600 to-amber-700'
             }`}
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-black/25 backdrop-blur-md flex items-center justify-center text-white print:text-black shrink-0">
-                <Ticket className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-black/80 block truncate print:text-black">
-                  {isValidPass
-                    ? 'FESTOFY VERIFIED ENTRY PASS'
-                    : isCancelled
-                    ? 'VOID / CANCELLED PASS'
-                    : 'APPLICATION UNDER REVIEW'}
-                </span>
-                <h3
-                  id="pass-modal-title"
-                  className="font-heading text-base sm:text-lg font-black text-white tracking-tight truncate print:text-black"
-                >
-                  {registration.festName || 'Campus Festival'}
-                </h3>
-              </div>
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/25 text-white backdrop-blur-md print:text-black">
+              <Ticket className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <span className="block break-words font-mono text-[10px] font-bold uppercase leading-tight tracking-widest text-black/80 print:text-black">
+                {isValidPass
+                  ? 'FESTOFY VERIFIED ENTRY PASS'
+                  : isCancelled
+                  ? 'VOID / CANCELLED PASS'
+                  : 'APPLICATION UNDER REVIEW'}
+              </span>
+              <h3
+                id="pass-modal-title"
+                className="mt-1 break-words font-heading text-base font-black leading-snug tracking-tight text-white sm:text-lg print:text-black"
+              >
+                {registration.festName || 'Campus Festival'}
+              </h3>
             </div>
 
-            <div className="text-right shrink-0">
-              <span
-                className={`px-2.5 py-1 rounded-lg backdrop-blur-md text-[10px] font-mono font-bold uppercase tracking-wider text-white border print:border-black print:text-black ${
-                  isValidPass
-                    ? 'bg-black/30 border-white/20'
-                    : isCancelled
-                    ? 'bg-red-950/70 text-red-200 border-red-700'
-                    : 'bg-amber-950/70 text-amber-200 border-amber-700'
-                }`}
-              >
-                {isValidPass ? 'GATE PASS' : isCancelled ? 'VOID' : 'PENDING'}
-              </span>
-            </div>
+            {/* Status chip: under the title on phones, at the right on wider screens */}
+            <span
+              className={`col-start-2 justify-self-start rounded-lg border px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md sm:col-start-3 sm:row-start-1 sm:justify-self-end print:border-black print:text-black ${
+                isValidPass
+                  ? 'bg-black/30 border-white/20'
+                  : isCancelled
+                  ? 'bg-red-950/70 text-red-200 border-red-700'
+                  : 'bg-amber-950/70 text-amber-200 border-amber-700'
+              }`}
+            >
+              {isValidPass ? 'GATE PASS' : isCancelled ? 'VOID' : 'PENDING'}
+            </span>
           </div>
 
           {/* Ineligible Warning Callout if Cancelled or Pending */}
@@ -179,78 +190,78 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
           )}
 
           {/* Event & Schedule Details */}
-          <div className="p-5 sm:p-6 space-y-5">
+          <div className="space-y-4 p-4 sm:space-y-5 sm:p-6">
             <div className="border-b border-[#242730] pb-4 space-y-1.5 print:border-gray-400">
               <div className="text-[10px] font-mono uppercase text-[#ff4f1a] font-bold tracking-wider print:text-black">
                 Competition / Event
               </div>
-              <h2 className="font-heading text-xl sm:text-2xl font-extrabold text-white print:text-black">
+              <h2 className="break-words font-heading text-xl font-extrabold leading-tight text-white sm:text-2xl print:text-black">
                 {registration.eventName}
               </h2>
               {registration.organizationName && (
-                <div className="flex items-center gap-1.5 text-xs text-[#9da3b4] print:text-gray-700">
-                  <Building2 className="w-3.5 h-3.5 text-[#656c80] shrink-0 print:text-black" />
-                  <span>Hosted by {registration.organizationName}</span>
+                <div className="flex items-start gap-1.5 text-xs text-[#9da3b4] print:text-gray-700">
+                  <Building2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#656c80] print:text-black" />
+                  <span className="min-w-0 break-words">Hosted by {registration.organizationName}</span>
                 </div>
               )}
             </div>
 
             {/* Middle Section: Details + QR Code */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 items-center">
+            <div className="grid grid-cols-1 items-center gap-4 sm:grid-cols-3 sm:gap-5">
               {/* Left Column: Participant & Venue Metadata */}
-              <div className="sm:col-span-2 space-y-3.5 text-xs">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
+              <div className="min-w-0 space-y-3 text-xs sm:col-span-2 sm:space-y-3.5">
+                <div className="grid grid-cols-1 gap-3 min-[340px]:grid-cols-2">
+                  <div className="min-w-0">
                     <span className="text-[#656c80] block text-[10px] uppercase font-mono print:text-gray-600">
                       Participant
                     </span>
-                    <span className="font-bold text-white text-sm block truncate print:text-black">
+                    <span className="block break-words text-sm font-bold text-white print:text-black">
                       {registration.studentName}
                     </span>
-                    <span className="text-[#9da3b4] text-[11px] block truncate font-mono print:text-gray-700">
+                    <span className="block break-all font-mono text-[11px] text-[#9da3b4] print:text-gray-700">
                       {registration.studentEmail}
                     </span>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[#656c80] block text-[10px] uppercase font-mono print:text-gray-600">
                       Entry Mode
                     </span>
-                    <span className="font-semibold text-white capitalize block print:text-black">
+                    <span className="block break-words font-semibold capitalize text-white print:text-black">
                       {isTeam ? `Team (${registration.teamName || 'Entry'})` : 'Individual Entry'}
                     </span>
                     {(registration.participantCategory || registration.categoryName) && (
-                      <span className="text-[#ff4f1a] text-[11px] font-medium block print:text-black">
+                      <span className="block break-words text-[11px] font-medium text-[#ff4f1a] print:text-black">
                         {registration.participantCategory || registration.categoryName}
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[#242730] print:border-gray-300">
-                  <div>
+                <div className="grid grid-cols-1 gap-3 border-t border-[#242730] pt-3 min-[340px]:grid-cols-2 print:border-gray-300">
+                  <div className="min-w-0">
                     <span className="text-[#656c80] block text-[10px] uppercase font-mono print:text-gray-600">
                       Date & Schedule
                     </span>
-                    <div className="flex items-center gap-1 text-white font-medium pt-0.5 print:text-black">
-                      <Clock className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0 print:text-black" />
-                      <span className="text-[11px]">{formatDateTime(registration.startTime)}</span>
+                    <div className="flex items-start gap-1.5 pt-0.5 font-medium text-white print:text-black">
+                      <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#ff4f1a] print:text-black" />
+                      <span className="min-w-0 break-words text-[11px]">{formatDateTime(registration.startTime)}</span>
                     </div>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-[#656c80] block text-[10px] uppercase font-mono print:text-gray-600">
                       Venue
                     </span>
-                    <div className="flex items-center gap-1 text-white font-medium pt-0.5 print:text-black">
-                      <MapPin className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0 print:text-black" />
-                      <span className="text-[11px] truncate">{registration.venue || 'Festival Grounds'}</span>
+                    <div className="flex items-start gap-1.5 pt-0.5 font-medium text-white print:text-black">
+                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#ff4f1a] print:text-black" />
+                      <span className="min-w-0 break-words text-[11px]">{registration.venue || 'Festival Grounds'}</span>
                     </div>
                   </div>
                 </div>
 
                 {(registration.institution || registration.studentId) && (
-                  <div className="pt-2 border-t border-[#242730] flex flex-wrap gap-x-4 gap-y-1 text-[11px] print:border-gray-300">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[#242730] pt-3 text-[11px] [overflow-wrap:anywhere] print:border-gray-300">
                     {registration.institution && (
                       <div>
                         <span className="text-[#656c80] print:text-gray-600">Institution: </span>
@@ -269,16 +280,16 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
 
               {/* Right Column: QR Code Box with Scannable Standard Payload */}
               <div
-                className={`relative flex flex-col items-center justify-center p-3 rounded-2xl bg-white text-black border shadow-md ${
+                className={`qr-box relative mx-auto flex w-full max-w-[13rem] flex-col items-center justify-center rounded-2xl border bg-white p-3 text-black shadow-md sm:mx-0 sm:max-w-none ${
                   isCancelled ? 'opacity-60 border-red-300' : 'border-zinc-200'
                 }`}
               >
                 <QRCodeSVG
                   value={`${registration.ticketCode}::${registration.id}`}
-                  size={135}
-                  className="mx-auto"
+                  size={160}
+                  className="mx-auto h-auto w-full max-w-[11rem]"
                 />
-                <span className="text-[9px] font-mono tracking-wider uppercase text-zinc-600 mt-1 font-bold">
+                <span className="mt-1 text-center font-mono text-[10px] font-bold uppercase tracking-wider text-zinc-600">
                   {isValidPass ? 'SCAN AT GATE' : isCancelled ? 'PASS CANCELLED' : 'PENDING APPROVAL'}
                 </span>
                 {isCancelled && (
@@ -292,22 +303,23 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
             </div>
 
             {/* Bottom Bar: Prominent Ticket Code */}
-            <div className="pt-4 border-t-2 border-dashed border-[#282d38] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 print:border-black">
-              <div>
+            <div className="flex flex-col items-start justify-between gap-3 border-t-2 border-dashed border-[#282d38] pt-4 sm:flex-row sm:items-center print:border-black">
+              <div className="min-w-0 max-w-full">
                 <span className="text-[10px] font-mono uppercase text-[#656c80] tracking-wider block print:text-gray-600">
                   Official Verification Code
                 </span>
                 <div
-                  className={`print-ticket-code font-mono text-2xl sm:text-3xl font-black tracking-widest flex items-center gap-2 print:text-black ${
+                  className={`print-ticket-code mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[clamp(1.25rem,6.4vw,1.75rem)] font-black tracking-wider sm:text-3xl sm:tracking-widest print:text-black ${
                     isCancelled ? 'text-zinc-500 line-through' : 'text-[#ff4f1a]'
                   }`}
                 >
-                  <span>{registration.ticketCode}</span>
+                  <span className="min-w-0 break-all">{registration.ticketCode}</span>
                   <button
                     type="button"
                     onClick={handleCopyCode}
-                    className="p-1.5 rounded-lg bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] text-xs text-[#9da3b4] hover:text-white transition-colors cursor-pointer no-print"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-[#2e3442] bg-[#191b20] text-xs text-[#9da3b4] transition-colors hover:bg-[#252830] hover:text-white cursor-pointer no-print sm:h-8 sm:w-8"
                     title="Copy ticket code"
+                    aria-label="Copy ticket code"
                   >
                     {copied ? (
                       <Check className="w-3.5 h-3.5 text-emerald-400" />
@@ -333,31 +345,34 @@ export const DigitalPassModal: React.FC<DigitalPassModalProps> = ({
           </div>
 
           {/* Micro Footer Notice & Security Disclaimer */}
-          <div className="bg-[#101114] px-6 py-2.5 border-t border-[#242730] text-[10px] text-[#656c80] flex flex-col sm:flex-row sm:items-center justify-between gap-1 print:bg-white print:text-gray-600 print:border-gray-400">
+          <div className="bg-[#101114] px-4 py-2.5 sm:px-6 border-t border-[#242730] text-[10px] text-[#656c80] flex flex-col sm:flex-row sm:items-center justify-between gap-1 print:bg-white print:text-gray-600 print:border-gray-400">
             <span>Fast-Track Gate Lookup • Admittance subject to live organizer database check</span>
-            <span className="font-mono">Ref: {registration.id.slice(0, 16)}</span>
+            <span className="break-all font-mono">Ref: {registration.id.slice(0, 16)}</span>
           </div>
         </div>
 
-        {/* Modal Action Buttons Footer (hidden during printing) */}
-        <div className="mt-4 flex items-center justify-end gap-3 no-print">
+        {/* Modal Action Buttons Footer (hidden during printing). Stacked, full-width on phones. */}
+        <div className="mt-3 flex flex-col-reverse gap-2 no-print sm:mt-4 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-[#191b20] hover:bg-[#252830] border border-[#2e3442] text-xs font-semibold text-zinc-300 hover:text-white transition-colors cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-[#2e3442] bg-[#191b20] px-4 py-2 text-xs font-semibold text-zinc-300 transition-colors hover:bg-[#252830] hover:text-white cursor-pointer"
           >
             Close
           </button>
           <button
             type="button"
             onClick={handlePrint}
-            className="px-5 py-2 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-xs font-bold text-white transition-colors flex items-center gap-1.5 shadow-lg shadow-[#ff4f1a]/20 cursor-pointer"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-[#ff4f1a] px-5 py-2 text-xs font-bold text-white shadow-lg shadow-[#ff4f1a]/20 transition-colors hover:bg-[#ff6838] cursor-pointer"
           >
-            <Printer className="w-3.5 h-3.5" />
+            <Printer className="h-3.5 w-3.5" />
             <span>Print Pass / Save PDF</span>
           </button>
         </div>
       </div>
+      </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modal, document.body) : modal;
 };

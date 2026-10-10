@@ -102,17 +102,17 @@ export const RegistrationPage: React.FC = () => {
     }
 
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+      <div className="mx-auto w-full min-w-0 max-w-4xl space-y-4 px-4 py-4 sm:space-y-6 sm:px-6 sm:py-10 lg:px-8">
         <div>
           <Link
             to={`/events/${event.id}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
+            className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-xs font-semibold text-[#9da3b4] transition-colors hover:text-white"
           >
             <ArrowLeft className="w-4 h-4" /> Back to Event
           </Link>
         </div>
 
-        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 sm:p-12 text-center space-y-4">
+        <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-6 sm:p-12 text-center space-y-4">
           <div className="w-12 h-12 rounded-2xl bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto">
             <CalendarX className="w-6 h-6" />
           </div>
@@ -124,7 +124,7 @@ export const RegistrationPage: React.FC = () => {
               {reasonDesc}
             </p>
           </div>
-          <div className="pt-4 flex justify-center gap-3">
+          <div className="flex flex-col items-stretch justify-center gap-3 pt-4 sm:flex-row">
             <Link
               to={`/events/${event.id}`}
               className="px-5 py-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] hover:border-zinc-700 text-xs font-semibold text-white transition-colors"
@@ -144,12 +144,12 @@ export const RegistrationPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className="mx-auto w-full min-w-0 max-w-4xl space-y-4 px-4 py-4 sm:space-y-8 sm:px-6 sm:py-10 lg:px-8">
       {/* Navigation Breadcrumb */}
       <div>
         <Link
           to={`/events/${event.id}`}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
+          className="-ml-1 inline-flex min-h-11 items-center gap-1.5 rounded-lg px-1 text-xs font-semibold text-[#9da3b4] transition-colors hover:text-white"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Event
         </Link>

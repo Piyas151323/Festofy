@@ -31,7 +31,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : field.helpText ? helpId : undefined}
-            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none transition-colors ${
+            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white placeholder-[#656c80] focus:outline-none focus:ring-1 focus:ring-[#ff4f1a]/40 transition-colors ${
               error
                 ? 'border-red-500/80 focus:border-red-500'
                 : 'border-[#2e3442] focus:border-[#ff4f1a]'
@@ -48,7 +48,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : field.helpText ? helpId : undefined}
-            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition-colors ${
+            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white focus:outline-none focus:ring-1 focus:ring-[#ff4f1a]/40 transition-colors ${
               error
                 ? 'border-red-500/80 focus:border-red-500'
                 : 'border-[#2e3442] focus:border-[#ff4f1a]'
@@ -76,7 +76,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
                 return (
                   <label
                     key={opt}
-                    className="flex items-center gap-2.5 text-xs text-[#d1d5db] cursor-pointer group select-none"
+                    className="flex min-h-9 items-start gap-2.5 py-1 text-[13px] sm:text-xs text-[#d1d5db] cursor-pointer group select-none"
                   >
                     <input
                       type="checkbox"
@@ -89,9 +89,9 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
                           onChange(currentArray.filter((x) => x !== opt));
                         }
                       }}
-                      className="w-4 h-4 rounded bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
                     />
-                    <span className="group-hover:text-white transition-colors">{opt}</span>
+                    <span className="min-w-0 break-words group-hover:text-white transition-colors">{opt}</span>
                   </label>
                 );
               })}
@@ -100,16 +100,16 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
         }
         // Single boolean checkbox
         return (
-          <label className="flex items-center gap-2.5 text-xs text-[#d1d5db] cursor-pointer group select-none pt-1">
+          <label className="flex min-h-9 items-start gap-2.5 py-1 text-[13px] sm:text-xs text-[#d1d5db] cursor-pointer group select-none">
             <input
               id={inputId}
               type="checkbox"
               checked={!!value}
               onChange={(e) => onChange(e.target.checked)}
               aria-invalid={!!error}
-              className="w-4 h-4 rounded bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
+              className="mt-0.5 h-4 w-4 shrink-0 rounded bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
             />
-            <span className="group-hover:text-white transition-colors">
+            <span className="min-w-0 break-words group-hover:text-white transition-colors">
               {field.placeholder || 'I acknowledge and agree to this requirement'}
             </span>
           </label>
@@ -123,7 +123,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
               return (
                 <label
                   key={opt}
-                  className="flex items-center gap-2.5 text-xs text-[#d1d5db] cursor-pointer group select-none"
+                  className="flex min-h-9 items-start gap-2.5 py-1 text-[13px] sm:text-xs text-[#d1d5db] cursor-pointer group select-none"
                 >
                   <input
                     type="radio"
@@ -131,9 +131,9 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
                     value={opt}
                     checked={isChecked}
                     onChange={() => onChange(opt)}
-                    className="w-4 h-4 bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
+                    className="mt-0.5 h-4 w-4 shrink-0 bg-[#191b20] border-[#2e3442] text-[#ff4f1a] focus:ring-0 focus:ring-offset-0 accent-[#ff4f1a]"
                   />
-                  <span className="group-hover:text-white transition-colors">{opt}</span>
+                  <span className="min-w-0 break-words group-hover:text-white transition-colors">{opt}</span>
                 </label>
               );
             })}
@@ -173,7 +173,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
             onChange={(e) => onChange(e.target.value)}
             aria-invalid={!!error}
             aria-describedby={error ? errorId : field.helpText ? helpId : undefined}
-            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none transition-colors ${
+            className={`w-full bg-[#191b20] border rounded-xl px-4 py-2.5 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white placeholder-[#656c80] focus:outline-none focus:ring-1 focus:ring-[#ff4f1a]/40 transition-colors ${
               error
                 ? 'border-red-500/80 focus:border-red-500'
                 : 'border-[#2e3442] focus:border-[#ff4f1a]'
@@ -185,18 +185,18 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
   };
 
   return (
-    <div className="space-y-1.5">
+    <div className="min-w-0 space-y-1.5">
       <div className="flex items-center justify-between">
         <label
           id={`${inputId}-label`}
           htmlFor={field.type === 'radio' ? undefined : inputId}
-          className="text-xs font-medium text-[#d1d5db] flex items-center gap-1"
+          className="block text-[13px] sm:text-xs font-medium text-[#d1d5db] break-words"
         >
           <span>{field.label}</span>
           {field.required ? (
-            <span className="text-[#ff4f1a] font-bold" title="Required field">*</span>
+            <span className="ml-1 text-[#ff4f1a] font-bold" title="Required field">*</span>
           ) : (
-            <span className="text-[10px] text-[#656c80]">(Optional)</span>
+            <span className="ml-1 text-[10px] text-[#656c80]">(Optional)</span>
           )}
         </label>
       </div>
@@ -210,7 +210,7 @@ export const DynamicFormField: React.FC<DynamicFormFieldProps> = ({
       )}
 
       {error && (
-        <p id={errorId} className="text-[11px] text-red-400 font-medium flex items-center gap-1">
+        <p id={errorId} role="alert" className="text-[11px] text-red-400 font-medium flex items-center gap-1 break-words">
           <span>{error}</span>
         </p>
       )}

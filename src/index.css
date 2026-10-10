@@ -14,6 +14,12 @@
     --accent: #ff4f1a;
     --accent-hover: #ff6838;
     --accent-glow: rgba(255, 79, 26, 0.15);
+    /* Sticky top bar: h-14 / sm:h-16 plus its 1px bottom border */
+    --app-header-h: 57px;
+  }
+
+  @media (min-width: 640px) {
+    :root { --app-header-h: 65px; }
   }
 
   body {
@@ -104,6 +110,35 @@
   button,
   .print-hide {
     display: none !important;
+  }
+
+  /* The pass modal is portaled to <body>: print only it, flowing normally on the page */
+  body > *:not(.pass-print-root) {
+    display: none !important;
+  }
+
+  .pass-print-root {
+    position: static !important;
+    display: block !important;
+    overflow: visible !important;
+    height: auto !important;
+    background: #ffffff !important;
+    backdrop-filter: none !important;
+    animation: none !important;
+  }
+
+  .pass-print-root .qr-box {
+    max-width: 220px !important;
+    margin: 0 auto !important;
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .pass-print-root .qr-box svg {
+    width: 100% !important;
+    height: auto !important;
+    max-width: 200px !important;
   }
 
   /* Print credential container */

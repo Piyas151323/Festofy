@@ -618,29 +618,29 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
   }
 
   return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit} noValidate className="space-y-8">
+    <div className="min-w-0 space-y-6">
+      <form onSubmit={handleSubmit} noValidate className="min-w-0 space-y-4 sm:space-y-8">
         {/* Event Header Banner */}
-        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#242730]">
-            <div>
-              <div className="text-xs text-[#9da3b4] mb-1">
+        <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 pb-4 border-b border-[#242730]">
+            <div className="min-w-0">
+              <div className="text-xs text-[#9da3b4] mb-1 break-words">
                 {fest?.name || event.festName || 'Festival Competition'}
               </div>
-              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="font-heading text-2xl sm:text-3xl font-extrabold leading-tight text-white tracking-tight break-words">
                 {event.name}
               </h1>
             </div>
 
             {/* Capacity context indicator */}
-            <div className="flex items-center gap-3 bg-[#191b20] px-4 py-2 rounded-xl border border-[#2e3442] self-start sm:self-center">
-              <Users className="w-4 h-4 text-[#ff4f1a]" />
-              <div className="text-xs">
+            <div className="flex w-full min-w-0 items-center gap-3 bg-[#191b20] px-3.5 py-2 rounded-xl border border-[#2e3442] sm:w-auto sm:self-center sm:px-4">
+              <Users className="w-4 h-4 text-[#ff4f1a] shrink-0" />
+              <div className="min-w-0 text-xs">
                 <span className="text-[#9da3b4] block text-[10px] uppercase font-mono">Available Capacity</span>
-                <span className="text-white font-semibold">
+                <span className="text-white font-semibold flex flex-wrap items-baseline gap-x-1.5">
                   {event.currentRegistrations ?? 0} / {event.capacity} Filled
                   {event.capacity && (
-                    <span className="text-emerald-400 ml-1 font-mono text-[11px]">
+                    <span className="text-emerald-400 font-mono text-[11px]">
                       ({Math.max(0, event.capacity - (event.currentRegistrations ?? 0))} remaining)
                     </span>
                   )}
@@ -650,18 +650,18 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           </div>
 
           {/* Quick timing and venue details */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-[#9da3b4]">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-3.5 h-3.5 text-[#ff4f1a]" />
-              <span>{formatDateTime(event.startTime)}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 text-[13px] sm:text-xs text-[#9da3b4]">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <Calendar className="mt-0.5 w-3.5 h-3.5 shrink-0 text-[#ff4f1a]" />
+              <span className="min-w-0 break-words">{formatDateTime(event.startTime)}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-3.5 h-3.5 text-[#ff4f1a]" />
-              <span className="truncate">{event.venue}</span>
+            <div className="flex min-w-0 items-start gap-2.5">
+              <MapPin className="mt-0.5 w-3.5 h-3.5 shrink-0 text-[#ff4f1a]" />
+              <span className="min-w-0 break-words">{event.venue}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-3.5 h-3.5 text-[#ff4f1a]" />
-              <span>Reg. Deadline: {formatDateTime(event.registrationDeadline)}</span>
+            <div className="flex min-w-0 items-start gap-2.5">
+              <Clock className="mt-0.5 w-3.5 h-3.5 shrink-0 text-[#ff4f1a]" />
+              <span className="min-w-0 break-words">Reg. Deadline: {formatDateTime(event.registrationDeadline)}</span>
             </div>
           </div>
 
@@ -678,7 +678,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
         {/* Registration Type Selector (if 'both' is allowed) */}
         {allowsTypeChoice && (
-          <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+          <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
             <div className="space-y-1">
               <label className="text-xs font-bold text-white uppercase tracking-wider">
                 Select Registration Type
@@ -729,20 +729,20 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         )}
 
         {/* Section 1: Participant Information (Single Source of Truth from Student Profile) */}
-        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-5">
+        <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#242730]">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-[#ff4f1a]/15 text-[#ff4f1a] flex items-center justify-center">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-[#ff4f1a]/15 text-[#ff4f1a] flex items-center justify-center shrink-0">
                 <User className="w-4 h-4" />
               </div>
-              <div>
-                <h3 className="font-heading text-sm font-bold text-white flex items-center gap-2">
+              <div className="min-w-0">
+                <h3 className="font-heading text-sm font-bold text-white flex flex-wrap items-center gap-x-2 gap-y-1">
                   <span>Participant Information</span>
                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-mono font-semibold flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3" /> Profile Connected
                   </span>
                 </h3>
-                <p className="text-xs text-[#9da3b4]">
+                <p className="mt-1 text-xs leading-relaxed text-[#9da3b4]">
                   Reusing saved student profile data. Only event-specific questions are required below.
                 </p>
               </div>
@@ -751,7 +751,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
             {/* Clear Edit Profile link returning to registration */}
             <Link
               to={`/dashboard/profile?returnUrl=/events/${event.id}/register`}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] hover:border-zinc-500 text-xs font-semibold text-[#ff4f1a] transition-all cursor-pointer shadow-sm self-start sm:self-auto shrink-0"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] hover:border-zinc-500 text-xs font-semibold text-[#ff4f1a] transition-all cursor-pointer sm:min-h-0 sm:w-auto sm:shrink-0"
               title="Edit your official student profile"
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -760,10 +760,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           </div>
 
           {/* Compact Read-Only Participant Summary */}
-          <div className="p-5 rounded-2xl bg-[#191b20] border border-[#2e3442] space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#191b20] border border-[#2e3442] space-y-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               {/* Avatar */}
-              <div className="w-14 h-14 rounded-2xl bg-[#242730] border border-[#383d4c] text-[#ff4f1a] font-bold flex items-center justify-center text-lg shrink-0 overflow-hidden">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#242730] border border-[#383d4c] text-[#ff4f1a] font-bold flex items-center justify-center text-lg shrink-0 overflow-hidden">
                 {studentPhotoURL ? (
                   <img
                     src={studentPhotoURL}
@@ -776,8 +776,8 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-heading text-base font-bold text-white truncate">
+                <div className="flex items-center gap-x-2 gap-y-1 flex-wrap">
+                  <span className="font-heading text-base font-bold text-white break-words min-w-0">
                     {studentName || 'Student Participant'}
                   </span>
                   {studentId && (
@@ -786,15 +786,15 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-[#9da3b4] flex items-center gap-3 mt-1 flex-wrap">
-                  <span className="flex items-center gap-1 text-white/90">
-                    <Mail className="w-3.5 h-3.5 text-[#656c80]" />
-                    {studentEmail || 'No email associated'}
+                <div className="mt-1.5 flex flex-col gap-1.5 text-xs text-[#9da3b4] sm:flex-row sm:flex-wrap sm:gap-x-3">
+                  <span className="flex min-w-0 items-start gap-1.5 text-white/90 [overflow-wrap:anywhere]">
+                    <Mail className="mt-0.5 w-3.5 h-3.5 shrink-0 text-[#656c80]" />
+                    <span className="min-w-0">{studentEmail || 'No email associated'}</span>
                   </span>
                   {studentPhone && (
-                    <span className="flex items-center gap-1 text-[#9da3b4]">
-                      <Phone className="w-3.5 h-3.5 text-[#656c80]" />
-                      {studentPhone}
+                    <span className="flex min-w-0 items-start gap-1.5 text-[#9da3b4] [overflow-wrap:anywhere]">
+                      <Phone className="mt-0.5 w-3.5 h-3.5 shrink-0 text-[#656c80]" />
+                      <span className="min-w-0">{studentPhone}</span>
                     </span>
                   )}
                 </div>
@@ -802,19 +802,19 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
             </div>
 
             {/* Metadata Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-[#242730] text-xs">
-              <div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 pt-3 border-t border-[#242730] text-xs">
+              <div className="col-span-2 min-w-0 sm:col-span-1">
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Institution / College</span>
-                <span className="font-medium text-white flex items-center gap-1.5 truncate">
-                  <School className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
-                  <span className="truncate">{institution || <span className="text-zinc-500 italic">Not specified in profile</span>}</span>
+                <span className="font-medium text-white flex items-start gap-1.5">
+                  <School className="mt-0.5 w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
+                  <span className="min-w-0 break-words">{institution || <span className="text-zinc-500 italic">Not specified in profile</span>}</span>
                 </span>
               </div>
-              <div>
+              <div className="col-span-2 min-w-0 min-[400px]:col-span-1">
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Class / Academic Year</span>
-                <span className="font-medium text-white flex items-center gap-1.5 truncate">
-                  <IdCard className="w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
-                  <span className="truncate">
+                <span className="font-medium text-white flex items-start gap-1.5">
+                  <IdCard className="mt-0.5 w-3.5 h-3.5 text-[#ff4f1a] shrink-0" />
+                  <span className="min-w-0 break-words">
                     {classField && customResponses[classField.id] ? (
                       String(customResponses[classField.id])
                     ) : classFieldMatchedOption ? (
@@ -827,7 +827,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                   </span>
                 </span>
               </div>
-              <div>
+              <div className="col-span-2 min-w-0 min-[400px]:col-span-1">
                 <span className="text-[10px] font-mono uppercase text-[#656c80] block mb-0.5">Profile Status</span>
                 {!hasParticipantCategories && classField?.required && !customResponses[classField.id] && !classFieldMatchedOption ? (
                   <span className="text-amber-400 font-medium flex items-center gap-1">
@@ -862,7 +862,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
               <div className="flex flex-wrap gap-2 pt-1">
                 <Link
                   to={`/dashboard/profile?returnUrl=/events/${event.id}/register`}
-                  className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors"
+                  className="inline-flex min-h-11 items-center px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition-colors sm:min-h-0"
                 >
                   Edit in Student Profile →
                 </Link>
@@ -881,7 +881,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                         setStudentName(e.target.value);
                         if (errors.studentName) setErrors((prev) => ({ ...prev, studentName: undefined }));
                       }}
-                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
                     />
                     {errors.studentName && <p className="text-[10px] text-red-400">{errors.studentName}</p>}
                   </div>
@@ -897,7 +897,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                         setStudentEmail(e.target.value);
                         if (errors.studentEmail) setErrors((prev) => ({ ...prev, studentEmail: undefined }));
                       }}
-                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-amber-400"
                     />
                     {errors.studentEmail && <p className="text-[10px] text-red-400">{errors.studentEmail}</p>}
                   </div>
@@ -908,7 +908,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                     <select
                       value={customResponses[classField.id] || ''}
                       onChange={(e) => handleCustomResponseChange(classField.id, e.target.value)}
-                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-400"
+                      className="w-full bg-[#14161a] border border-amber-500/40 rounded-xl px-3 py-2 min-h-11 text-sm sm:min-h-0 sm:text-xs text-white focus:outline-none focus:border-amber-400"
                     >
                       <option value="">{classField.placeholder || '-- Select Academic Standing --'}</option>
                       {classField.options.map((opt) => (
@@ -929,10 +929,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
         {/* Section 1.5: Participant Category & Fee Bracket */}
         {event.participantCategories && event.participantCategories.length > 0 && (
-          <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-[#242730]">
-              <Tag className="w-5 h-5 text-[#ff4f1a]" />
-              <div>
+          <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+            <div className="flex items-start gap-2 pb-2 border-b border-[#242730]">
+              <Tag className="w-5 h-5 text-[#ff4f1a] shrink-0" />
+              <div className="min-w-0">
                 <h3 className="font-heading text-sm font-bold text-white">
                   Participant Category
                 </h3>
@@ -980,7 +980,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
         {/* Section 2: Team Members (if team registration) */}
         {registrationType === 'team' && (
-          <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730]">
+          <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730]">
             <TeamMembersSection
               teamName={teamName}
               teamMembers={teamMembers}
@@ -1005,10 +1005,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
 
         {/* Section 3: Dynamic Event-Specific Custom Questions (Excluding redundant profile fields) */}
         {eventSpecificFields.length > 0 && (
-          <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-6">
-            <div className="flex items-center gap-2 pb-2 border-b border-[#242730]">
-              <Sparkles className="w-5 h-5 text-[#ff4f1a]" />
-              <div>
+          <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-5 sm:space-y-6">
+            <div className="flex items-start gap-2 pb-2 border-b border-[#242730]">
+              <Sparkles className="w-5 h-5 text-[#ff4f1a] shrink-0" />
+              <div className="min-w-0">
                 <h3 className="font-heading text-sm font-bold text-white">
                   Event Specific Questionnaire
                 </h3>
@@ -1033,11 +1033,11 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         )}
 
         {/* Section 4: Registration Fee & Payment Simulator */}
-        <div className="p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-[#242730]">
-            <div className="flex items-center gap-2">
-              <CreditCard className="w-5 h-5 text-[#ff4f1a]" />
-              <div>
+        <div className="p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730] space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3 pb-3 border-b border-[#242730]">
+            <div className="flex min-w-0 items-start gap-2">
+              <CreditCard className="w-5 h-5 text-[#ff4f1a] shrink-0" />
+              <div className="min-w-0">
                 <h3 className="font-heading text-sm font-bold text-white">
                   Payable Amount & Registration Fee
                 </h3>
@@ -1046,7 +1046,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                 </p>
               </div>
             </div>
-            <div className="text-right">
+            <div className="sm:text-right">
               <span className="text-[10px] text-[#656c80] uppercase font-mono block">Payable Amount</span>
               <span className={`text-base font-bold font-mono ${effectiveFee === 0 ? 'text-zinc-300' : 'text-emerald-400'}`}>
                 {effectiveFee === 0 ? 'Free (৳0)' : `৳${effectiveFee} BDT`}
@@ -1065,7 +1065,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                     <div className="text-xs font-bold text-emerald-400">
                       Demo {paymentDetails.method === 'bkash' ? 'bKash' : paymentDetails.method === 'nagad' ? 'Nagad' : ''} Payment Completed
                     </div>
-                    <div className="text-[11px] text-[#9da3b4] font-mono">
+                    <div className="text-[11px] text-[#9da3b4] font-mono break-all">
                       TrxID: {paymentDetails.transactionId} • Ref: {paymentDetails.reference || 'N/A'}
                     </div>
                   </div>
@@ -1088,7 +1088,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-bold transition-all shadow-md shadow-[#ff4f1a]/20 cursor-pointer self-start sm:self-auto shrink-0"
+                  className="px-4 py-2.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-bold transition-all shadow-md shadow-[#ff4f1a]/20 cursor-pointer min-h-11 w-full sm:w-auto sm:min-h-0 sm:shrink-0"
                 >
                   Pay ৳{effectiveFee} (Demo Gateway)
                 </button>
@@ -1127,10 +1127,10 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
         )}
 
         {/* Form Action Controls */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-3xl bg-[#14161a] border border-[#242730]">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 rounded-3xl bg-[#14161a] border border-[#242730]">
           <Link
             to={`/events/${event.id}`}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors"
+            className="inline-flex min-h-11 items-center justify-center gap-1.5 text-xs font-semibold text-[#9da3b4] hover:text-white transition-colors sm:min-h-0"
           >
             <ArrowLeft className="w-4 h-4" /> Cancel & Return
           </Link>
@@ -1138,7 +1138,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ event, fest 
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full sm:w-auto px-8 py-3.5 rounded-xl font-heading text-xs font-bold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-all shadow-lg shadow-[#ff4f1a]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full sm:w-auto min-h-12 px-6 sm:px-8 py-3.5 rounded-xl font-heading text-xs font-bold text-white bg-[#ff4f1a] hover:bg-[#ff6838] transition-all shadow-lg shadow-[#ff4f1a]/20 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>
