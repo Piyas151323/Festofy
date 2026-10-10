@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
@@ -33,8 +33,16 @@ interface MobileDrawerProps {
   /** Accessible name of the dialog. */
   label: string;
   id: string;
-  /** Viewport width (px) at which the desktop navigation takes over. */
-  closeAt: number;
+  /** Viewport width (px) at which a desktop navigation takes over. Omit when the drawer is used at every size. */
+  closeAt?: number;
+  /** Edge the drawer slides in from. */
+  side?: 'left' | 'right';
+  /** Tailwind width classes for the panel (animated when they change). */
+  widthClass?: string;
+  /** 'scroll' (default): children scroll inside a padded body. 'custom': children own their layout and footer. */
+  body?: 'scroll' | 'custom';
+  /** Called after the closing animation finished and the drawer unmounted. */
+  onExited?: () => void;
   header: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
@@ -53,6 +61,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   label,
   id,
   closeAt,
+  side = 'right',
+  widthClass = 'w-[min(20rem,calc(100vw-3rem))]',
+  body = 'scroll',
+  onExited,
   header,
   children,
   footer
@@ -60,10 +72,26 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const onExitedRef = useRef(onExited);
+  onExitedRef.current = onExited;
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const pushedRef = useRef(false);
   const pendingNavRef = useRef<string | null>(null);
+
+  // Keep the panel mounted briefly after `open` turns false so it can slide out.
+  const [mounted, setMounted] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setMounted(false);
+      onExitedRef.current?.();
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [open]);
 
   // Close on route change.
   useEffect(() => {
@@ -106,7 +134,8 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   const handlePanelClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
-    if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+    if (!anchor || anchor.hasAttribute('data-drawer-keep')) return;
+    if (anchor.target === '_blank' || anchor.hasAttribute('download')) return;
     if (anchor.origin !== window.location.origin) return;
     const to = anchor.pathname + anchor.search + anchor.hash;
     e.preventDefault();
@@ -132,7 +161,9 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
         return;
       }
       if (e.key !== 'Tab' || !panel) return;
-      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      const items = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
+        (el) => el.getClientRects().length > 0
+      );
       if (items.length === 0) return;
       const first = items[0];
       const last = items[items.length - 1];
@@ -147,23 +178,29 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
     };
     document.addEventListener('keydown', onKeyDown);
 
-    const mq = window.matchMedia(`(min-width: ${closeAt}px)`);
+    const mq = closeAt ? window.matchMedia(`(min-width: ${closeAt}px)`) : null;
     const onChange = (e: MediaQueryListEvent) => e.matches && closeRef.current();
-    mq.addEventListener('change', onChange);
+    mq?.addEventListener('change', onChange);
 
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      mq.removeEventListener('change', onChange);
+      mq?.removeEventListener('change', onChange);
       document.body.style.overflow = prevOverflow;
       trigger?.focus?.();
     };
   }, [open, closeAt]);
 
-  if (!open) return null;
+  if (!open && !mounted) return null;
+  const closing = !open;
+  const edge = side === 'left' ? 'left-0 border-r' : 'right-0 border-l';
 
   return createPortal(
-    <div data-nav-root className="fixed inset-0 z-[60] overflow-hidden overscroll-none">
+    <div
+      data-nav-root
+      className={`fixed inset-0 z-[60] overflow-hidden overscroll-none ${closing ? 'pointer-events-none' : ''}`}
+    >
       <div
+        data-closing={closing}
         className="nav-drawer-backdrop absolute inset-0 bg-black/70"
         onClick={onClose}
         aria-hidden="true"
@@ -174,8 +211,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label={label}
+        data-side={side}
+        data-closing={closing}
         onClickCapture={handlePanelClickCapture}
-        className="nav-drawer-panel absolute right-0 top-0 flex h-dvh max-h-full w-[min(20rem,calc(100vw-3rem))] max-w-full flex-col overflow-hidden border-l border-[#242730] bg-[#0f1013] text-[#f4f5f7]"
+        className={`nav-drawer-panel absolute top-0 ${edge} flex h-dvh max-h-full max-w-full flex-col overflow-hidden border-[#242730] bg-[#0f1013] text-[#f4f5f7] transition-[width] duration-200 ease-out motion-reduce:transition-none ${widthClass}`}
       >
         <div className="flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-[#242730] pl-4 pr-[max(0.375rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
           <div className="min-w-0">{header}</div>
@@ -190,12 +229,17 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3">{children}</div>
-
-        {footer && (
-          <div className="shrink-0 border-t border-[#242730] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-[max(0.75rem,env(safe-area-inset-right))]">
-            {footer}
-          </div>
+        {body === 'custom' ? (
+          <div className="flex min-h-0 flex-1">{children}</div>
+        ) : (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3">{children}</div>
+            {footer && (
+              <div className="shrink-0 border-t border-[#242730] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-[max(0.75rem,env(safe-area-inset-right))]">
+                {footer}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>,

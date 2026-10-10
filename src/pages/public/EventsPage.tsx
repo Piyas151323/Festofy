@@ -7,7 +7,7 @@ import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState, ErrorState } from '../../components/common/EmptyState';
 import { PageHeader } from '../../components/common/PageHeader';
 
-export const EventsPage: React.FC = () => {
+export const EventsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [categories, setCategories] = useState<EventCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,7 +50,7 @@ export const EventsPage: React.FC = () => {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
+    <div className={embedded ? '@container px-4 py-5 space-y-6' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8'}>
       {/* Header */}
       <PageHeader
         title="Event Directory"
@@ -170,7 +170,7 @@ export const EventsPage: React.FC = () => {
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className={embedded ? 'grid grid-cols-1 @2xl:grid-cols-2 @5xl:grid-cols-3 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}>
           {filteredEvents.map((event) => (
             <EventCard key={event.id} event={event} />
           ))}
