@@ -8,6 +8,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Connection test document: Allows unauthenticated single-document get for health checks
+    match /test/{testId} {
+      allow get: if true;
+    }
+
     // Helper functions
     function isSignedIn() {
       return request.auth != null;
