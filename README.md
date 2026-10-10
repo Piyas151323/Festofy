@@ -213,37 +213,50 @@ npx tsx src/scripts/verifyAdminAccount.ts
 
 ## 6. Demo Credentials & Evaluation Workflow
 
-The application includes pre-provisioned demo accounts in Firebase Authentication and Firestore for evaluation purposes. The login pages feature instant 1-click credential buttons for testing.
+The following demo accounts are provided for competition evaluation. Use the credentials listed for each account type. The administrator demo credentials are displayed directly in the admin demo UI and are intentionally not duplicated here.
 
-### Verified Demo Accounts
+### Platform Administrator
+
+| Role | Credentials | Access URL | Capabilities |
+|---|---|---|---|
+| **Platform Administrator** | Use the demo credentials displayed in the admin demo UI. | `/admin/login` | Review organization requests, manage platform event categories, and access platform administration tools. |
+
+### Organization Demo Accounts
+
+All organization demo accounts use the same password.
+
+| Account | Email | Password | Access URL |
+|---|---|---|---|
+| DRMC BAC Club | `drmcbacclub@gmail.com` | `12345678` | `/organizer/login` |
+| DRMC IT Club | `drmc-it-club@gmail.com` | `12345678` | `/organizer/login` |
+| NDC | `ndsecndc@gmail.com` | `12345678` | `/organizer/login` |
+
+Organization accounts can access the organizer workspace and the organization features permitted for their account.
+
+### Student Demo Account
 
 | Role | Email | Password | Access URL | Capabilities |
 |---|---|---|---|---|
-| **Platform Administrator** | `admin@festofy.demo` | `FestofyAdminDemo2026!` | `/admin/login` | Review & approve student organization requests, manage platform taxonomy, system health |
-| **Event Organizer** | `organizer@festofy.demo` | `FestofyOrganizerDemo2026!` | `/organizer/login` | Create & publish fests, create competitions, review participant rosters, scan QR passes, export CSV |
-| **Student Participant** | `student@festofy.demo` | `FestofyStudentDemo2026!` | `/auth` | Browse fests, register for events, complete profile, view digital QR pass, simulate demo payment |
+| **Student Participant** | `student1@gmail.com` | `12345678` | `/auth` | Browse fests and events, register for events, manage the student profile, and view registration or ticket details. |
 
 ### Evaluation Walkthrough
 
 1. **Public Discovery Flow**:
    - Visit `/` (Homepage) to view featured festivals and upcoming competitions.
    - Navigate to `/fests` to browse collegiate festivals and filter by category or host.
-   - Click on any event at `/events` to view event schedules, venue, fee breakdown, and visitor policies.
+   - Visit `/events` to explore event schedules, venues, fees, and visitor policies.
 2. **Student Journey**:
-   - Go to `/auth` and sign in using the **Student Demo** button (or enter student credentials).
-   - Navigate to an event and complete the registration form (with demo bKash/Nagad verification if paid).
-   - View your confirmed entry and QR gate pass under `/dashboard/passes`.
-   - Test the **Print / Save PDF** view to verify clean print badge formatting.
-3. **Organizer Journey**:
-   - Go to `/organizer/login` and sign in using the **Organizer Demo** button.
-   - Access the **Organizer Console** at `/organizer`.
-   - Create or edit a festival and event.
-   - Open **Participants** at `/organizer/participants` to test manual ticket code search and camera QR check-in.
-   - Download the participant roster and verify formula-sanitized CSV formatting.
+   - Go to `/auth` and sign in with `student1@gmail.com` and password `12345678`.
+   - Open an event and complete the registration form. For paid demo events, use the demo bKash/Nagad payment simulator if available.
+   - Review registration details and the digital ticket or QR pass provided by the application.
+3. **Organization Journey**:
+   - Go to `/organizer/login` and sign in with one of the organization demo accounts listed above.
+   - Access the organizer workspace and test the organization features available to that account, such as managing fests and events or reviewing participants.
 4. **Platform Governance Flow**:
-   - Navigate to `/admin/login` and click **Use Demo Credentials** to sign in as Administrator.
-   - Review pending organization requests at `/admin/organization-requests`.
-   - Test approving an application to observe atomic role promotion and organization ownership assignment.
+   - Navigate to `/admin/login` and use the administrator demo credentials shown in the admin demo UI.
+   - Review organization requests and test the available administration features.
+
+> **Demo account note:** These credentials are intended for evaluation/demo use only. Do not reuse the shared demo password for personal accounts.
 
 ---
 
