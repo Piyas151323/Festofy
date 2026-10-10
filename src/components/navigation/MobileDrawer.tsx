@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { FOCUS_RING } from './navUtils';
 
@@ -61,11 +61,59 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const pushedRef = useRef(false);
+  const pendingNavRef = useRef<string | null>(null);
 
   // Close on route change.
   useEffect(() => {
     closeRef.current();
   }, [pathname]);
+
+  // Android back button: opening the drawer adds one history entry so Back
+  // closes the drawer instead of leaving the page. Link taps inside the drawer
+  // pop that entry first and then navigate, so no duplicate entry is left behind.
+  useEffect(() => {
+    if (!open) return;
+
+    window.history.pushState({ ...(window.history.state ?? {}), __navDrawer: true }, '');
+    pushedRef.current = true;
+
+    const onPop = () => {
+      pushedRef.current = false;
+      const to = pendingNavRef.current;
+      pendingNavRef.current = null;
+      closeRef.current();
+      if (to) navigate(to);
+    };
+    window.addEventListener('popstate', onPop);
+
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      const to = pendingNavRef.current;
+      pendingNavRef.current = null;
+      if (pushedRef.current && window.history.state?.__navDrawer) {
+        pushedRef.current = false;
+        if (to) window.addEventListener('popstate', () => navigate(to), { once: true });
+        window.history.back();
+      } else if (to) {
+        navigate(to);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const handlePanelClickCapture = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const anchor = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+    if (!anchor || anchor.target === '_blank' || anchor.hasAttribute('download')) return;
+    if (anchor.origin !== window.location.origin) return;
+    const to = anchor.pathname + anchor.search + anchor.hash;
+    e.preventDefault();
+    const here = window.location.pathname + window.location.search + window.location.hash;
+    pendingNavRef.current = to === here ? null : to;
+    closeRef.current();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -114,7 +162,7 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
   if (!open) return null;
 
   return createPortal(
-    <div data-nav-root className="fixed inset-0 z-[60]">
+    <div data-nav-root className="fixed inset-0 z-[60] overflow-hidden overscroll-none">
       <div
         className="nav-drawer-backdrop absolute inset-0 bg-black/70"
         onClick={onClose}
@@ -126,9 +174,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
         role="dialog"
         aria-modal="true"
         aria-label={label}
-        className="nav-drawer-panel absolute inset-y-0 right-0 flex w-[min(20rem,calc(100vw-3rem))] flex-col border-l border-[#242730] bg-[#0f1013] text-[#f4f5f7]"
+        onClickCapture={handlePanelClickCapture}
+        className="nav-drawer-panel absolute right-0 top-0 flex h-dvh max-h-full w-[min(20rem,calc(100vw-3rem))] max-w-full flex-col overflow-hidden border-l border-[#242730] bg-[#0f1013] text-[#f4f5f7]"
       >
-        <div className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-[#242730] pl-4 pr-1.5">
+        <div className="flex min-h-14 shrink-0 items-center justify-between gap-2 border-b border-[#242730] pl-4 pr-[max(0.375rem,env(safe-area-inset-right))] pt-[env(safe-area-inset-top)]">
           <div className="min-w-0">{header}</div>
           <button
             type="button"
@@ -141,10 +190,10 @@ export const MobileDrawer: React.FC<MobileDrawerProps> = ({
           </button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3">{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain px-3 py-3">{children}</div>
 
         {footer && (
-          <div className="shrink-0 border-t border-[#242730] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <div className="shrink-0 border-t border-[#242730] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pr-[max(0.75rem,env(safe-area-inset-right))]">
             {footer}
           </div>
         )}

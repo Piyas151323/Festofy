@@ -81,13 +81,13 @@ export const DrawerAccount: React.FC<DrawerAccountProps> = ({
       <div className="grid grid-cols-2 gap-2">
         <Link
           to={profileUrl}
-          className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+          className={`flex min-h-11 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
         >
           My Profile
         </Link>
         <Link
           to={consoleUrl}
-          className={`flex min-h-10 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
+          className={`flex min-h-11 items-center justify-center rounded-lg border border-[#2e3442] text-[12px] font-semibold text-[#c3c8d6] transition-colors hover:bg-white/5 hover:text-white ${FOCUS_RING}`}
         >
           {consoleLabel}
         </Link>

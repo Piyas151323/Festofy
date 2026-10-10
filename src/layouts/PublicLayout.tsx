@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { CalendarDays, Compass, GraduationCap, Home, LayoutDashboard, ShieldCheck, Terminal, UserCircle, Clock } from 'lucide-react';
+import { GraduationCap, LayoutDashboard, ShieldCheck, Terminal, UserCircle, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
-import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
-import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
-import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
+import { MenuButton } from '../components/navigation/MobileDrawer';
+import { SiteDrawer } from '../components/navigation/SiteDrawer';
+import { BROWSE_NAV } from '../components/navigation/navConfig';
+import { TopNavLink } from '../components/navigation/NavLinks';
+import { AccountMenu } from '../components/navigation/Account';
 import { FOCUS_RING, NavEntry } from '../components/navigation/navUtils';
 
-const navLinks: NavEntry[] = [
-  { label: 'Home', to: '/', icon: Home, exact: true },
-  { label: 'Fests', to: '/fests', icon: CalendarDays },
-  { label: 'Events', to: '/events', icon: Compass }
-];
+const navLinks = BROWSE_NAV;
 
 export const PublicLayout: React.FC = () => {
   const { currentUser, isAuthenticated, isOrganizer, isAdmin, hasPendingOrgRequest, signOutUser } = useAuth();
@@ -23,16 +21,7 @@ export const PublicLayout: React.FC = () => {
 
   const adminLink: NavEntry = { label: 'Admin Console', to: '/admin', icon: ShieldCheck };
   const organizerLink: NavEntry = { label: 'Organizer Console', to: '/organizer', icon: Terminal };
-  const statusLink: NavEntry = { label: 'Application Status', to: '/organizer/status', icon: Clock };
   const studentLink: NavEntry = { label: 'Student Portal', to: '/dashboard', icon: GraduationCap };
-
-  const primaryPortal = isAdmin
-    ? adminLink
-    : isOrganizer
-    ? organizerLink
-    : hasPendingOrgRequest
-    ? statusLink
-    : studentLink;
 
   const otherPortals = isAdmin
     ? [organizerLink, studentLink]
@@ -102,51 +91,7 @@ export const PublicLayout: React.FC = () => {
         }
       />
 
-      <MobileDrawer
-        id="public-drawer"
-        open={menuOpen}
-        onClose={close}
-        label="Site navigation"
-        closeAt={768}
-        header={<BrandLogo to="/" onClick={close} />}
-        footer={
-          isAuthenticated ? (
-            <DrawerAccount
-              user={currentUser}
-              fallbackName="User"
-              roleLabel={roleLabel}
-              onSignOut={async () => {
-                close();
-                await signOutUser();
-              }}
-            />
-          ) : (
-            <div className="grid gap-2">
-              <Link
-                to="/auth?mode=signup"
-                onClick={close}
-                className={`flex min-h-11 items-center justify-center rounded-lg bg-[#ff4f1a] text-[13px] font-semibold text-white transition-colors hover:bg-[#ff6838] ${FOCUS_RING}`}
-              >
-                Get started
-              </Link>
-            </div>
-          )
-        }
-      >
-        <nav aria-label="Primary">
-          <NavGroupList
-            pathname={pathname}
-            size="lg"
-            onNavigate={close}
-            groups={[
-              { label: 'Browse', items: navLinks },
-              ...(isAuthenticated
-                ? [{ label: 'Your portals', items: [primaryPortal, ...otherPortals] }]
-                : [])
-            ]}
-          />
-        </nav>
-      </MobileDrawer>
+      <SiteDrawer id="public-drawer" open={menuOpen} onClose={close} closeAt={768} />
 
       {/* Page Content */}
       <main className="flex-1">

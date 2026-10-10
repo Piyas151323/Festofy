@@ -1,21 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  CalendarCheck,
-  History,
-  Ticket,
-  ShieldCheck,
-  Terminal,
-  UserCircle
-} from 'lucide-react';
+import { LayoutDashboard, ShieldCheck, Terminal, UserCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
-import { MenuButton, MobileDrawer } from '../components/navigation/MobileDrawer';
+import { MenuButton } from '../components/navigation/MobileDrawer';
 import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
-import { AccountMenu, DrawerAccount } from '../components/navigation/Account';
-import { NavEntry, NavGroup } from '../components/navigation/navUtils';
+import { SiteDrawer } from '../components/navigation/SiteDrawer';
+import { STUDENT_PORTAL_NAV } from '../components/navigation/navConfig';
+import { AccountMenu } from '../components/navigation/Account';
+import { NavEntry } from '../components/navigation/navUtils';
 
 export const StudentLayout: React.FC = () => {
   const { currentUser, signOutUser, role } = useAuth();
@@ -33,12 +27,8 @@ export const StudentLayout: React.FC = () => {
     navigate('/');
   };
 
-  // Top navigation items: Dashboard, My Registrations, Passes
-  const topNavItems: NavEntry[] = [
-    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true }
-  ];
+  // Desktop top bar: Dashboard, My Registrations, Passes (shared config)
+  const topNavItems: NavEntry[] = STUDENT_PORTAL_NAV.slice(0, 3);
 
   const adminLinks: NavEntry[] = [
     { label: 'Admin Console', to: '/admin', icon: ShieldCheck },
@@ -54,24 +44,6 @@ export const StudentLayout: React.FC = () => {
     { label: 'My Profile', to: '/dashboard/profile', icon: UserCircle },
     { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
     ...(isAdmin ? adminLinks : isOrganizer ? organizerLinks : [])
-  ];
-
-  // Drawer items
-  const drawerPortalItems: NavEntry[] = [
-    { label: 'Dashboard', to: '/dashboard', icon: LayoutDashboard, exact: true },
-    { label: 'My Registrations', to: '/dashboard/registrations', icon: CalendarCheck },
-    { label: 'Passes', to: '/dashboard/passes', icon: Ticket, exact: true },
-    { label: 'History', to: '/dashboard/history', icon: History },
-    { label: 'Profile', to: '/dashboard/profile', icon: UserCircle }
-  ];
-
-  const drawerGroups: NavGroup[] = [
-    { label: 'Student portal', items: drawerPortalItems },
-    ...(isAdmin
-      ? [{ label: 'Switch console', items: adminLinks }]
-      : isOrganizer
-      ? [{ label: 'Switch console', items: organizerLinks }]
-      : [])
   ];
 
   return (
@@ -98,33 +70,11 @@ export const StudentLayout: React.FC = () => {
           />
         }
         trigger={
-          <MenuButton open={menuOpen} onClick={() => setMenuOpen(true)} controls="student-drawer" label="Open student menu" />
+          <MenuButton open={menuOpen} onClick={() => setMenuOpen(true)} controls="student-drawer" label="Open navigation menu" />
         }
       />
 
-      <MobileDrawer
-        id="student-drawer"
-        open={menuOpen}
-        onClose={close}
-        label="Student menu"
-        closeAt={1024}
-        header={<BrandLogo to="/" label="Student" onClick={close} />}
-        footer={
-          <DrawerAccount
-            user={currentUser}
-            fallbackName="Student"
-            roleLabel={roleLabel}
-            onSignOut={async () => {
-              close();
-              await handleSignOut();
-            }}
-          />
-        }
-      >
-        <nav aria-label="Student">
-          <NavGroupList groups={drawerGroups} pathname={pathname} size="lg" onNavigate={close} />
-        </nav>
-      </MobileDrawer>
+      <SiteDrawer id="student-drawer" open={menuOpen} onClose={close} closeAt={1024} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <Outlet />
