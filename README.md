@@ -295,20 +295,41 @@ In accordance with competition rules, the following AI tools assisted during the
 
 ## 9. Screenshots
 
-> *Recommended screenshots for project showcase and competition submission:*
+Screenshots are stored in `docs/screenshots/`. Add the image files using the filenames below and they will render directly in this README on GitHub.
 
-| Screen | Description | Status |
-|---|---|---|
-| **Homepage & Hero** | Clean dark-mode portal showcasing featured collegiate fests and active competitions | `[Add screenshot: docs/screenshots/01_homepage.png]` |
-| **Event Discovery & Filters** | Multi-dimensional category and organization filtering with visitor policy badges | `[Add screenshot: docs/screenshots/02_discovery.png]` |
-| **Event Registration & Form** | Dynamic questionnaire fields with participant category fee calculation | `[Add screenshot: docs/screenshots/03_registration_form.png]` |
-| **Demo Payment Simulator** | Sandbox bKash / Nagad mobile financial service payment simulator modal | `[Add screenshot: docs/screenshots/04_demo_payment.png]` |
-| **Digital Gate Pass** | ISO/IEC 18004 scannable SVG QR credential with print-isolated badge view | `[Add screenshot: docs/screenshots/05_digital_pass.png]` |
-| **Organizer Operations Console** | Event and festival management dashboard with attendance and capacity metrics | `[Add screenshot: docs/screenshots/06_organizer_console.png]` |
-| **Rapid QR Check-In Scanner** | Real-time camera QR scanner verifying entry passes and preventing double check-in | `[Add screenshot: docs/screenshots/07_qr_scanner.png]` |
-| **Admin Organization Review** | Administrator dashboard for approving student club organization applications | `[Add screenshot: docs/screenshots/08_admin_approval.png]` |
+### Homepage
 
-*To add screenshots to your repository, place image files in a `docs/screenshots/` directory and update the Markdown image references above.*
+![Festofy Homepage](docs/screenshots/01-homepage.png)
+
+### Event Discovery and Filters
+
+![Event Discovery and Filters](docs/screenshots/02-event-discovery.png)
+
+### Event Registration Form
+
+![Event Registration Form](docs/screenshots/03-registration-form.png)
+
+### Demo Payment Simulator
+
+![Demo Payment Simulator](docs/screenshots/04-demo-payment.png)
+
+### Digital Gate Pass
+
+![Digital Gate Pass](docs/screenshots/05-digital-pass.png)
+
+### Organizer Console
+
+![Organizer Operations Console](docs/screenshots/06-organizer-console.png)
+
+### QR Check-In Scanner
+
+![QR Check-In Scanner](docs/screenshots/07-qr-scanner.png)
+
+### Admin Organization Approval
+
+![Admin Organization Approval](docs/screenshots/08-admin-approval.png)
+
+> **Add your screenshots:** Create the `docs/screenshots/` directory in the project root, save each screenshot with the exact filename used above, and commit the images along with `README.md`. Until the image files are added, GitHub will show broken image placeholders. Avoid including private user information in screenshots.
 
 ---
 
