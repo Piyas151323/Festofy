@@ -17,8 +17,8 @@ import type { NavEntry } from './navUtils';
  */
 export const BROWSE_NAV: NavEntry[] = [
   { label: 'Home', to: '/', icon: Home, exact: true },
-  { label: 'Fests', to: '/fests', icon: CalendarDays, drawerView: 'fests' },
-  { label: 'Events', to: '/events', icon: Compass, drawerView: 'events' }
+  { label: 'Fests', to: '/fests', icon: CalendarDays },
+  { label: 'Events', to: '/events', icon: Compass }
 ];
 
 export const STUDENT_PORTAL_NAV: NavEntry[] = [

@@ -2,16 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ACCENT, FOCUS_RING, NavAccent, NavEntry, NavGroup, isEntryActive } from './navUtils';
 
-/** Lets the drawer handle some rows itself (in-drawer browsing) instead of navigating. */
-export interface DrawerBehavior {
-  intercepts: (item: NavEntry) => boolean;
-  /** Return undefined to fall back to route-based active matching. */
-  isActive: (item: NavEntry) => boolean | undefined;
-  onSelect: (item: NavEntry) => void;
-}
-
 interface NavLinkItemProps {
-  drawer?: DrawerBehavior;
   item: NavEntry;
   pathname: string;
   accent?: NavAccent;
@@ -26,8 +17,7 @@ export const NavLinkItem: React.FC<NavLinkItemProps> = ({
   pathname,
   accent = 'orange',
   size = 'md',
-  onNavigate,
-  drawer
+  onNavigate
 }) => {
   const Icon = item.icon;
   const a = ACCENT[accent];
@@ -52,20 +42,11 @@ export const NavLinkItem: React.FC<NavLinkItemProps> = ({
     );
   }
 
-  const intercepted = !!drawer?.intercepts(item);
-  const active = drawer?.isActive(item) ?? isEntryActive(pathname, item);
+  const active = isEntryActive(pathname, item);
   return (
     <Link
       to={item.to}
-      data-drawer-keep={intercepted ? '' : undefined}
-      onClick={(e) => {
-        if (intercepted) {
-          e.preventDefault();
-          drawer!.onSelect(item);
-        } else {
-          onNavigate?.();
-        }
-      }}
+      onClick={onNavigate}
       aria-current={active ? 'page' : undefined}
       className={`${base} transition-colors ${FOCUS_RING} ${
         active
@@ -85,11 +66,10 @@ interface NavGroupListProps {
   accent?: NavAccent;
   size?: 'md' | 'lg';
   onNavigate?: () => void;
-  drawer?: DrawerBehavior;
 }
 
 /** Renders labelled groups of nav rows. Group labels are real headings for assistive tech. */
-export const NavGroupList: React.FC<NavGroupListProps> = ({ groups, pathname, accent, size, onNavigate, drawer }) => (
+export const NavGroupList: React.FC<NavGroupListProps> = ({ groups, pathname, accent, size, onNavigate }) => (
   <div className="space-y-5">
     {groups.map((group, i) => (
       <div key={group.label ?? i} role="group" aria-label={group.label}>
@@ -107,7 +87,6 @@ export const NavGroupList: React.FC<NavGroupListProps> = ({ groups, pathname, ac
               accent={accent}
               size={size}
               onNavigate={onNavigate}
-              drawer={drawer}
             />
           ))}
         </div>

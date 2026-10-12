@@ -10,8 +10,6 @@ export interface NavEntry {
   isActive?: (pathname: string) => boolean;
   /** Not available yet: rendered dimmed and non-interactive. */
   soon?: boolean;
-  /** Drawer only: open this listing inside the open drawer instead of navigating. */
-  drawerView?: 'fests' | 'events';
 }
 
 export interface NavGroup {

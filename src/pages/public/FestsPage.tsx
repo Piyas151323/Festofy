@@ -7,7 +7,7 @@ import { CardSkeleton } from '../../components/common/LoadingSkeleton';
 import { EmptyState, ErrorState } from '../../components/common/EmptyState';
 import { PageHeader } from '../../components/common/PageHeader';
 
-export const FestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+export const FestsPage: React.FC = () => {
   const [fests, setFests] = useState<Fest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +44,7 @@ export const FestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }
   });
 
   return (
-    <div className={embedded ? '@container px-4 py-5 space-y-6' : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8'}>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header */}
       <PageHeader
         title="Festival Directory"
@@ -142,7 +142,7 @@ export const FestsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }
           }
         />
       ) : (
-        <div className={embedded ? 'grid grid-cols-1 @2xl:grid-cols-2 @5xl:grid-cols-3 gap-6' : 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredFests.map((fest) => (
             <FestCard key={fest.id} fest={fest} />
           ))}

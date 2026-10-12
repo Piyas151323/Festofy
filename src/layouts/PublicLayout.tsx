@@ -1,16 +1,21 @@
 import React, { useState } from 'react';
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { GraduationCap, LayoutDashboard, ShieldCheck, Terminal, UserCircle, Clock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
 import { MenuButton } from '../components/navigation/MobileDrawer';
 import { SiteDrawer } from '../components/navigation/SiteDrawer';
+import { BROWSE_NAV } from '../components/navigation/navConfig';
+import { TopNavLink } from '../components/navigation/NavLinks';
 import { AccountMenu } from '../components/navigation/Account';
 import { FOCUS_RING, NavEntry } from '../components/navigation/navUtils';
 
+const navLinks = BROWSE_NAV;
+
 export const PublicLayout: React.FC = () => {
   const { currentUser, isAuthenticated, isOrganizer, isAdmin, hasPendingOrgRequest, signOutUser } = useAuth();
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
 
@@ -49,7 +54,12 @@ export const PublicLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7]">
       <AppTopBar
+        placement="center"
+        from="md"
         brand={<BrandLogo to="/" />}
+        nav={navLinks.map((l) => (
+          <TopNavLink key={l.to} item={l} pathname={pathname} />
+        ))}
         actions={
           isAuthenticated ? (
             <AccountMenu
@@ -81,7 +91,7 @@ export const PublicLayout: React.FC = () => {
         }
       />
 
-      <SiteDrawer id="public-drawer" open={menuOpen} onClose={close} />
+      <SiteDrawer id="public-drawer" open={menuOpen} onClose={close} closeAt={768} />
 
       {/* Page Content */}
       <main className="flex-1">

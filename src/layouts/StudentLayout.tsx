@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, ShieldCheck, Terminal, UserCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { AppTopBar } from '../components/navigation/AppTopBar';
 import { BrandLogo } from '../components/navigation/BrandLogo';
 import { MenuButton } from '../components/navigation/MobileDrawer';
+import { NavGroupList, TopNavLink } from '../components/navigation/NavLinks';
 import { SiteDrawer } from '../components/navigation/SiteDrawer';
+import { STUDENT_PORTAL_NAV } from '../components/navigation/navConfig';
 import { AccountMenu } from '../components/navigation/Account';
 import { NavEntry } from '../components/navigation/navUtils';
 
 export const StudentLayout: React.FC = () => {
   const { currentUser, signOutUser, role } = useAuth();
+  const { pathname } = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const close = () => setMenuOpen(false);
@@ -23,6 +26,9 @@ export const StudentLayout: React.FC = () => {
     await signOutUser();
     navigate('/');
   };
+
+  // Desktop top bar: Dashboard, My Registrations, Passes (shared config)
+  const topNavItems: NavEntry[] = STUDENT_PORTAL_NAV.slice(0, 3);
 
   const adminLinks: NavEntry[] = [
     { label: 'Admin Console', to: '/admin', icon: ShieldCheck },
@@ -43,8 +49,17 @@ export const StudentLayout: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col bg-[#090a0b] text-[#f4f5f7] motion-safe:animate-page-enter">
       <AppTopBar
+        placement="start"
+        from="lg"
         tone="bg-[#0d0e11]/95"
         brand={<BrandLogo to="/" label="Student" />}
+        nav={
+          <div className="flex items-center gap-1">
+            {topNavItems.map((item) => (
+              <TopNavLink key={item.to} item={item} pathname={pathname} />
+            ))}
+          </div>
+        }
         actions={
           <AccountMenu
             user={currentUser}
@@ -59,7 +74,7 @@ export const StudentLayout: React.FC = () => {
         }
       />
 
-      <SiteDrawer id="student-drawer" open={menuOpen} onClose={close} />
+      <SiteDrawer id="student-drawer" open={menuOpen} onClose={close} closeAt={1024} />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <Outlet />
