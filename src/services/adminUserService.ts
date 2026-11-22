@@ -1,12 +1,22 @@
+import { initializeApp, deleteApp } from 'firebase/app';
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut as firebaseSignOut
+} from 'firebase/auth';
 import {
   collection,
   doc,
   getDoc,
   getDocs,
+  getFirestore,
+  initializeFirestore,
   query,
   setDoc,
   where
 } from 'firebase/firestore';
+import firebaseConfig from '../../firebase-applet-config.json';
 import { auth, db } from '../lib/firebase/config';
 import { handleFirestoreError, OperationType } from '../lib/firebase/errorHandler';
 import { UserRoleType } from '../types';
@@ -260,5 +270,114 @@ export async function revokeAdminRole(targetUid: string): Promise<void> {
     );
   } catch (error) {
     handleFirestoreError(error, OperationType.UPDATE, `userRoles/${targetUid}`);
+  }
+}
+
+/**
+ * Create a brand-new Email/Password administrator account directly from the Admin Console
+ * without signing out the active administrator or requiring a separate approval step.
+ */
+export async function createAdminAccountDirect(params: {
+  displayName: string;
+  email: string;
+  password: string;
+}): Promise<AdminAccountRecord> {
+  await verifyAdminCaller();
+
+  const trimmedName = params.displayName.trim().slice(0, 120);
+  const normalizedEmail = params.email.trim().toLowerCase().slice(0, 150);
+  const password = params.password;
+
+  if (trimmedName.length < 2) {
+    throw new Error('Please enter a full name (at least 2 characters).');
+  }
+  if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  if (password.length < 6) {
+    throw new Error('Password must be at least 6 characters long.');
+  }
+
+  const secondaryApp = initializeApp(
+    firebaseConfig,
+    `admin-provisioner-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  );
+  const secondaryAuth = getAuth(secondaryApp);
+  const secondaryDb = (() => {
+    try {
+      return initializeFirestore(
+        secondaryApp,
+        { experimentalForceLongPolling: true },
+        firebaseConfig.firestoreDatabaseId
+      );
+    } catch {
+      return getFirestore(secondaryApp, firebaseConfig.firestoreDatabaseId);
+    }
+  })();
+
+  try {
+    let cred;
+    try {
+      cred = await createUserWithEmailAndPassword(secondaryAuth, normalizedEmail, password);
+    } catch (err: any) {
+      if (err?.code === 'auth/email-already-in-use') {
+        throw new Error(
+          `An account for "${normalizedEmail}" already exists. Use Promote User by Email or click Promote in the list below to grant admin access immediately.`
+        );
+      }
+      if (err?.code === 'auth/weak-password') {
+        throw new Error('Password is too weak. Please choose at least 6 characters.');
+      }
+      if (err?.code === 'auth/invalid-email') {
+        throw new Error('Please enter a valid email address.');
+      }
+      if (err?.code === 'auth/operation-not-allowed') {
+        throw new Error(
+          'Email/Password provider is currently disabled in Firebase Console → Authentication → Sign-in method.'
+        );
+      }
+      throw new Error(err?.message || 'Unable to create Firebase Auth user.');
+    }
+
+    await updateProfile(cred.user, { displayName: trimmedName }).catch(() => {});
+
+    const newUid = cred.user.uid;
+    const now = new Date().toISOString();
+
+    // Write users/{uid} via the newly created user's own session (satisfies isOwner(userId))
+    try {
+      await setDoc(doc(secondaryDb, 'users', newUid), {
+        displayName: trimmedName,
+        email: normalizedEmail,
+        photoURL: '',
+        createdAt: now,
+        updatedAt: now
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${newUid}`);
+    }
+
+    // Grant 'admin' role directly via the caller's verified admin session (satisfies isAdmin())
+    try {
+      await setDoc(doc(db, 'userRoles', newUid), {
+        role: 'admin',
+        createdAt: now,
+        updatedAt: now
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `userRoles/${newUid}`);
+    }
+
+    return {
+      uid: newUid,
+      email: normalizedEmail,
+      displayName: trimmedName,
+      role: 'admin',
+      photoURL: '',
+      updatedAt: now
+    };
+  } finally {
+    await firebaseSignOut(secondaryAuth).catch(() => {});
+    await deleteApp(secondaryApp).catch(() => {});
   }
 }
