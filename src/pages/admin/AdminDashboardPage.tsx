@@ -12,7 +12,11 @@ import {
   Search,
   X,
   Trash2,
-  Database
+  Database,
+  ShieldCheck,
+  UserPlus,
+  Mail,
+  UserMinus
 } from 'lucide-react';
 import {
   getAdminOrganizationStats,
@@ -24,6 +28,14 @@ import {
   PlatformDataCounts,
   ClearPlatformDataResult
 } from '../../services/adminResetService';
+import {
+  getPlatformAdmins,
+  getNonAdminUsers,
+  promoteUserToAdminByEmail,
+  revokeAdminRole,
+  AdminAccountRecord
+} from '../../services/adminUserService';
+import { useAuth } from '../../hooks/useAuth';
 import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -42,7 +54,16 @@ export const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const { currentUser } = useAuth();
   const [dataCounts, setDataCounts] = useState<PlatformDataCounts | null>(null);
+  const [admins, setAdmins] = useState<AdminAccountRecord[]>([]);
+  const [nonAdminUsers, setNonAdminUsers] = useState<AdminAccountRecord[]>([]);
+  const [promoteEmail, setPromoteEmail] = useState('');
+  const [promoteTargetEmail, setPromoteTargetEmail] = useState<string | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<AdminAccountRecord | null>(null);
+  const [adminActionLoading, setAdminActionLoading] = useState(false);
+  const [adminActionSuccess, setAdminActionSuccess] = useState<string | null>(null);
+  const [adminActionError, setAdminActionError] = useState<string | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
   const [resetConfirmText, setResetConfirmText] = useState('');
   const [includeNonAdminUsers, setIncludeNonAdminUsers] = useState(true);
@@ -53,14 +74,18 @@ export const AdminDashboardPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [statsData, pendingData, countsData] = await Promise.all([
+      const [statsData, pendingData, countsData, adminsData, nonAdminsData] = await Promise.all([
         getAdminOrganizationStats(),
         getAdminOrganizationRequests('pending'),
-        getPlatformDataCounts().catch(() => null)
+        getPlatformDataCounts().catch(() => null),
+        getPlatformAdmins().catch(() => []),
+        getNonAdminUsers().catch(() => [])
       ]);
       setStats(statsData);
       setPendingRequests(pendingData);
       setDataCounts(countsData);
+      setAdmins(adminsData);
+      setNonAdminUsers(nonAdminsData);
     } catch (err: any) {
       console.warn('Notice loading admin dashboard data:', err?.message || err);
       setError('Unable to load administrative overview. Please check your connection.');
@@ -100,6 +125,58 @@ export const AdminDashboardPage: React.FC = () => {
       setError(err?.message || 'Unable to clear platform fest data. Please verify admin permissions.');
     } finally {
       setResetLoading(false);
+    }
+  };
+
+  const handlePromoteSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminActionError(null);
+    setAdminActionSuccess(null);
+    const trimmed = promoteEmail.trim();
+    if (!trimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setAdminActionError('Please enter a valid user email address.');
+      return;
+    }
+    setPromoteTargetEmail(trimmed);
+  };
+
+  const handleConfirmPromote = async () => {
+    if (!promoteTargetEmail) return;
+    try {
+      setAdminActionLoading(true);
+      setAdminActionError(null);
+      const promoted = await promoteUserToAdminByEmail(promoteTargetEmail);
+      setAdminActionSuccess(
+        `Promoted ${promoted.email} (${promoted.displayName}) to platform administrator.`
+      );
+      setPromoteEmail('');
+      setPromoteTargetEmail(null);
+      await loadData();
+    } catch (err: any) {
+      setAdminActionError(err?.message || 'Failed to promote user to administrator.');
+      setPromoteTargetEmail(null);
+    } finally {
+      setAdminActionLoading(false);
+    }
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (!revokeTarget) return;
+    try {
+      setAdminActionLoading(true);
+      setAdminActionError(null);
+      setAdminActionSuccess(null);
+      await revokeAdminRole(revokeTarget.uid);
+      setAdminActionSuccess(
+        `Removed administrator access from ${revokeTarget.email || revokeTarget.uid}.`
+      );
+      setRevokeTarget(null);
+      await loadData();
+    } catch (err: any) {
+      setAdminActionError(err?.message || 'Failed to update administrator role.');
+      setRevokeTarget(null);
+    } finally {
+      setAdminActionLoading(false);
     }
   };
 
@@ -361,7 +438,158 @@ export const AdminDashboardPage: React.FC = () => {
         )}
       </section>
 
-      {/* 4. Platform Maintenance: Clear All Fest Data */}
+      {/* 4. Platform Administrators: Promote User by Email */}
+      <section aria-labelledby="admin-management-heading" className="rounded-2xl border border-[#242730] bg-[#14161a] p-5 sm:p-6 space-y-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-red-400" />
+            <h2 id="admin-management-heading" className="font-heading text-base font-bold text-white">
+              Platform Administrators
+            </h2>
+          </div>
+          <p className="text-xs text-[#9da3b4] max-w-2xl">
+            Promote a registered user to administrator by email. Prospective admins can sign up at{' '}
+            <span className="font-mono text-zinc-300">/admin/login</span> (Sign Up tab) or{' '}
+            <span className="font-mono text-zinc-300">/auth</span> before being promoted here.
+          </p>
+        </div>
+
+        <form onSubmit={handlePromoteSubmit} className="flex flex-col sm:flex-row gap-2.5">
+          <div className="relative flex-1">
+            <Mail className="w-4 h-4 text-[#656c80] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="email"
+              value={promoteEmail}
+              onChange={(e) => setPromoteEmail(e.target.value)}
+              placeholder="Enter registered user email (e.g. user@gmail.com)"
+              aria-label="User email to promote to admin"
+              className="w-full pl-10 pr-4 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs text-white placeholder-[#656c80] focus:outline-hidden focus:border-red-500 transition-colors"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={adminActionLoading || !promoteEmail.trim()}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-xs font-semibold text-white transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            <span>Promote to Admin</span>
+          </button>
+        </form>
+
+        {adminActionError && (
+          <div role="alert" className="p-3 rounded-xl bg-red-950/40 border border-red-900/50 text-xs text-red-200 flex items-center justify-between gap-2">
+            <span>{adminActionError}</span>
+            <button
+              type="button"
+              onClick={() => setAdminActionError(null)}
+              className="text-red-300 hover:text-white cursor-pointer"
+              aria-label="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {adminActionSuccess && (
+          <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-800/50 text-xs text-emerald-200 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{adminActionSuccess}</span>
+          </div>
+        )}
+
+        {admins.length > 0 && (
+          <div className="divide-y divide-[#242730] rounded-xl border border-[#242730] bg-[#191b20]/60 overflow-hidden">
+            {admins.map((adminUser) => {
+              const isSelf = currentUser?.uid === adminUser.uid;
+              return (
+                <div
+                  key={adminUser.uid}
+                  className="p-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-white truncate">
+                        {adminUser.displayName}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-red-500/15 border border-red-500/30 text-[10px] font-mono font-bold text-red-300">
+                        admin
+                      </span>
+                      {isSelf && (
+                        <span className="px-1.5 py-0.5 rounded bg-[#242730] text-[10px] font-mono text-[#9da3b4]">
+                          You
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-[#9da3b4] font-mono truncate">
+                      {adminUser.email || adminUser.uid}
+                    </div>
+                  </div>
+
+                  {!isSelf && admins.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setRevokeTarget(adminUser)}
+                      disabled={adminActionLoading}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#14161a] hover:bg-red-950/50 border border-[#2e3442] hover:border-red-800/60 text-[11px] font-semibold text-[#9da3b4] hover:text-red-300 transition-colors cursor-pointer self-start sm:self-center shrink-0"
+                    >
+                      <UserMinus className="w-3 h-3" />
+                      <span>Remove Admin</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {nonAdminUsers.length > 0 && (
+          <div className="space-y-2 pt-2">
+            <div className="text-[11px] font-semibold uppercase tracking-wider text-[#9da3b4]">
+              Registered Users Available for Promotion ({nonAdminUsers.length})
+            </div>
+            <div className="divide-y divide-[#242730] rounded-xl border border-[#242730] bg-[#191b20]/40 overflow-hidden">
+              {nonAdminUsers.map((candidate) => (
+                <div
+                  key={candidate.uid}
+                  className="p-3 sm:px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-semibold text-white truncate">
+                        {candidate.displayName}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-[#242730] text-[10px] font-mono text-[#9da3b4]">
+                        {candidate.role}
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-[#9da3b4] font-mono truncate">
+                      {candidate.email || candidate.uid}
+                    </div>
+                  </div>
+
+                  {candidate.email && (
+                    <button
+                      type="button"
+                      disabled={adminActionLoading}
+                      onClick={() => {
+                        setAdminActionError(null);
+                        setAdminActionSuccess(null);
+                        setPromoteTargetEmail(candidate.email);
+                      }}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/15 hover:bg-red-600 border border-red-600/30 text-[11px] font-semibold text-red-300 hover:text-white transition-colors cursor-pointer self-start sm:self-center shrink-0"
+                    >
+                      <UserPlus className="w-3 h-3" />
+                      <span>Promote</span>
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 5. Platform Maintenance: Clear All Fest Data */}
       <section aria-labelledby="platform-reset-heading" className="rounded-2xl border border-[#242730] bg-[#14161a] p-5 sm:p-6 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-1">
@@ -475,6 +703,44 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         </div>
       </ConfirmDialog>
+      <ConfirmDialog
+        isOpen={Boolean(promoteTargetEmail)}
+        onClose={() => {
+          if (!adminActionLoading) setPromoteTargetEmail(null);
+        }}
+        onConfirm={handleConfirmPromote}
+        title="Promote User to Administrator"
+        variant="warning"
+        isLoading={adminActionLoading}
+        confirmLabel="Promote to Admin"
+        description={
+          <span>
+            Grant full platform administrator privileges to{' '}
+            <strong className="text-white font-mono">{promoteTargetEmail}</strong>? They will be able to approve clubs, manage administrators, and reset platform data.
+          </span>
+        }
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(revokeTarget)}
+        onClose={() => {
+          if (!adminActionLoading) setRevokeTarget(null);
+        }}
+        onConfirm={handleConfirmRevoke}
+        title="Remove Administrator Access"
+        variant="danger"
+        isLoading={adminActionLoading}
+        confirmLabel="Remove Admin"
+        description={
+          <span>
+            Demote{' '}
+            <strong className="text-white font-mono">
+              {revokeTarget?.email || revokeTarget?.uid}
+            </strong>{' '}
+            from administrator back to a standard student role?
+          </span>
+        }
+      />
     </div>
   );
 };
