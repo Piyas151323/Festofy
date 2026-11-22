@@ -125,7 +125,11 @@ export const FestsPage: React.FC = () => {
         <ErrorState message={error} />
       ) : filteredFests.length === 0 ? (
         <EmptyState
-          title="No festivals matched your query"
+          title={
+            searchQuery || statusFilter !== 'all'
+              ? 'No festivals matched your query'
+              : 'No published festivals yet'
+          }
           description={
             searchQuery || statusFilter !== 'all'
               ? 'No festivals matched your search or status filter. Try clearing your search filters.'

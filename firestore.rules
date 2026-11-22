@@ -293,9 +293,12 @@ service cloud.firestore {
       );
 
       allow delete: if isSignedIn() && (
-        (isAdmin() || isOrgMember(resource.data.organizationId)) &&
-        resource.data.status == 'draft' &&
-        (!('eventCount' in resource.data) || resource.data.eventCount == 0)
+        isAdmin() ||
+        (
+          (isAdmin() || isOrgMember(resource.data.organizationId)) &&
+          resource.data.status == 'draft' &&
+          (!('eventCount' in resource.data) || resource.data.eventCount == 0)
+        )
       );
     }
 
@@ -450,18 +453,21 @@ service cloud.firestore {
         )
       );
 
-      // Draft event deletion: only draft events with 0 registrations can be deleted
+      // Draft event deletion: only draft events with 0 registrations can be deleted by org members (admin override permitted)
       allow delete: if isSignedIn() && (
-        (isAdmin() || isOrgMember(resource.data.organizationId)) &&
-        resource.data.status == 'draft' &&
-        (!('currentRegistrations' in resource.data) || resource.data.currentRegistrations == 0) &&
-        // RULE-LEVEL COUPLING (Part B2): Transaction must atomically decrement fest.eventCount:
+        isAdmin() ||
         (
-          !exists(/databases/$(database)/documents/fests/$(resource.data.festId)) ||
+          (isAdmin() || isOrgMember(resource.data.organizationId)) &&
+          resource.data.status == 'draft' &&
+          (!('currentRegistrations' in resource.data) || resource.data.currentRegistrations == 0) &&
+          // RULE-LEVEL COUPLING (Part B2): Transaction must atomically decrement fest.eventCount:
           (
-            existsAfter(/databases/$(database)/documents/fests/$(resource.data.festId)) &&
-            getAfter(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount == (
-              get(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount - 1
+            !exists(/databases/$(database)/documents/fests/$(resource.data.festId)) ||
+            (
+              existsAfter(/databases/$(database)/documents/fests/$(resource.data.festId)) &&
+              getAfter(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount == (
+                get(/databases/$(database)/documents/fests/$(resource.data.festId)).data.eventCount - 1
+              )
             )
           )
         )

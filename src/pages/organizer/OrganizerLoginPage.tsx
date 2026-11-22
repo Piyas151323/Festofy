@@ -6,11 +6,7 @@ import {
   Lock,
   ArrowRight,
   AlertCircle,
-  Shield,
-  Sparkles,
-  Building2,
-  Clock,
-  Compass
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostAuthDestination } from '../../utils/authUtils';
@@ -28,7 +24,6 @@ export const OrganizerLoginPage: React.FC = () => {
   const {
     signInWithEmail,
     signInWithGoogle,
-    signInWithGoogleDemo,
     isAuthenticated,
     role,
     currentUser,
@@ -86,21 +81,6 @@ export const OrganizerLoginPage: React.FC = () => {
         msg = 'Invalid email or password. If you have not registered your organization yet, please apply below.';
       }
       setErrorMsg(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOrganizerDemo = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      const cred = await signInWithEmail('organizer@festofy.demo', 'FestofyOrganizerDemo2026!');
-      if (cred?.user) {
-        navigate('/organizer', { replace: true });
-      }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Organizer demo login notice.');
     } finally {
       setLoading(false);
     }
@@ -207,18 +187,8 @@ export const OrganizerLoginPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Instant Demo Organizer Button */}
+          {/* Google Sign-In */}
           <div className="pt-2 border-t border-[#242730] space-y-2.5">
-            <button
-              type="button"
-              onClick={handleOrganizerDemo}
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl border border-indigo-500/30 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Instant Organizer Demo (organizer@festofy.demo)</span>
-            </button>
-
             <button
               type="button"
               onClick={handleGoogleSignIn}

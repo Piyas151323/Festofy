@@ -22,8 +22,17 @@ export async function initializeFirestore(): Promise<{
   details: string[];
 }> {
   const details: string[] = [];
-  const adminEmail = 'admin@festofy.demo';
-  const adminPassword = 'FestofyAdminDemo2026!';
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    return {
+      success: false,
+      adminProvisioned: false,
+      categoriesProvisioned: 0,
+      details: ['Set ADMIN_EMAIL and ADMIN_PASSWORD environment variables before running initialization.']
+    };
+  }
 
   console.log('Starting Firestore Initialization & Structure Rebuild...');
 

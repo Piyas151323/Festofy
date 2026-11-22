@@ -23,7 +23,7 @@ Festofy is a high-reliability, multi-tenant event operations and management plat
   - [Database Initialization](#database-initialization)
   - [Development & Build Commands](#development--build-commands)
 - [5. Deployment URL](#5-deployment-url)
-- [6. Demo Credentials & Evaluation Workflow](#6-demo-credentials--evaluation-workflow)
+- [6. Authentication & Admin Setup Workflow](#6-authentication--admin-setup-workflow)
 - [7. Third-Party Services and APIs](#7-third-party-services-and-apis)
 - [8. AI Tools and AI Features](#8-ai-tools-and-ai-features)
 - [9. Screenshots](#9-screenshots)
@@ -75,7 +75,7 @@ $$\text{Organization} \longrightarrow \text{Fest} \longrightarrow \text{Event} \
 - **Platform Administration Console**: System-wide dashboard monitoring registered student organizations, pending applications, and master taxonomy.
 - **Atomic Club Approval Workflow**: Approving an organization request promotes the applicant to the `organizer` role and creates an `owner` membership document within an atomic transaction.
 - **Master Taxonomy Management**: Centralized master event categories (Programming, Robotics, Cyber Security, Olympiad, etc.) with group taxonomies.
-- **Direct Demo Role Verification**: Automated verification scripts ensuring administrator privileges and credentials remain synchronized with database security rules.
+- **Role-Verified Access Control**: Administrator and organizer privileges are resolved strictly from Firestore `userRoles` and `organizationMembers` and enforced by `firestore.rules`.
 
 ### Registration System & Integrity
 - **Concurrency & Double-Booking Prevention**: Deterministic document keys (`{eventId}_{userId}`) enforce uniqueness at the database engine level, physically preventing duplicate concurrent registrations.
@@ -156,16 +156,10 @@ The project reads Firebase configuration settings. The repository contains a pre
 
 ### Database Initialization
 
-To populate the default competition categories and ensure the platform administrator role is provisioned in Firestore:
+To populate the default competition categories and provision an administrator role in Firestore using your admin credentials via environment variables:
 
 ```bash
-npx tsx src/scripts/initFirestore.ts
-```
-
-To verify the administrator account status:
-
-```bash
-npx tsx src/scripts/verifyAdminAccount.ts
+ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=your-password npx tsx src/scripts/initFirestore.ts
 ```
 
 ### Development & Build Commands
@@ -211,52 +205,24 @@ npx tsx src/scripts/verifyAdminAccount.ts
 
 ---
 
-## 6. Demo Credentials & Evaluation Workflow
+## 6. Authentication & Admin Setup Workflow
 
-The following demo accounts are provided for competition evaluation. Use the credentials listed for each account type. The administrator demo credentials are displayed directly in the admin demo UI and are intentionally not duplicated here.
+Festofy requires valid Firebase Authentication accounts (via **Google Sign-In** or **Email & Password**). All demo login shortcuts and hardcoded credentials have been removed.
 
-### Platform Administrator
+### User Roles & Sign-In Flows
 
-| Role | Credentials | Access URL | Capabilities |
-|---|---|---|---|
-| **Platform Administrator** | Use the demo credentials displayed in the admin demo UI. | `/admin/login` | Review organization requests, manage platform event categories, and access platform administration tools. |
-
-### Organization Demo Accounts
-
-All organization demo accounts use the same password.
-
-| Account | Email | Password | Access URL |
-|---|---|---|---|
-| DRMC BAC Club | `drmcbacclub@gmail.com` | `12345678` | `/organizer/login` |
-| DRMC IT Club | `drmc-it-club@gmail.com` | `12345678` | `/organizer/login` |
-| NDC | `ndsecndc@gmail.com` | `12345678` | `/organizer/login` |
-
-Organization accounts can access the organizer workspace and the organization features permitted for their account.
-
-### Student Demo Account
-
-| Role | Email | Password | Access URL | Capabilities |
-|---|---|---|---|---|
-| **Student Participant** | `student1@gmail.com` | `12345678` | `/auth` | Browse fests and events, register for events, manage the student profile, and view registration or ticket details. |
-
-### Evaluation Walkthrough
-
-1. **Public Discovery Flow**:
-   - Visit `/` (Homepage) to view featured festivals and upcoming competitions.
-   - Navigate to `/fests` to browse collegiate festivals and filter by category or host.
-   - Visit `/events` to explore event schedules, venues, fees, and visitor policies.
-2. **Student Journey**:
-   - Go to `/auth` and sign in with `student1@gmail.com` and password `12345678`.
-   - Open an event and complete the registration form. For paid demo events, use the demo bKash/Nagad payment simulator if available.
-   - Review registration details and the digital ticket or QR pass provided by the application.
-3. **Organization Journey**:
-   - Go to `/organizer/login` and sign in with one of the organization demo accounts listed above.
-   - Access the organizer workspace and test the organization features available to that account, such as managing fests and events or reviewing participants.
-4. **Platform Governance Flow**:
-   - Navigate to `/admin/login` and use the administrator demo credentials shown in the admin demo UI.
-   - Review organization requests and test the available administration features.
-
-> **Demo account note:** These credentials are intended for evaluation/demo use only. Do not reuse the shared demo password for personal accounts.
+1. **Student Participant (`/auth`)**:
+   - Sign up or sign in with Google or Email & Password.
+   - New registrations receive `role: "student"` in `userRoles/{uid}`.
+2. **Club Organizer (`/organizer/login` & `/organizer/apply`)**:
+   - Students can apply to register a club/organization at `/organizer/apply`.
+   - Once approved by a Platform Administrator, the applicant is promoted to `role: "organizer"` with `owner` membership in `organizationMembers`.
+3. **Platform Administrator (`/admin/login`)**:
+   - Sign in at `/admin/login` with an account whose `userRoles/{uid}` document has `role: "admin"`.
+   - To provision your own admin account in Firebase Console:
+     1. Sign up or sign in once with your real Google or Email/Password account at `/auth` so your Firebase Auth UID is created.
+     2. In **Firebase Console → Firestore Database → `userRoles`**, open (or create) the document matching your UID and set `role` to `"admin"`.
+     3. Sign in at `/admin/login` using **Continue with Google** or **Email & Password**.
 
 ---
 
@@ -339,7 +305,7 @@ Screenshots are stored in `docs/screenshots/`. Add the image files using the fil
 To provide transparent documentation for judges and evaluators, the following known limitations are noted:
 
 1. **Demo Payment Gateway**: The bKash and Nagad payment flows are implemented using an interactive client-side sandbox simulator for evaluation and demo purposes. Real mobile financial service API webhooks are not connected to live banking rails.
-2. **Google OAuth Authorized Domains**: Google Sign-In requires the deployment domain (e.g. `festofy.netlify.app`, `localhost`) to be explicitly whitelisted under **Authorized Domains** in the Firebase Authentication console. If testing on an unlisted domain, the application provides fallback email/password demo authentication.
+2. **Google OAuth Authorized Domains**: Google Sign-In requires the deployment domain (e.g. `festofy.netlify.app`, `localhost`) to be explicitly whitelisted under **Authorized Domains** in the Firebase Authentication console. Users can also sign in with Email & Password if enabled in Firebase Authentication.
 3. **Image Uploads**: Event and festival banners currently use direct image URLs and curated CDN links. Direct file uploads store image references; persistent blob storage via Firebase Storage requires bucket CORS authorization in standalone environments.
 4. **Automated Test Scope**: The project maintains comprehensive test suites for Phase 1 (28/28 passed) and Phase 5 security remediation (44/44 passed). A subset of Phase 2 test assertions check for specific DOM label strings in `StudentHistoryPage` that may differ slightly from the current UI layout.
 
@@ -358,7 +324,7 @@ To provide transparent documentation for judges and evaluators, the following kn
 
 - **Port in Use**: If port 3000 is occupied, run `npm run dev -- --port 3001` or free port 3000 (`lsof -i :3000`).
 - **Firebase Connection Notices**: If encountering network warnings on initial load, ensure your network allows connections to `*.googleapis.com` and `firestore.googleapis.com`.
-- **Admin Access**: If an administrator account loses permissions in Firestore, run `npx tsx src/scripts/initFirestore.ts` to automatically re-verify the `userRoles/{uid}` record.
+- **Admin Access**: Ensure your Firebase Auth user's `userRoles/{uid}` document in Firestore has `role: "admin"`, or run `ADMIN_EMAIL=... ADMIN_PASSWORD=... npx tsx src/scripts/initFirestore.ts`.
 
 ---
 

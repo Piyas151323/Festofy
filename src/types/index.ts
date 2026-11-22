@@ -367,7 +367,6 @@ export interface AuthContextType {
   hasPendingOrgRequest: boolean;
   signInWithGoogle: () => Promise<any>;
   signInWithGoogleRedirect: () => Promise<void>;
-  signInWithGoogleDemo: () => Promise<any>;
   signInWithEmail: (email: string, pass: string) => Promise<any>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<any>;
   signOutUser: () => Promise<void>;

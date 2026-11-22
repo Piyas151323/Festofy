@@ -334,7 +334,7 @@ export const OrganizerApplicationStatusPage: React.FC = () => {
                   Need fast-track verification for an imminent campus competition? Reach out directly to platform administrators with official club authorization letters.
                 </p>
                 <div className="text-[11px] font-mono text-amber-400 font-semibold">
-                  Administrator Contact: admin@festofy.demo
+                  Verified Platform Review Process
                 </div>
               </div>
             </div>

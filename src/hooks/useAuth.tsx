@@ -198,23 +198,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signInWithGoogleDemo = async () => {
-    try {
-      const cred = await signInWithEmailAndPassword(
-        auth,
-        'google.user@festofy.demo',
-        'FestofyGoogleUser2026!'
-      );
-      return cred;
-    } catch (error: any) {
-      console.warn('Google Demo sign-in notice:', error?.code || error?.message);
-      throw error;
-    }
-  };
-
   const signInWithEmail = async (email: string, pass: string) => {
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+      const normalizedEmail = email.trim();
+      if (!normalizedEmail) {
+        throw new Error('Please enter a valid email address.');
+      }
+      const cred = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
       return cred;
     } catch (error: any) {
       if (error?.code === 'auth/operation-not-allowed' || error?.message?.includes('auth/operation-not-allowed')) {
@@ -231,17 +221,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signUpWithEmail = async (email: string, pass: string, name: string) => {
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
+      const normalizedEmail = email.trim();
+      const normalizedName = name.trim().slice(0, 120);
+      if (!normalizedEmail) {
+        throw new Error('Please enter a valid email address.');
+      }
+      if (normalizedName.length < 2) {
+        throw new Error('Please enter your full name.');
+      }
+
+      const cred = await createUserWithEmailAndPassword(auth, normalizedEmail, pass);
       if (cred.user) {
-        await updateProfile(cred.user, { displayName: name });
+        await updateProfile(cred.user, { displayName: normalizedName });
         const userRef = doc(db, 'users', cred.user.uid);
         const roleRef = doc(db, 'userRoles', cred.user.uid);
         const now = new Date().toISOString();
 
         await Promise.all([
           setDoc(userRef, {
-            displayName: name,
-            email,
+            displayName: normalizedName,
+            email: normalizedEmail.slice(0, 150),
             photoURL: '',
             createdAt: now,
             updatedAt: now
@@ -294,7 +293,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         hasPendingOrgRequest,
         signInWithGoogle,
         signInWithGoogleRedirect,
-        signInWithGoogleDemo,
         signInWithEmail,
         signUpWithEmail,
         signOutUser,

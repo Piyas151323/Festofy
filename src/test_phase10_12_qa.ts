@@ -136,12 +136,13 @@ const adminLoginPath = path.join(process.cwd(), 'src/pages/admin/AdminLoginPage.
 const adminLoginCode = fs.readFileSync(adminLoginPath, 'utf8');
 
 // Check that admin login checks real Firestore userRoles
-assert.ok(adminLoginCode.includes("doc(db, 'userRoles', cred.user.uid)"), 'Admin login queries userRoles in Firestore');
+assert.ok(adminLoginCode.includes("doc(db, 'userRoles', uid)"), 'Admin login queries userRoles in Firestore');
 assert.ok(adminLoginCode.includes("roleSnap.data()?.role !== 'admin'"), 'Admin login validates admin role');
 assert.ok(adminLoginCode.includes('await signOut(auth)'), 'Unauthorized admin attempt terminates auth session');
 
-// Verify no client-side admin bypass
+// Verify no client-side admin bypass or demo credentials remain
 assert.ok(!adminLoginCode.includes('if (email === "admin@festofy.demo") { return true; }'), 'No backdoor bypass in AdminLoginPage');
+assert.ok(!adminLoginCode.includes('admin@festofy.demo'), 'No demo credentials in AdminLoginPage');
 
 // CSV injection sanitization verification
 const participantsPagePath = path.join(process.cwd(), 'src/pages/organizer/OrganizerParticipantsPage.tsx');
@@ -184,7 +185,7 @@ const readmePath = path.join(process.cwd(), 'README.md');
 assert.ok(fs.existsSync(readmePath), 'README.md file must exist');
 const readmeContent = fs.readFileSync(readmePath, 'utf8');
 assert.ok(readmeContent.includes('Festofy'), 'README.md describes Festofy');
-assert.ok(readmeContent.includes('Demo Accounts & Evaluation Workflow'), 'README.md documents evaluation workflow');
+assert.ok(readmeContent.includes('Authentication & Admin Setup Workflow'), 'README.md documents authentication and admin setup workflow');
 
 const envExamplePath = path.join(process.cwd(), '.env.example');
 assert.ok(fs.existsSync(envExamplePath), '.env.example must exist');

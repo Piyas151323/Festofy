@@ -10,16 +10,25 @@ import {
   Inbox,
   School,
   Search,
-  X
+  X,
+  Trash2,
+  Database
 } from 'lucide-react';
 import {
   getAdminOrganizationStats,
   getAdminOrganizationRequests
 } from '../../services/organizationService';
+import {
+  getPlatformDataCounts,
+  clearAllFestData,
+  PlatformDataCounts,
+  ClearPlatformDataResult
+} from '../../services/adminResetService';
 import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/Cards';
+import { ConfirmDialog } from '../../components/common/ConfirmDialog';
 
 export const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState({
@@ -33,17 +42,25 @@ export const AdminDashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [dataCounts, setDataCounts] = useState<PlatformDataCounts | null>(null);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [includeNonAdminUsers, setIncludeNonAdminUsers] = useState(true);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetResult, setResetResult] = useState<ClearPlatformDataResult | null>(null);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [statsData, pendingData] = await Promise.all([
+      const [statsData, pendingData, countsData] = await Promise.all([
         getAdminOrganizationStats(),
-        getAdminOrganizationRequests('pending')
+        getAdminOrganizationRequests('pending'),
+        getPlatformDataCounts().catch(() => null)
       ]);
       setStats(statsData);
       setPendingRequests(pendingData);
+      setDataCounts(countsData);
     } catch (err: any) {
       console.warn('Notice loading admin dashboard data:', err?.message || err);
       setError('Unable to load administrative overview. Please check your connection.');
@@ -68,6 +85,23 @@ export const AdminDashboardPage: React.FC = () => {
       );
     });
   }, [pendingRequests, searchQuery]);
+
+  const handleConfirmReset = async () => {
+    try {
+      setResetLoading(true);
+      setError(null);
+      const res = await clearAllFestData({ includeNonAdminUsers });
+      setResetResult(res);
+      setIsResetDialogOpen(false);
+      setResetConfirmText('');
+      await loadData();
+    } catch (err: any) {
+      console.warn('Platform reset failed:', err?.message || err);
+      setError(err?.message || 'Unable to clear platform fest data. Please verify admin permissions.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6 motion-safe:animate-page-enter">
@@ -326,6 +360,121 @@ export const AdminDashboardPage: React.FC = () => {
           </div>
         )}
       </section>
+
+      {/* 4. Platform Maintenance: Clear All Fest Data */}
+      <section aria-labelledby="platform-reset-heading" className="rounded-2xl border border-[#242730] bg-[#14161a] p-5 sm:p-6 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Database className="w-4 h-4 text-red-400" />
+              <h2 id="platform-reset-heading" className="font-heading text-base font-bold text-white">
+                Platform Data Reset
+              </h2>
+            </div>
+            <p className="text-xs text-[#9da3b4] max-w-2xl">
+              Remove all existing festivals, events, registrations, organizations, memberships, form templates, and notifications to start with a clean website. Event categories and administrator accounts are preserved.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setResetConfirmText('');
+              setIsResetDialogOpen(true);
+            }}
+            disabled={loading || resetLoading || (dataCounts !== null && dataCounts.totalDocuments === 0)}
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-300 hover:text-white border border-red-600/30 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Remove All Fest Data</span>
+          </button>
+        </div>
+
+        {dataCounts && (
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-[#242730]">
+            <div className="rounded-xl bg-[#191b20] border border-[#242730] px-3 py-2">
+              <div className="text-[10px] font-mono uppercase text-[#656c80]">Festivals</div>
+              <div className="text-sm font-bold text-white">{dataCounts.fests}</div>
+            </div>
+            <div className="rounded-xl bg-[#191b20] border border-[#242730] px-3 py-2">
+              <div className="text-[10px] font-mono uppercase text-[#656c80]">Events</div>
+              <div className="text-sm font-bold text-white">{dataCounts.events}</div>
+            </div>
+            <div className="rounded-xl bg-[#191b20] border border-[#242730] px-3 py-2">
+              <div className="text-[10px] font-mono uppercase text-[#656c80]">Organizations</div>
+              <div className="text-sm font-bold text-white">{dataCounts.organizations}</div>
+            </div>
+            <div className="rounded-xl bg-[#191b20] border border-[#242730] px-3 py-2">
+              <div className="text-[10px] font-mono uppercase text-[#656c80]">Registrations</div>
+              <div className="text-sm font-bold text-white">{dataCounts.registrations}</div>
+            </div>
+            <div className="rounded-xl bg-[#191b20] border border-[#242730] px-3 py-2 col-span-2 sm:col-span-1">
+              <div className="text-[10px] font-mono uppercase text-[#656c80]">Non-Admin Users</div>
+              <div className="text-sm font-bold text-white">{dataCounts.nonAdminUsers}</div>
+            </div>
+          </div>
+        )}
+
+        {resetResult && (
+          <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-800/50 text-xs text-emerald-200 flex items-start gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+            <span>
+              Platform reset complete: removed {resetResult.deletedCounts.fests} festival(s),{' '}
+              {resetResult.deletedCounts.events} event(s), {resetResult.deletedCounts.organizations} organization(s),{' '}
+              {resetResult.deletedCounts.registrations} registration(s), and {resetResult.deletedUsers} non-admin user profile(s)
+              {resetResult.demotedOrganizers > 0
+                ? ` (reset ${resetResult.demotedOrganizers} organizer role assignment(s) to student)`
+                : ''}
+              .
+            </span>
+          </div>
+        )}
+      </section>
+
+      <ConfirmDialog
+        isOpen={isResetDialogOpen}
+        onClose={() => {
+          if (!resetLoading) {
+            setIsResetDialogOpen(false);
+            setResetConfirmText('');
+          }
+        }}
+        onConfirm={handleConfirmReset}
+        title="Remove All Fest Data"
+        variant="danger"
+        isLoading={resetLoading}
+        confirmLabel="Confirm Reset"
+        confirmDisabled={resetConfirmText.trim().toUpperCase() !== 'RESET'}
+        description="This permanently deletes all festivals, events, student registrations, organizations, memberships, custom templates, and notifications from Firestore. This action cannot be undone."
+      >
+        <div className="space-y-3">
+          <label className="flex items-start gap-2.5 p-2.5 rounded-xl bg-[#191b20] border border-[#2e3442] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={includeNonAdminUsers}
+              onChange={(e) => setIncludeNonAdminUsers(e.target.checked)}
+              className="mt-0.5 rounded border-[#2e3442] bg-[#14161a] text-red-600 focus:ring-red-500"
+            />
+            <span className="text-[11px] text-[#d1d5db] leading-relaxed">
+              Also delete all non-admin user profiles and role records (admin accounts preserved).
+            </span>
+          </label>
+          <div className="space-y-1.5">
+            <label htmlFor="confirm-reset-input" className="block text-[11px] font-semibold text-[#9da3b4]">
+              Type <span className="font-mono text-red-400">RESET</span> to confirm
+            </label>
+            <input
+              id="confirm-reset-input"
+              type="text"
+              value={resetConfirmText}
+              onChange={(e) => setResetConfirmText(e.target.value)}
+              placeholder="RESET"
+              autoComplete="off"
+              className="w-full px-3 py-2 rounded-xl bg-[#191b20] border border-[#2e3442] text-xs font-mono text-white placeholder-[#656c80] focus:outline-hidden focus:border-red-500"
+            />
+          </div>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 };

@@ -7,24 +7,18 @@ import {
   ArrowRight,
   AlertCircle,
   Sparkles,
-  Globe,
   ExternalLink,
   Copy,
-  Check,
-  Info,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp
+  Check
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { SITE_CONFIG, getCurrentDomainInfo } from '../../config/siteConfig';
+import { SITE_CONFIG } from '../../config/siteConfig';
 import { getPostAuthDestination } from '../../utils/authUtils';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const initialMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
-  const redirectPath = searchParams.get('redirect') || '/dashboard';
 
   const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [email, setEmail] = useState('');
@@ -33,8 +27,6 @@ export const AuthPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Domain verification & guide states
-  const [showDomainGuide, setShowDomainGuide] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [domainWarning, setDomainWarning] = useState<string | null>(null);
 
@@ -42,7 +34,6 @@ export const AuthPage: React.FC = () => {
     signInWithEmail,
     signUpWithEmail,
     signInWithGoogle,
-    signInWithGoogleDemo,
     isAuthenticated,
     isOrganizer,
     role,
@@ -81,32 +72,30 @@ export const AuthPage: React.FC = () => {
     };
   }, [isAuthenticated, authLoading, role, currentUser, navigate, searchParams]);
 
-  const getPostLoginDestination = (userRole: string) => {
-    const requested = searchParams.get('redirect');
-    if (requested && !(userRole === 'organizer' && requested.startsWith('/dashboard'))) return requested;
-    if (userRole === 'admin') return '/admin';
-    if (userRole === 'organizer') return '/organizer';
-    return '/dashboard';
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setLoading(true);
 
     try {
+      const trimmedEmail = email.trim();
+      if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+        throw new Error('Please enter a valid email address.');
+      }
+
       if (mode === 'signup') {
-        if (!displayName.trim()) {
-          throw new Error('Please enter your full name.');
+        const trimmedName = displayName.trim();
+        if (trimmedName.length < 2) {
+          throw new Error('Please enter your full name (at least 2 characters).');
         }
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters.');
         }
-        const cred = await signUpWithEmail(email, password, displayName);
+        const cred = await signUpWithEmail(trimmedEmail, password, trimmedName);
         const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : '/dashboard';
         navigate(dest, { replace: true });
       } else {
-        const cred = await signInWithEmail(email, password);
+        const cred = await signInWithEmail(trimmedEmail, password);
         const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : (isOrganizer ? '/organizer' : '/dashboard');
         navigate(dest, { replace: true });
       }
@@ -144,10 +133,10 @@ export const AuthPage: React.FC = () => {
 
       let message = err.message || 'Authentication failed. Please verify your credentials.';
       if (isOpNotAllowed) {
-        message = 'Email & password sign-in is disabled for this project. Please continue with Google or use the instant demo buttons below.';
+        message = 'Email & password sign-in is disabled for this project. Please continue with Google.';
       } else if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
         message = mode === 'signin'
-          ? 'Invalid email or password. You can click the Demo Account buttons below to sign in instantly.'
+          ? 'Invalid email or password. Please check your credentials or create an account.'
           : 'Unable to authenticate. Please verify your email and password.';
       } else if (message.includes('auth/email-already-in-use')) {
         message = 'An account with this email already exists. Please sign in instead.';
@@ -157,48 +146,6 @@ export const AuthPage: React.FC = () => {
         message = 'Please enter a valid email address.';
       }
       setErrorMsg(message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUseStudentDemo = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      await signInWithEmail('student@festofy.demo', 'FestofyStudentDemo2026!');
-      navigate(getPostLoginDestination('student'), { replace: true });
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Student demo sign-in notice.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleUseOrganizerDemo = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      await signInWithEmail('organizer@festofy.demo', 'FestofyOrganizerDemo2026!');
-      navigate(getPostLoginDestination('organizer'), { replace: true });
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Organizer demo sign-in notice.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleInstantGoogleDemo = async () => {
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      const cred = await signInWithGoogleDemo();
-      if (cred?.user) {
-        const dest = await getPostAuthDestination(cred.user.uid);
-        navigate(dest, { replace: true });
-      }
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Instant Google sign-in notice.');
     } finally {
       setLoading(false);
     }
@@ -218,20 +165,19 @@ export const AuthPage: React.FC = () => {
       const msg = err?.message || '';
 
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-        setErrorMsg('Google Sign-in popup was closed or cancelled. You can retry, use Redirect mode, or test with Instant Google Demo below.');
+        setErrorMsg('Google Sign-in popup was closed or cancelled. Please try again.');
       } else if (code === 'auth/popup-blocked') {
-        setErrorMsg('Google Sign-in popup was blocked by your browser settings. Try "Sign In with Google (Redirect)" or use the Instant Demo button.');
+        setErrorMsg('Google Sign-in popup was blocked by your browser settings. Please allow popups and try again.');
       } else if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
         const activeHost = window.location.hostname || SITE_CONFIG.productionDomain;
         setDomainWarning(activeHost);
-        setShowDomainGuide(true);
         setErrorMsg(
-          `Domain Authorization Required: "${activeHost}" must be whitelisted in Firebase Console -> Authentication -> Settings -> Authorized domains for project "${SITE_CONFIG.firebaseProjectId}". Use the 1-click guide below or test with Instant Google Demo.`
+          `Domain Authorization Required: "${activeHost}" must be whitelisted in Firebase Console -> Authentication -> Settings -> Authorized domains for project "${SITE_CONFIG.firebaseProjectId}".`
         );
       } else if (code === 'auth/operation-not-allowed' || msg.includes('operation-not-allowed')) {
-        setErrorMsg('Google provider configuration notice in Firebase Console. Click "Instant Google Sign-In" below to test.');
+        setErrorMsg('Google sign-in is not enabled in Firebase Authentication for this project.');
       } else {
-        setErrorMsg(msg || 'Google Sign-in encountered an issue. Click "Instant Google Sign-In" below to proceed.');
+        setErrorMsg(msg || 'Google Sign-in encountered an issue. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -375,16 +321,6 @@ export const AuthPage: React.FC = () => {
                   </a>
                 </div>
               )}
-
-              <button
-                type="button"
-                onClick={handleInstantGoogleDemo}
-                disabled={loading}
-                className="w-full py-2 px-3 rounded-lg bg-[#ff4f1a] hover:bg-[#ff6838] text-white text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-md shadow-[#ff4f1a]/20"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Continue Instantly with Demo Google User</span>
-              </button>
             </div>
           )}
 
@@ -446,41 +382,6 @@ export const AuthPage: React.FC = () => {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick Demo Credentials */}
-          <div className="pt-4 border-t border-[#242730] space-y-2.5">
-            <div className="flex items-center justify-between text-[11px] text-[#9da3b4]">
-              <span className="font-mono uppercase font-semibold text-[10px] text-[#656c80]">Instant Test Sessions</span>
-              <span className="text-[10px] text-[#ff4f1a] font-mono">1-Click Sign-In</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleUseStudentDemo}
-                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group disabled:opacity-50"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
-                  <User className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Student</span>
-                </div>
-                <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">student@festofy.demo</div>
-              </button>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleUseOrganizerDemo}
-                className="p-2.5 rounded-xl bg-[#191b20] hover:bg-[#20232a] border border-[#2e3442] text-left transition-colors cursor-pointer group disabled:opacity-50"
-              >
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-white group-hover:text-[#ff4f1a]">
-                  <Sparkles className="w-3.5 h-3.5 text-[#ff4f1a]" />
-                  <span>Organizer</span>
-                </div>
-                <div className="text-[10px] text-[#656c80] font-mono truncate mt-0.5">organizer@festofy.demo</div>
-              </button>
-            </div>
-          </div>
         </div>
 
 
