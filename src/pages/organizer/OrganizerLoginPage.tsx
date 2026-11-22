@@ -9,12 +9,14 @@ import {
   Building2
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { getPostAuthDestination } from '../../utils/authUtils';
+import { getPostAuthDestination, sanitizeInternalRedirect } from '../../utils/authUtils';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 
 export const OrganizerLoginPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const redirectTarget = searchParams.get('redirect');
+  const safeRedirect = sanitizeInternalRedirect(searchParams.get('redirect'), '');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,22 +27,26 @@ export const OrganizerLoginPage: React.FC = () => {
     signInWithEmail,
     signInWithGoogle,
     isAuthenticated,
+    needsEmailVerification,
+    authError,
     role,
     currentUser,
     loading: authLoading
   } = useAuth();
 
   useEffect(() => {
-    document.title = 'Organizer Console Sign In · Festofy';
-  }, []);
+    document.title = needsEmailVerification
+      ? 'Verify Organizer Email · Festofy'
+      : 'Organizer Console Sign In · Festofy';
+  }, [needsEmailVerification]);
 
-  // If already authenticated, redirect appropriately
+  // Redirect only after Firebase email verification & Firestore resolution succeed
   useEffect(() => {
     let mounted = true;
     async function redirectIfAuth() {
-      if (!authLoading && isAuthenticated && currentUser) {
-        if (redirectTarget) {
-          navigate(redirectTarget, { replace: true });
+      if (!authLoading && isAuthenticated && currentUser && !needsEmailVerification && !authError) {
+        if (safeRedirect) {
+          navigate(safeRedirect, { replace: true });
         } else {
           const dest = await getPostAuthDestination(currentUser.uid, role);
           if (mounted) {
@@ -53,7 +59,16 @@ export const OrganizerLoginPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [isAuthenticated, authLoading, currentUser, role, redirectTarget, navigate]);
+  }, [
+    isAuthenticated,
+    authLoading,
+    needsEmailVerification,
+    authError,
+    currentUser,
+    role,
+    safeRedirect,
+    navigate
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,13 +77,9 @@ export const OrganizerLoginPage: React.FC = () => {
 
     try {
       const cred = await signInWithEmail(email.trim(), password);
-      if (cred?.user) {
-        if (redirectTarget) {
-          navigate(redirectTarget, { replace: true });
-        } else {
-          const dest = await getPostAuthDestination(cred.user.uid);
-          navigate(dest, { replace: true });
-        }
+      if (cred?.user?.emailVerified) {
+        const dest = safeRedirect || (await getPostAuthDestination(cred.user.uid));
+        navigate(dest, { replace: true });
       }
     } catch (err: any) {
       console.warn('Notice during organizer login:', err?.code || err?.message);
@@ -91,13 +102,9 @@ export const OrganizerLoginPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signInWithGoogle();
-      if (cred?.user) {
-        if (redirectTarget) {
-          navigate(redirectTarget, { replace: true });
-        } else {
-          const dest = await getPostAuthDestination(cred.user.uid);
-          navigate(dest, { replace: true });
-        }
+      if (cred?.user?.emailVerified) {
+        const dest = safeRedirect || (await getPostAuthDestination(cred.user.uid));
+        navigate(dest, { replace: true });
       }
     } catch (err: any) {
       if (
@@ -111,6 +118,19 @@ export const OrganizerLoginPage: React.FC = () => {
     }
   };
 
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title="Verify Your Organizer Email"
+        subtitle="Confirm your email address before entering the Organizer Console."
+      />
+    );
+  }
+
+  if (authError) {
+    return <AuthSyncErrorScreen error={authError} />;
+  }
+
   return (
     <div className="min-h-[75vh] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-6">
@@ -123,7 +143,7 @@ export const OrganizerLoginPage: React.FC = () => {
             Organizer Sign In
           </h1>
           <p className="text-xs sm:text-sm text-[#9da3b4] max-w-sm mx-auto">
-            Sign in with your organization email to manage festivals, events, and registrations.
+            Sign in with your verified organization account to manage festivals, events, and registrations.
           </p>
         </div>
 

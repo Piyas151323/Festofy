@@ -1,33 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle, Calendar, CalendarX, CheckCircle } from 'lucide-react';
+import { ArrowLeft, CalendarX } from 'lucide-react';
 import { getEventById } from '../../services/eventService';
 import { getFestById } from '../../services/festService';
 import { EventItem, Fest } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 import { DetailSkeleton } from '../../components/common/LoadingSkeleton';
-import { ErrorState, EmptyState } from '../../components/common/EmptyState';
+import { ErrorState } from '../../components/common/EmptyState';
 import { RegistrationForm } from '../../components/registration/RegistrationForm';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 import { formatDateTime } from '../../utils/dateUtils';
 
 export const RegistrationPage: React.FC = () => {
   const { eventId } = useParams<{ eventId: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const {
+    isAuthenticated,
+    firebaseUser,
+    needsEmailVerification,
+    authError,
+    loading: authLoading
+  } = useAuth();
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [fest, setFest] = useState<Fest | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Authentication requirement: Redirect unauthenticated students to sign in
+  // Redirect signed-out visitors to sign in; keep unverified users here on verification gate
   useEffect(() => {
-    if (!authLoading && !isAuthenticated && eventId) {
-      navigate(`/auth?redirect=/events/${eventId}/register`, { replace: true });
+    if (!authLoading && !firebaseUser && eventId) {
+      navigate(`/auth?redirect=${encodeURIComponent(`/events/${eventId}/register`)}`, { replace: true });
     }
-  }, [authLoading, isAuthenticated, eventId, navigate]);
+  }, [authLoading, firebaseUser, eventId, navigate]);
 
-  // Load event details
+  // Load event details only after verification & auth sync succeed
   useEffect(() => {
     async function loadEventData() {
       if (!eventId) return;
@@ -65,6 +73,19 @@ export const RegistrationPage: React.FC = () => {
         <DetailSkeleton />
       </div>
     );
+  }
+
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title="Verify Your Email to Register"
+        subtitle="Confirm your email address before completing event registration or receiving your digital pass."
+      />
+    );
+  }
+
+  if (authError || (!isAuthenticated && firebaseUser)) {
+    return <AuthSyncErrorScreen error={authError} />;
   }
 
   if (error || !event) {

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Navigate, useLocation, Link } from 'react-router-dom';
-import { ShieldAlert, ArrowLeft, Clock, Building2 } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Clock } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserRoleType } from '../../types';
 import { AdminLoginPage } from '../../pages/admin/AdminLoginPage';
+import { EmailVerificationScreen } from '../auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../auth/AuthSyncErrorScreen';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,7 +18,15 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   allowedRoles,
   adminAuth
 }) => {
-  const { role, loading, isAuthenticated, hasPendingOrgRequest } = useAuth();
+  const {
+    role,
+    loading,
+    isAuthenticated,
+    firebaseUser,
+    needsEmailVerification,
+    authError,
+    hasPendingOrgRequest
+  } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -30,13 +40,28 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   const isAdminRoute = adminAuth || (allowedRoles?.includes('admin') && allowedRoles.length === 1);
 
-  if (!isAuthenticated) {
+  // 1. Signed-out state
+  if (!firebaseUser) {
     if (isAdminRoute) {
-      // Unauthenticated user on /admin routes sees dedicated Admin Login page
       return <AdminLoginPage redirectPath={location.pathname} />;
     }
-    // Redirect to general student/organizer auth with return url
-    return <Navigate to={`/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+    const intendedUrl = `${location.pathname}${location.search}`;
+    return <Navigate to={`/auth?redirect=${encodeURIComponent(intendedUrl)}`} replace />;
+  }
+
+  // 2. Signed-in but unverified email state (blocks all protected routes & dashboards without redirect loop)
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title={isAdminRoute ? 'Verify Your Administrator Email' : 'Email Verification Required'}
+        subtitle="Please verify your email address before opening this dashboard or accessing protected Festofy features."
+      />
+    );
+  }
+
+  // 3. Verified Firebase user, but Firestore profile/role read failed (recoverable error, never fabricates a profile)
+  if (authError || !isAuthenticated) {
+    return <AuthSyncErrorScreen error={authError} />;
   }
 
   // Organizers cannot open student dashboard or student portal - redirect to organizer console
@@ -81,8 +106,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     );
   }
 
-  // If role check specified and current authenticated role is insufficient.
-  // Platform administrators have superuser oversight across student, organizer, and admin routes.
+  // 4. Role authorization check
   if (allowedRoles && !allowedRoles.includes(role) && role !== 'admin') {
     return (
       <div className="max-w-md mx-auto my-16 p-8 rounded-2xl border border-[#242730] bg-[#14161a] text-center space-y-4 shadow-xl">

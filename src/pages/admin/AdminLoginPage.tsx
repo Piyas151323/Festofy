@@ -7,7 +7,6 @@ import {
   User,
   ArrowLeft,
   ArrowRight,
-  Sparkles,
   Copy,
   Check,
   AlertCircle,
@@ -17,16 +16,17 @@ import {
 } from 'lucide-react';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
   signInWithPopup,
-  signOut,
-  User as FirebaseUser
+  getIdToken,
+  reload,
+  signOut
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { auth, db, googleProvider } from '../../lib/firebase/config';
-import { handleFirestoreError, OperationType } from '../../lib/firebase/errorHandler';
 import { useAuth } from '../../hooks/useAuth';
+import { sanitizeInternalRedirect } from '../../utils/authUtils';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 
 interface AdminLoginPageProps {
   redirectPath?: string;
@@ -36,13 +36,21 @@ interface PendingPromotionState {
   email: string;
   uid: string;
   method: 'email' | 'google';
-  alreadyExisted?: boolean;
 }
 
 export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isAuthenticated, role } = useAuth();
+  const {
+    isAuthenticated,
+    needsEmailVerification,
+    authError,
+    role,
+    currentUser,
+    loading: authLoading,
+    signUpWithEmail,
+    signOutUser
+  } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [displayName, setDisplayName] = useState('');
@@ -52,20 +60,34 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [pendingPromotion, setPendingPromotion] = useState<PendingPromotionState | null>(null);
-  const [copied, setCopied] = useState(false);
   const [copiedUid, setCopiedUid] = useState(false);
 
-  // Intended destination: prop, query param, location state, or fallback to /admin
   const queryRedirect = new URLSearchParams(location.search).get('redirect');
-  const targetDestination = redirectPath || queryRedirect || (location.state as any)?.from || '/admin';
+  const targetDestination = sanitizeInternalRedirect(
+    redirectPath || queryRedirect || (location.state as any)?.from,
+    '/admin'
+  );
 
-  // If already authenticated as admin, redirect immediately
+  // If verified & authoritative Firestore role === 'admin', redirect to target admin destination
   React.useEffect(() => {
-    document.title = mode === 'signup' ? 'Admin Sign Up · Festofy' : 'Admin Sign In · Festofy';
-    if (isAuthenticated && role === 'admin') {
+    document.title = needsEmailVerification
+      ? 'Verify Admin Email · Festofy'
+      : mode === 'signup'
+        ? 'Admin Sign Up · Festofy'
+        : 'Admin Sign In · Festofy';
+    if (!authLoading && isAuthenticated && !needsEmailVerification && !authError && role === 'admin') {
       navigate(targetDestination, { replace: true });
     }
-  }, [isAuthenticated, role, navigate, targetDestination, mode]);
+  }, [
+    isAuthenticated,
+    authLoading,
+    needsEmailVerification,
+    authError,
+    role,
+    navigate,
+    targetDestination,
+    mode
+  ]);
 
   const switchMode = (nextMode: 'signin' | 'signup') => {
     setMode(nextMode);
@@ -75,104 +97,22 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
     setConfirmPassword('');
   };
 
-  const ensureStudentUserRecords = async (
-    firebaseUser: FirebaseUser,
-    overrideName?: string
-  ): Promise<{ isAdmin: boolean }> => {
-    const userRef = doc(db, 'users', firebaseUser.uid);
-    const roleRef = doc(db, 'userRoles', firebaseUser.uid);
-    const now = new Date().toISOString();
-
-    let userSnap;
-    try {
-      userSnap = await getDoc(userRef);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `users/${firebaseUser.uid}`);
-    }
-
-    if (!userSnap.exists()) {
-      const resolvedName = (
-        overrideName ||
-        firebaseUser.displayName ||
-        firebaseUser.email?.split('@')[0] ||
-        'Admin Candidate'
-      ).slice(0, 120);
-      const resolvedEmail = (firebaseUser.email || '').slice(0, 150);
-      const resolvedPhoto = (firebaseUser.photoURL || '').slice(0, 500);
-
-      try {
-        await setDoc(userRef, {
-          displayName: resolvedName,
-          email: resolvedEmail,
-          photoURL: resolvedPhoto,
-          createdAt: now,
-          updatedAt: now
-        });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `users/${firebaseUser.uid}`);
-      }
-    }
-
-    let roleSnap;
-    try {
-      roleSnap = await getDoc(roleRef);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, `userRoles/${firebaseUser.uid}`);
-    }
-
-    if (roleSnap.exists() && roleSnap.data()?.role === 'admin') {
-      return { isAdmin: true };
-    }
-
-    if (!roleSnap.exists()) {
-      try {
-        await setDoc(roleRef, {
-          role: 'student',
-          createdAt: now,
-          updatedAt: now
-        });
-      } catch (error) {
-        handleFirestoreError(error, OperationType.CREATE, `userRoles/${firebaseUser.uid}`);
-      }
-    }
-
-    return { isAdmin: false };
-  };
-
-  const handleUseDemoCredentials = async () => {
-    setEmail('admin@festofy.demo');
-    setPassword('FestofyAdminDemo2026!');
-    setErrorMsg(null);
-    setPendingPromotion(null);
-    setLoading(true);
-
-    try {
-      const cred = await signInWithEmailAndPassword(auth, 'admin@festofy.demo', 'FestofyAdminDemo2026!');
-      const roleRef = doc(db, 'userRoles', cred.user.uid);
-      const roleSnap = await getDoc(roleRef);
-
-      if (!roleSnap.exists() || roleSnap.data()?.role !== 'admin') {
-        await signOut(auth);
-        throw new Error('Your account does not have platform administrator access.');
-      }
-      navigate(targetDestination, { replace: true });
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to authenticate admin demo credentials.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCopyCredentials = () => {
-    navigator.clipboard.writeText('admin@festofy.demo | FestofyAdminDemo2026!');
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   const handleCopyPendingEmail = (value: string) => {
     navigator.clipboard.writeText(value);
     setCopiedUid(true);
     setTimeout(() => setCopiedUid(false), 2000);
+  };
+
+  /**
+   * Authoritative Firestore role verification — runs strictly AFTER email verification.
+   */
+  const verifyAdminRoleOrSignOut = async (uid: string): Promise<boolean> => {
+    const roleRef = doc(db, 'userRoles', uid);
+    const roleSnap = await getDoc(roleRef);
+    if (!roleSnap.exists() || roleSnap.data()?.role !== 'admin') {
+      return false;
+    }
+    return true;
   };
 
   const handleGoogleAdminAuth = async () => {
@@ -181,39 +121,34 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
     setLoading(true);
     try {
       const cred = await signInWithPopup(auth, googleProvider);
-      const roleRef = doc(db, 'userRoles', cred.user.uid);
-      const roleSnap = await getDoc(roleRef);
 
-      if (roleSnap.exists() && roleSnap.data()?.role === 'admin') {
+      // Verification gate: do not query userRoles or grant admin access until emailVerified === true
+      if (!cred.user.emailVerified) {
+        return;
+      }
+
+      await getIdToken(cred.user, true);
+      const uid = cred.user.uid;
+      const isAdmin = await verifyAdminRoleOrSignOut(uid);
+
+      if (isAdmin) {
         navigate(targetDestination, { replace: true });
         return;
       }
 
       if (mode === 'signup') {
-        const hadExistingRole = roleSnap.exists();
-        const { isAdmin } = await ensureStudentUserRecords(cred.user);
-        if (isAdmin) {
-          navigate(targetDestination, { replace: true });
-          return;
-        }
+        const userEmail = cred.user.email || '';
         await signOut(auth);
         setPendingPromotion({
-          email: cred.user.email || '',
-          uid: cred.user.uid,
-          method: 'google',
-          alreadyExisted: hadExistingRole
+          email: userEmail,
+          uid,
+          method: 'google'
         });
         return;
       }
 
-      // Sign-in mode: initialize user record if brand new so an admin can promote them, then sign out
-      if (!roleSnap.exists()) {
-        await ensureStudentUserRecords(cred.user);
-      }
       await signOut(auth);
-      throw new Error(
-        'Your Google account does not have platform administrator access yet. Ask an existing administrator to promote your email in Admin Console.'
-      );
+      throw new Error('Your account does not have platform administrator access.');
     } catch (err: any) {
       if (
         err?.code === 'auth/popup-closed-by-user' ||
@@ -247,20 +182,28 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
     setLoading(true);
 
     try {
-      // 1. Authenticate through standard Firebase Authentication
+      // 1. Authenticate through Firebase Authentication
       const cred = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+      await reload(cred.user).catch(() => {});
 
-      // 2. Authoritative role check: Verify Firestore userRoles/{uid}.role === 'admin'
-      const roleRef = doc(db, 'userRoles', cred.user.uid);
-      const roleSnap = await getDoc(roleRef);
+      // 2. Verification gate: unverified accounts must verify email before Firestore role check
+      if (!cred.user.emailVerified) {
+        setPassword('');
+        return;
+      }
 
-      if (!roleSnap.exists() || roleSnap.data()?.role !== 'admin') {
-        // Not a platform administrator -> terminate session immediately
+      await getIdToken(cred.user, true);
+
+      // 3. Authoritative role check: Verify Firestore userRoles/{uid}.role === 'admin'
+      const uid = cred.user.uid;
+      const isAdmin = await verifyAdminRoleOrSignOut(uid);
+
+      if (!isAdmin) {
         await signOut(auth);
         throw new Error('Your account does not have platform administrator access.');
       }
 
-      // 3. User is verified platform admin -> navigate to target admin destination
+      // 4. Verified platform admin -> navigate to target admin destination
       navigate(targetDestination, { replace: true });
     } catch (err: any) {
       let friendlyMessage = 'Unable to sign in right now. Please try again.';
@@ -313,25 +256,12 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
 
     setLoading(true);
     try {
-      const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-      await updateProfile(cred.user, { displayName: trimmedName.slice(0, 120) }).catch(() => {});
-
-      const { isAdmin } = await ensureStudentUserRecords(cred.user, trimmedName);
-      if (isAdmin) {
-        navigate(targetDestination, { replace: true });
-        return;
-      }
-
-      await signOut(auth);
-      setPendingPromotion({
-        email: cred.user.email || trimmedEmail,
-        uid: cred.user.uid,
-        method: 'email'
-      });
+      // Use shared verification lifecycle (zero Firestore reads/writes before email verification)
+      await signUpWithEmail(trimmedEmail, password, trimmedName);
       setPassword('');
       setConfirmPassword('');
     } catch (err: any) {
-      let friendlyMessage = 'Unable to create admin account right now. Please try again.';
+      let friendlyMessage = 'Unable to create account right now. Please try again.';
 
       if (err.code === 'auth/email-already-in-use') {
         friendlyMessage =
@@ -352,6 +282,90 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
     }
   };
 
+  const handleVerifiedCallback = async () => {
+    const active = auth.currentUser;
+    if (!active) return;
+
+    try {
+      const uid = active.uid;
+      const isAdmin = await verifyAdminRoleOrSignOut(uid);
+      if (isAdmin) {
+        navigate(targetDestination, { replace: true });
+        return;
+      }
+
+      const verifiedEmail = active.email || '';
+      await signOut(auth);
+      if (mode === 'signup') {
+        setPendingPromotion({
+          email: verifiedEmail,
+          uid,
+          method: 'email'
+        });
+      } else {
+        setErrorMsg('Your account does not have platform administrator access.');
+      }
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Unable to verify administrator privileges right now.');
+    }
+  };
+
+  if (needsEmailVerification) {
+    return (
+      <div className="min-h-screen bg-[#090a0b] text-[#f4f5f7]">
+        <EmailVerificationScreen
+          title="Verify Your Email Address"
+          subtitle="Verify your email address before Festofy checks your administrator role in Firestore."
+          onVerified={handleVerifiedCallback}
+        />
+      </div>
+    );
+  }
+
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-[#090a0b] text-[#f4f5f7]">
+        <AuthSyncErrorScreen error={authError} />
+      </div>
+    );
+  }
+
+  // Already signed in as a verified non-admin user visiting /admin/login
+  if (!authLoading && isAuthenticated && currentUser && role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#090a0b] text-[#f4f5f7] px-4 py-12">
+        <div className="w-full max-w-md rounded-2xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 text-center space-y-5 shadow-2xl">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1.5">
+            <h1 className="font-heading text-xl font-bold text-white">
+              Administrator Access Required
+            </h1>
+            <p className="text-xs text-[#9da3b4] leading-relaxed">
+              You are currently signed in as <span className="text-white font-semibold">{currentUser.email}</span> ({role}). This account does not hold an administrator role in Firestore.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <button
+              type="button"
+              onClick={() => signOutUser()}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white transition-colors cursor-pointer"
+            >
+              Sign Out & Switch Account
+            </button>
+            <Link
+              to={role === 'organizer' ? '/organizer' : '/dashboard'}
+              className="flex-1 py-2.5 px-4 rounded-xl bg-[#1e222b] hover:bg-[#252a34] border border-[#2e3442] text-xs font-semibold text-white transition-colors"
+            >
+              Return to Portal
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#090a0b] text-[#f4f5f7] px-4 py-12 selection:bg-red-600 selection:text-white">
       <div className="w-full max-w-md space-y-6">
@@ -366,8 +380,8 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
             </h1>
             <p className="text-xs text-[#9da3b4] mt-1 max-w-xs mx-auto">
               {mode === 'signup'
-                ? 'Register an account to request platform administrator access.'
-                : 'Sign in with your platform administrator account.'}
+                ? 'Register and verify your email to request platform administrator access.'
+                : 'Sign in with your verified platform administrator account.'}
             </p>
           </div>
         </div>
@@ -421,12 +435,10 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
                   <div className="font-bold text-emerald-200">
-                    {pendingPromotion.alreadyExisted
-                      ? 'Account Verified — Pending Admin Promotion'
-                      : 'Account Created — Pending Admin Promotion'}
+                    Email Verified — Pending Admin Promotion
                   </div>
                   <p className="text-emerald-100/80 leading-relaxed">
-                    For security, new accounts are created with standard permissions until an existing administrator promotes your email under{' '}
+                    For security, new accounts remain standard student accounts until an existing administrator promotes your email under{' '}
                     <span className="font-semibold text-white">Admin Console → Platform Administrators</span>.
                   </p>
                 </div>
@@ -497,7 +509,7 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
                     type="email"
                     required
                     autoComplete="username"
-                    placeholder="admin@festofy.demo"
+                    placeholder="admin@institution.edu"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-red-500 transition-colors font-mono"
@@ -634,11 +646,11 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
                 className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-red-600 hover:bg-red-700 transition-colors shadow-lg shadow-red-600/25 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{loading ? 'Creating Account...' : 'Create Admin Account'}</span>
+                <span>{loading ? 'Creating Account...' : 'Create Account & Verify Email'}</span>
               </button>
 
               <p className="text-[11px] text-[#9da3b4] text-center leading-relaxed">
-                New accounts require promotion by an existing administrator before entering the console.
+                New accounts require email verification and promotion by an existing administrator before entering the console.
               </p>
             </form>
           )}
@@ -678,48 +690,6 @@ export const AdminLoginPage: React.FC<AdminLoginPageProps> = ({ redirectPath }) 
             </svg>
             <span>{mode === 'signup' ? 'Sign up with Google' : 'Continue with Google'}</span>
           </button>
-
-          {/* Demo Admin Access Card */}
-          {mode === 'signin' && (
-            <div className="rounded-xl border border-red-950/60 bg-[#191416]/80 p-4 space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 font-bold text-red-400">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Demo Admin Access</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCopyCredentials}
-                  className="text-[10px] text-[#9da3b4] hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
-                  aria-label="Copy demo credentials"
-                >
-                  {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
-
-              <div className="space-y-1.5 text-[11px] font-mono bg-[#100e10] p-2.5 rounded-lg border border-red-950/50">
-                <div className="flex items-center justify-between">
-                  <span className="text-[#656c80]">Email:</span>
-                  <span className="text-zinc-200 select-all font-semibold">admin@festofy.demo</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[#656c80]">Password:</span>
-                  <span className="text-zinc-200 select-all font-semibold">FestofyAdminDemo2026!</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleUseDemoCredentials}
-                className="w-full py-2 px-3 rounded-lg text-xs font-semibold text-red-300 bg-red-950/40 hover:bg-red-900/40 border border-red-800/40 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-red-400" />
-                <span>{loading ? 'Signing In as Admin...' : '1-Click Sign In as Demo Admin'}</span>
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Back to Festofy link */}

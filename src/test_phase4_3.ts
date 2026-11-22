@@ -43,8 +43,8 @@ function testPhase4_3AdminDashboardAndApproval() {
 
   // 3. Unauthenticated user cannot access /admin
   assert(
-    protectedRoute.includes("if (!isAuthenticated)") &&
-    protectedRoute.includes("Navigate to={`/auth?redirect="),
+    (protectedRoute.includes('if (!firebaseUser)') || protectedRoute.includes('if (!isAuthenticated)')) &&
+    protectedRoute.includes('Navigate to={`/auth?redirect='),
     '3. Unauthenticated user cannot access /admin (redirects to auth)'
   );
 

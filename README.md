@@ -207,21 +207,22 @@ ADMIN_EMAIL=you@example.com ADMIN_PASSWORD=your-password npx tsx src/scripts/ini
 
 ## 6. Authentication & Admin Setup Workflow
 
-Festofy requires valid Firebase Authentication accounts (via **Google Sign-In** or **Email & Password**). All demo login shortcuts and hardcoded credentials have been removed.
+Festofy requires verified Firebase Authentication accounts (via **Google Sign-In** or **Email & Password** with email verification). All demo login shortcuts and hardcoded credentials have been removed.
 
 ### User Roles & Sign-In Flows
 
 1. **Student Participant (`/auth`)**:
-   - Sign up or sign in with Google or Email & Password.
-   - New registrations receive `role: "student"` in `userRoles/{uid}`.
+   - Sign up or sign in with Google or Email & Password (personal Gmail addresses are allowed).
+   - Email/password accounts must verify their email address before accessing dashboards, registering for events, viewing passes, or submitting an organizer application.
+   - New verified registrations receive `role: "student"` in `userRoles/{uid}`.
 2. **Club Organizer (`/organizer/login` & `/organizer/apply`)**:
-   - Students can apply to register a club/organization at `/organizer/apply`.
+   - Verified accounts can apply to register a club/organization at `/organizer/apply`.
    - Once approved by a Platform Administrator, the applicant is promoted to `role: "organizer"` with `owner` membership in `organizationMembers`.
 3. **Platform Administrator (`/admin/login`)**:
-   - Sign in at `/admin/login` with an account whose `userRoles/{uid}` document has `role: "admin"`.
+   - Sign in at `/admin/login` with a verified account whose `userRoles/{uid}` document has `role: "admin"`.
    - To provision your own admin account in Firebase Console:
-     1. Sign up or sign in once with your real Google or Email/Password account at `/auth` so your Firebase Auth UID is created.
-     2. In **Firebase Console → Firestore Database → `userRoles`**, open (or create) the document matching your UID and set `role` to `"admin"`.
+     1. Sign up or sign in once with your real Google or Email/Password account at `/auth` and complete email verification so your Firebase Auth UID is created.
+     2. In **Firebase Console → Firestore Database** (database ID `ai-studio-festofyfoundatio-83e9e92f-066f-4435-9b74-fd209bf14c40`) → **`userRoles`**, open (or create) the document matching your UID and set `role` to `"admin"`.
      3. Sign in at `/admin/login` using **Continue with Google** or **Email & Password**.
 
 ---
@@ -271,10 +272,6 @@ Screenshots are stored in `docs/screenshots/`. Add the image files using the fil
 ### Event Discovery and Filters
 
 ![Event Discovery and Filters](docs/screenshots/02-event-discovery.png)
-
-### Event Registration Form
-
-![Event Registration Form](docs/screenshots/03-registration-form.png)
 
 ### Demo Payment Simulator
 

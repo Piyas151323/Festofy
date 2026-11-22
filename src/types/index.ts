@@ -1,3 +1,5 @@
+import type { User as FirebaseUser } from 'firebase/auth';
+
 export type UserRoleType = 'student' | 'organizer' | 'admin';
 
 export interface UserProfile {
@@ -358,6 +360,12 @@ export interface StudentNotification {
 
 export interface AuthContextType {
   currentUser: UserProfile | null;
+  firebaseUser: FirebaseUser | null;
+  emailVerified: boolean;
+  needsEmailVerification: boolean;
+  authError: string | null;
+  verificationNotice: string | null;
+  verificationError: string | null;
   role: UserRoleType;
   loading: boolean;
   isAuthenticated: boolean;
@@ -369,6 +377,10 @@ export interface AuthContextType {
   signInWithGoogleRedirect: () => Promise<void>;
   signInWithEmail: (email: string, pass: string) => Promise<any>;
   signUpWithEmail: (email: string, pass: string, name: string) => Promise<any>;
+  resendVerificationEmail: () => Promise<void>;
+  checkEmailVerification: () => Promise<boolean>;
+  retryAuthSync: () => Promise<void>;
+  clearVerificationMessages: () => void;
   signOutUser: () => Promise<void>;
   refreshUserRole: () => Promise<void>;
 }

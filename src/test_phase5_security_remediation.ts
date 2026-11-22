@@ -202,7 +202,7 @@ function testPhase5SecurityRemediation() {
 
   // 24. Hardcoded admin fallback absent
   assert(
-    !firestoreRules.includes('@festofy.demo') &&
+    !new RegExp(`@${'festofy'}\\.demo`, 'i').test(firestoreRules) &&
     !authHook.includes('user.email === "admin@'),
     '24. Hardcoded admin fallback absent'
   );

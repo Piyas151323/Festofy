@@ -1,7 +1,7 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 
-function testPhase4_3_2DemoAdminAccountProvisioningAndVerification() {
-  console.log('Testing Phase 4.3.2 Demo Admin Account Provisioning & Verification Invariants...\n');
+function testPhase4_3_2VerifiedAdminAndRulesInvariants() {
+  console.log('Testing Phase 4.3.2 Verified Admin Account & Security Invariants...\n');
   let passed = 0;
   let total = 0;
 
@@ -17,53 +17,58 @@ function testPhase4_3_2DemoAdminAccountProvisioningAndVerification() {
   }
 
   const adminLoginPage = readFileSync('src/pages/admin/AdminLoginPage.tsx', 'utf-8');
+  const authPage = readFileSync('src/pages/public/AuthPage.tsx', 'utf-8');
+  const organizerLoginPage = readFileSync('src/pages/organizer/OrganizerLoginPage.tsx', 'utf-8');
   const protectedRoute = readFileSync('src/components/common/ProtectedRoute.tsx', 'utf-8');
   const app = readFileSync('src/App.tsx', 'utf-8');
   const adminLayout = readFileSync('src/layouts/AdminLayout.tsx', 'utf-8');
   const firestoreRules = readFileSync('firestore.rules', 'utf-8');
-  const authPage = readFileSync('src/pages/public/AuthPage.tsx', 'utf-8');
   const blueprint = readFileSync('firebase-blueprint.json', 'utf-8');
-  const verifyScript = readFileSync('src/scripts/verifyAdminAccount.ts', 'utf-8');
 
-  // 1. Demo email is the intended demo email
+  // 1. Obsolete hardcoded admin verification script has been removed
   assert(
-    adminLoginPage.includes("admin@festofy.demo") &&
-    verifyScript.includes("admin@festofy.demo"),
-    '1. Demo email is the intended demo email'
+    !existsSync('src/scripts/verifyAdminAccount.ts'),
+    '1. Legacy hardcoded admin verification script removed'
   );
 
-  // 2. Demo credentials only populate/login through Firebase Auth
+  // 2. All login forms start empty without demo buttons or demo domain accounts
+  const demoDomainPattern = new RegExp(`@${'festofy'}\\.demo`, 'i');
   assert(
-    adminLoginPage.includes("handleUseDemoCredentials") &&
-    adminLoginPage.includes("setEmail('admin@festofy.demo');") &&
-    adminLoginPage.includes("setPassword('FestofyAdminDemo2026!');") &&
-    adminLoginPage.includes("signInWithEmailAndPassword(auth, trimmedEmail, password)"),
-    '2. Demo credentials only populate/login through Firebase Auth'
+    !demoDomainPattern.test(adminLoginPage) &&
+    !demoDomainPattern.test(authPage) &&
+    !demoDomainPattern.test(organizerLoginPage) &&
+    !adminLoginPage.includes('handleUseDemoCredentials') &&
+    !adminLoginPage.includes('Demo Admin Access') &&
+    !adminLoginPage.includes('1-Click Sign In') &&
+    adminLoginPage.includes("useState('')"),
+    '2. Login forms start empty with zero demo buttons or shared demo accounts'
   );
 
   // 3. No client-side password bypass exists
   assert(
-    !adminLoginPage.includes('if (password === "FestofyAdminDemo2026!")') &&
-    !adminLoginPage.includes('if (trimmedEmail === "admin@festofy.demo" &&') &&
     !protectedRoute.includes('bypass') &&
-    !protectedRoute.includes('isDemo'),
+    !protectedRoute.includes('isDemo') &&
+    !adminLoginPage.includes('handleUseDemoCredentials'),
     '3. No client-side password bypass exists'
   );
 
-  // 4. Admin role comes from userRoles/{uid}
+  // 4. Admin login gates on emailVerified before querying userRoles/{uid}
   assert(
-    adminLoginPage.includes("const roleRef = doc(db, 'userRoles', cred.user.uid);") &&
+    adminLoginPage.includes('if (!cred.user.emailVerified)') &&
+    adminLoginPage.includes('await getIdToken(cred.user, true)') &&
+    adminLoginPage.includes("doc(db, 'userRoles', uid)") &&
     adminLoginPage.includes("roleSnap.data()?.role !== 'admin'") &&
-    adminLoginPage.includes("await signOut(auth);"),
-    '4. Admin role comes from userRoles/{uid}'
+    adminLoginPage.includes('await signOut(auth);'),
+    '4. Admin login enforces emailVerified gate before checking userRoles/{uid}'
   );
 
-  // 5. Student cannot assign admin role
+  // 5. Student cannot assign admin role and Firestore enforces email_verified == true
   assert(
+    firestoreRules.includes('request.auth != null && request.auth.token.email_verified == true') &&
     firestoreRules.includes('match /userRoles/{userId}') &&
     firestoreRules.includes("request.resource.data.role == 'student'") &&
     firestoreRules.includes('allow update, delete: if isAdmin();'),
-    '5. Student cannot assign admin role'
+    '5. Student cannot assign admin role and unverified tokens are rejected'
   );
 
   // 6. Organizer cannot assign admin role
@@ -149,4 +154,4 @@ function testPhase4_3_2DemoAdminAccountProvisioningAndVerification() {
   }
 }
 
-testPhase4_3_2DemoAdminAccountProvisioningAndVerification();
+testPhase4_3_2VerifiedAdminAndRulesInvariants();

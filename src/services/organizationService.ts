@@ -107,6 +107,9 @@ export async function createOrganizationRequest(
   if (!currentUser || currentUser.uid !== userId) {
     throw new Error('Authentication verification failed. Please sign in again.');
   }
+  if (!currentUser.emailVerified) {
+    throw new Error('Please verify your email address before submitting an organization application.');
+  }
 
   // 1. Strict Input Validation
   const trimmedName = input.name?.trim() || '';
@@ -150,14 +153,12 @@ export async function createOrganizationRequest(
   const docId = `org_${slug}_${userId}`;
   const now = new Date().toISOString();
 
-  // 3. Duplicate Application Verification (Student Scope)
+  // 3. Duplicate Application Verification (Student Scope - max one pending request)
   try {
     const existingRequests = await getMyOrganizationRequests(userId);
-    const hasDuplicatePending = existingRequests.some(
-      (req) => req.status === 'pending' && req.name.toLowerCase().trim() === trimmedName.toLowerCase()
-    );
-    if (hasDuplicatePending) {
-      throw new Error('You already have a pending application for this club name awaiting review.');
+    const hasPending = existingRequests.some((req) => req.status === 'pending');
+    if (hasPending) {
+      throw new Error('You already have a pending application awaiting review.');
     }
   } catch (err: any) {
     if (err.message && err.message.includes('already have a pending application')) {

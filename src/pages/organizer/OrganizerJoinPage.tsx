@@ -7,36 +7,86 @@ import {
   ShieldCheck,
   Sparkles,
   School,
-  FileText,
   Mail,
   Lock,
   User,
   AlertCircle,
-  HelpCircle,
-  Clock,
-  Compass
+  Clock
 } from 'lucide-react';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
-import { auth, db } from '../../lib/firebase/config';
 import { useAuth } from '../../hooks/useAuth';
 import { createOrganizationRequest, getMyOrganizationRequests } from '../../services/organizationService';
 import { DirectImageUpload } from '../../components/common/DirectImageUpload';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 import { Organization } from '../../types';
+
+const ORG_DRAFT_STORAGE_KEY = 'festofy_organizer_apply_draft';
+
+interface OrganizerDraft {
+  name: string;
+  institution: string;
+  description: string;
+  logoUrl: string;
+  leadName: string;
+  email: string;
+}
+
+function loadOrganizerDraft(): Partial<OrganizerDraft> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.sessionStorage.getItem(ORG_DRAFT_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveOrganizerDraft(draft: OrganizerDraft) {
+  if (typeof window === 'undefined') return;
+  try {
+    // Store non-sensitive application metadata only — never store passwords
+    window.sessionStorage.setItem(ORG_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+function clearOrganizerDraft() {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(ORG_DRAFT_STORAGE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
 
 export const OrganizerJoinPage: React.FC = () => {
   const navigate = useNavigate();
-  const { currentUser, isAuthenticated, role, refreshUserRole } = useAuth();
+  const {
+    currentUser,
+    firebaseUser,
+    isAuthenticated,
+    needsEmailVerification,
+    authError,
+    loading: authLoading,
+    role,
+    signUpWithEmail,
+    refreshUserRole
+  } = useAuth();
 
-  // Organization Form State
-  const [name, setName] = useState('');
-  const [institution, setInstitution] = useState('');
-  const [description, setDescription] = useState('');
-  const [logoUrl, setLogoUrl] = useState('');
+  const initialDraft = loadOrganizerDraft();
 
-  // Account Form State (For unauthenticated users)
-  const [leadName, setLeadName] = useState('');
-  const [email, setEmail] = useState('');
+  // Organization Form State (non-sensitive fields preserved across verification)
+  const [name, setName] = useState(initialDraft.name || '');
+  const [institution, setInstitution] = useState(initialDraft.institution || '');
+  const [description, setDescription] = useState(initialDraft.description || '');
+  const [logoUrl, setLogoUrl] = useState(initialDraft.logoUrl || '');
+
+  // Account Form State (For unauthenticated applicants)
+  const [leadName, setLeadName] = useState(initialDraft.leadName || '');
+  const [email, setEmail] = useState(initialDraft.email || '');
   const [password, setPassword] = useState('');
 
   // UI State
@@ -46,19 +96,47 @@ export const OrganizerJoinPage: React.FC = () => {
   const [loadingExisting, setLoadingExisting] = useState(false);
 
   useEffect(() => {
-    document.title = 'Join Festofy as Organizer · Campus Event Operations';
-  }, []);
+    document.title = needsEmailVerification
+      ? 'Verify Organizer Email · Festofy'
+      : 'Join Festofy as Organizer · Campus Event Operations';
+  }, [needsEmailVerification]);
 
-  // If already authenticated, check if user already has an active or pending request
+  // Persist non-sensitive form fields across email verification & page refreshes
+  useEffect(() => {
+    if (!name && !institution && !description && !logoUrl && !leadName && !email) return;
+    saveOrganizerDraft({
+      name,
+      institution,
+      description,
+      logoUrl,
+      leadName,
+      email
+    });
+  }, [name, institution, description, logoUrl, leadName, email]);
+
+  // Check existing requests only once user is authenticated and email-verified
   useEffect(() => {
     let mounted = true;
     async function checkExisting() {
-      if (!currentUser?.uid) return;
+      if (!isAuthenticated || !currentUser?.uid) {
+        if (mounted) {
+          setExistingOrg(null);
+          setLoadingExisting(false);
+        }
+        return;
+      }
       try {
         setLoadingExisting(true);
         const requests = await getMyOrganizationRequests(currentUser.uid);
-        if (mounted && requests.length > 0) {
-          setExistingOrg(requests[0]);
+        if (!mounted) return;
+        const activeOrPending =
+          requests.find((r) => r.status === 'approved') ||
+          requests.find((r) => r.status === 'pending') ||
+          requests[0] ||
+          null;
+        setExistingOrg(activeOrPending);
+        if (activeOrPending && (activeOrPending.status === 'approved' || activeOrPending.status === 'pending')) {
+          clearOrganizerDraft();
         }
       } catch (err) {
         console.warn('Notice checking existing requests:', err);
@@ -70,10 +148,11 @@ export const OrganizerJoinPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [currentUser?.uid]);
+  }, [isAuthenticated, currentUser?.uid]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || loadingExisting) return;
     setErrorMsg(null);
 
     // 1. Validate Organization Data
@@ -98,18 +177,15 @@ export const OrganizerJoinPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      let activeUserId: string;
-
-      if (!isAuthenticated || !currentUser) {
-        // Unauthenticated direct organizer application:
-        // Validate organizer account credentials
+      // 2. If signed-out, use the shared email-verification signup flow and pause before any Firestore writes
+      if (!firebaseUser) {
         const trimmedLeadName = leadName.trim();
         if (!trimmedLeadName || trimmedLeadName.length < 2) {
           throw new Error('Please enter the lead organizer or club president name.');
         }
 
         const trimmedEmail = email.trim();
-        if (!trimmedEmail || !trimmedEmail.includes('@')) {
+        if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
           throw new Error('Please enter a valid organization or lead email address.');
         }
 
@@ -117,37 +193,43 @@ export const OrganizerJoinPage: React.FC = () => {
           throw new Error('Account password must be at least 6 characters.');
         }
 
-        // 1. Create Firebase Auth user directly
-        const cred = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
-        activeUserId = cred.user.uid;
+        // Persist non-sensitive form fields only; clear password immediately
+        saveOrganizerDraft({
+          name: trimmedName,
+          institution: institution.trim(),
+          description: description.trim(),
+          logoUrl: logoUrl.trim(),
+          leadName: trimmedLeadName,
+          email: trimmedEmail
+        });
+        const enteredPassword = password;
+        setPassword('');
 
-        // 2. Set Firebase Auth display name
-        await updateProfile(cred.user, { displayName: trimmedLeadName }).catch(() => {});
-
-        // 3. Initialize user document & userRoles document conforming to rules
-        const now = new Date().toISOString();
-        const userRef = doc(db, 'users', activeUserId);
-        const roleRef = doc(db, 'userRoles', activeUserId);
-
-        await Promise.all([
-          setDoc(userRef, {
-            displayName: trimmedLeadName,
-            email: trimmedEmail,
-            photoURL: '',
-            createdAt: now,
-            updatedAt: now
-          }),
-          setDoc(roleRef, {
-            role: 'student',
-            createdAt: now,
-            updatedAt: now
-          })
-        ]);
-      } else {
-        activeUserId = currentUser.uid;
+        await signUpWithEmail(trimmedEmail, enteredPassword, trimmedLeadName);
+        setIsSubmitting(false);
+        return;
       }
 
-      // 4. Submit Organization Application to Firestore
+      if (!isAuthenticated || !currentUser) {
+        throw new Error('Please verify your email address before submitting your application.');
+      }
+
+      // 3. Enforce single pending application per account
+      const currentRequests = await getMyOrganizationRequests(currentUser.uid);
+      const pendingExisting = currentRequests.find((req) => req.status === 'pending');
+      if (pendingExisting) {
+        setExistingOrg(pendingExisting);
+        clearOrganizerDraft();
+        throw new Error('You already have a pending application awaiting administrator review.');
+      }
+      const approvedExisting = currentRequests.find((req) => req.status === 'approved');
+      if (approvedExisting) {
+        setExistingOrg(approvedExisting);
+        clearOrganizerDraft();
+        throw new Error('Your account already manages an approved organization.');
+      }
+
+      // 4. Submit Organization Application to Firestore (user is verified & initialized)
       await createOrganizationRequest(
         {
           name: trimmedName,
@@ -155,29 +237,54 @@ export const OrganizerJoinPage: React.FC = () => {
           description: description.trim() || undefined,
           logoUrl: logoUrl.trim() || undefined
         },
-        activeUserId
+        currentUser.uid
       );
 
-      // Refresh auth role state to detect pending org
+      clearOrganizerDraft();
       await refreshUserRole().catch(() => {});
-
-      // 5. Navigate directly to Organizer Application Status Tracker
       navigate('/organizer/status', { replace: true });
     } catch (err: any) {
       console.warn('Notice submitting organizer registration:', err?.message || err);
       let msg = err?.message || 'Unable to submit organization application. Please try again.';
       if (msg.includes('auth/email-already-in-use')) {
-        msg = 'An account with this email already exists. Please sign in to your organizer account below.';
+        msg = 'An account with this email already exists. Please sign in to your account below to resume and submit this application.';
       } else if (msg.includes('already have a pending application')) {
-        msg = 'You already have a pending application for this club awaiting administrator review.';
+        msg = 'You already have a pending application awaiting administrator review.';
       }
       setErrorMsg(msg);
       setIsSubmitting(false);
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4">
+        <div className="w-8 h-8 rounded-full border-2 border-[#ff4f1a] border-t-transparent animate-spin" />
+        <p className="text-xs text-[#9da3b4] font-mono">Preparing organizer onboarding...</p>
+      </div>
+    );
+  }
+
+  // Gate on email verification before any Firestore initialization or application submission
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title="Verify Your Email to Resume Application"
+        subtitle={
+          name.trim()
+            ? `Your club details for "${name.trim()}" are saved in this tab. Verify your email below to resume and submit your application.`
+            : 'Verify your email address below before submitting your organization application.'
+        }
+      />
+    );
+  }
+
+  if (authError) {
+    return <AuthSyncErrorScreen error={authError} />;
+  }
+
   // If user already has an approved organization
-  if (role === 'organizer' && existingOrg && existingOrg.status === 'approved') {
+  if ((role === 'organizer' || existingOrg?.status === 'approved') && existingOrg) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 sm:px-6">
         <div className="rounded-3xl border border-[#242730] bg-[#14161a] p-8 text-center space-y-6 shadow-2xl">
@@ -262,7 +369,7 @@ export const OrganizerJoinPage: React.FC = () => {
           Join Festofy as Organizer
         </h1>
         <p className="text-sm sm:text-base text-[#9da3b4] max-w-2xl mx-auto leading-relaxed">
-          Launch your campus festivals, manage multi-category competitions, and issue digital participant passes. No student account required.
+          Launch your campus festivals, manage multi-category competitions, and issue digital participant passes. Verify your email once, then submit your club charter for admin approval.
         </p>
       </div>
 
@@ -391,24 +498,24 @@ export const OrganizerJoinPage: React.FC = () => {
             </h2>
             <p className="text-xs text-[#9da3b4] mt-0.5">
               {isAuthenticated && currentUser
-                ? `Applying with your authenticated account: ${currentUser.displayName} (${currentUser.email})`
-                : 'Create your organizer credentials. You will use these to log directly into the Organizer Console.'}
+                ? `Verified account ready: ${currentUser.displayName} (${currentUser.email})`
+                : 'Create your account and verify your email address before submitting your club application.'}
             </p>
           </div>
 
           {isAuthenticated && currentUser ? (
-            <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
+            <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold shrink-0">
                   {currentUser.displayName?.[0] || 'O'}
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-white">{currentUser.displayName}</p>
-                  <p className="text-xs text-[#9da3b4]">{currentUser.email}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{currentUser.displayName}</p>
+                  <p className="text-xs text-[#9da3b4] truncate">{currentUser.email}</p>
                 </div>
               </div>
-              <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                Ready to submit
+              <span className="text-[11px] font-mono font-semibold px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0">
+                Verified · Ready to submit
               </span>
             </div>
           ) : (
@@ -424,7 +531,7 @@ export const OrganizerJoinPage: React.FC = () => {
                     required
                     value={leadName}
                     onChange={(e) => setLeadName(e.target.value)}
-                    placeholder="e.g. Tanvir Ahmed (Club President)"
+                    placeholder="e.g. Club President Full Name"
                     className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-[#2e3442] bg-[#0e1013] text-sm text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
                   />
                 </div>
@@ -472,24 +579,34 @@ export const OrganizerJoinPage: React.FC = () => {
         <div className="pt-2 border-t border-[#242730] flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-xs text-[#9da3b4] text-center sm:text-left">
             Already registered?{' '}
-            <Link to="/organizer/login" className="text-[#ff4f1a] hover:text-[#ff6838] font-semibold transition-colors">
-              Organizer Console Sign In &rarr;
+            <Link
+              to={`/organizer/login?redirect=${encodeURIComponent('/organizer/apply')}`}
+              className="text-[#ff4f1a] hover:text-[#ff6838] font-semibold transition-colors"
+            >
+              Sign In to Resume &rarr;
             </Link>
           </div>
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || loadingExisting}
             className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-[#ff4f1a] hover:bg-[#ff6838] disabled:opacity-50 text-white text-sm font-bold transition-all shadow-lg shadow-[#ff4f1a]/20 cursor-pointer flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
               <>
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Submitting Application...</span>
+                <span>{firebaseUser ? 'Submitting Application...' : 'Creating Account...'}</span>
+              </>
+            ) : loadingExisting ? (
+              <span>Checking existing applications...</span>
+            ) : firebaseUser ? (
+              <>
+                <span>Submit Organization Application</span>
+                <ArrowRight className="w-4 h-4" />
               </>
             ) : (
               <>
-                <span>Submit Organization Application</span>
+                <span>Continue & Verify Email</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

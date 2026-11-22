@@ -1,20 +1,50 @@
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase/config';
+import { auth, db } from '../lib/firebase/config';
 import { UserRoleType } from '../types';
 
 /**
- * Authoritatively determines the post-login destination URL for an authenticated user.
- * 
+ * Validates that an internal redirect path is safe and prevents open redirects or auth loops.
+ */
+export function sanitizeInternalRedirect(
+  rawRedirect: string | null | undefined,
+  fallback: string = '/dashboard'
+): string {
+  if (!rawRedirect) return fallback;
+  const trimmed = rawRedirect.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return fallback;
+  }
+  if (
+    trimmed === '/auth' ||
+    trimmed.startsWith('/auth?') ||
+    trimmed === '/organizer/login' ||
+    trimmed.startsWith('/organizer/login?') ||
+    trimmed === '/admin/login' ||
+    trimmed.startsWith('/admin/login?')
+  ) {
+    return fallback;
+  }
+  return trimmed;
+}
+
+/**
+ * Authoritatively determines the post-login destination URL for an authenticated, email-verified user.
+ *
  * Order of precedence:
- * 1. Admin role -> '/admin'
- * 2. Approved organizer (via userRoles, organizationMembers, or approved organization doc) -> '/organizer'
- * 3. Organizer applicant with pending organization request -> '/organizer/status'
- * 4. Regular student participant -> '/dashboard'
+ * 1. Unverified user -> '/auth'
+ * 2. Admin role -> '/admin'
+ * 3. Approved organizer (via userRoles, organizationMembers, or approved organization doc) -> '/organizer'
+ * 4. Organizer applicant with pending organization request -> '/organizer/status'
+ * 5. Regular student participant -> '/dashboard'
  */
 export async function getPostAuthDestination(
   userId: string,
   hintRole?: UserRoleType
 ): Promise<string> {
+  if (auth.currentUser && auth.currentUser.uid === userId && !auth.currentUser.emailVerified) {
+    return '/auth';
+  }
+
   try {
     // 1. Direct admin check
     if (hintRole === 'admin') return '/admin';

@@ -26,17 +26,19 @@ async function testOrganizerAccessFlow() {
   const loginPage = readFileSync('src/pages/organizer/OrganizerLoginPage.tsx', 'utf-8');
   const authUtils = readFileSync('src/utils/authUtils.ts', 'utf-8');
 
-  // Requirement 1: Users who want to become organizers do not need to create a student account first.
+  // Requirement 1: Users who want to become organizers use the shared verified signup flow without creating a separate student onboarding detour.
   assert(
-    joinPage.includes('createUserWithEmailAndPassword(auth, trimmedEmail, password)') &&
-    joinPage.includes('createOrganizationRequest'),
-    '1. Users can register organizer account and submit club application directly without student registration'
+    joinPage.includes('signUpWithEmail') &&
+    joinPage.includes('EmailVerificationScreen') &&
+    joinPage.includes('createOrganizationRequest') &&
+    !joinPage.includes('createUserWithEmailAndPassword'),
+    '1. Organizer application uses shared verified signup flow with draft resumption and no duplicate signup logic'
   );
 
   // Requirement 2: Separate option to apply directly ("join festofy as organizer")
   assert(
     app.includes('path="/organizer/apply" element={<OrganizerJoinPage />}') &&
-    publicLayout.includes('Join as Organizer') &&
+    publicLayout.includes('Join Festofy as Organizer') &&
     publicLayout.includes('to="/organizer/apply"'),
     '2. Dedicated option to apply for organization directly at /organizer/apply without student dashboard'
   );
@@ -72,20 +74,23 @@ async function testOrganizerAccessFlow() {
     '6. Student and organizer experiences remain strictly separate with role-based routing'
   );
 
-  // Requirement 7: Dedicated Organizer Sign In page
+  // Requirement 7: Dedicated Organizer Sign In page with email verification gate and no demo buttons
   assert(
     app.includes('path="/organizer/login" element={<OrganizerLoginPage />}') &&
-    loginPage.includes('Instant Organizer Demo') &&
+    loginPage.includes('EmailVerificationScreen') &&
+    loginPage.includes('cred?.user?.emailVerified') &&
+    !loginPage.includes('Instant Organizer Demo') &&
     loginPage.includes('getPostAuthDestination'),
-    '7. Dedicated Organizer Sign In page at /organizer/login redirects to role-appropriate console'
+    '7. Dedicated Organizer Sign In page at /organizer/login enforces verification and redirects to role-appropriate console'
   );
 
   // Requirement 8: Desktop and mobile responsiveness
+  const siteDrawer = readFileSync('src/components/navigation/SiteDrawer.tsx', 'utf-8');
   assert(
-    publicLayout.includes('MobileDrawer') &&
-    publicLayout.includes('Organizer Hub') &&
-    publicLayout.includes('Organizer Login'),
-    '8. Organizer direct access links integrated in both desktop header and mobile drawer'
+    publicLayout.includes('SiteDrawer') &&
+    (siteDrawer.includes('Organizer') || publicLayout.includes('Organizer Console Sign In')) &&
+    publicLayout.includes('to="/organizer/login"'),
+    '8. Organizer direct access links integrated in both desktop layout and mobile drawer'
   );
 
   console.log(`\nResults: ${passed}/${total} requirements verified successfully.`);

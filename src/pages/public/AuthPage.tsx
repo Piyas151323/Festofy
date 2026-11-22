@@ -13,7 +13,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { SITE_CONFIG } from '../../config/siteConfig';
-import { getPostAuthDestination } from '../../utils/authUtils';
+import { getPostAuthDestination, sanitizeInternalRedirect } from '../../utils/authUtils';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 
 export const AuthPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -35,11 +37,15 @@ export const AuthPage: React.FC = () => {
     signUpWithEmail,
     signInWithGoogle,
     isAuthenticated,
-    isOrganizer,
+    needsEmailVerification,
+    authError,
     role,
     currentUser,
     loading: authLoading
   } = useAuth();
+
+  const rawRedirect = searchParams.get('redirect');
+  const safeRedirect = sanitizeInternalRedirect(rawRedirect, '');
 
   const handleCopyText = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -48,16 +54,22 @@ export const AuthPage: React.FC = () => {
   };
 
   React.useEffect(() => {
-    document.title = `${mode === 'signup' ? 'Create Account' : 'Sign In'} · Festofy`;
-  }, [mode]);
+    document.title = `${
+      needsEmailVerification
+        ? 'Verify Email'
+        : mode === 'signup'
+          ? 'Create Account'
+          : 'Sign In'
+    } · Festofy`;
+  }, [mode, needsEmailVerification]);
 
-  // If already authenticated and auth finished loading, redirect to intended or role-appropriate dashboard
+  // Navigate only once Firebase Auth is email-verified and Firestore profile/role resolved cleanly
   React.useEffect(() => {
     let mounted = true;
-    async function redirect() {
-      if (!authLoading && isAuthenticated && currentUser) {
-        if (searchParams.get('redirect')) {
-          navigate(searchParams.get('redirect')!, { replace: true });
+    async function redirectWhenReady() {
+      if (!authLoading && isAuthenticated && currentUser && !needsEmailVerification && !authError) {
+        if (safeRedirect) {
+          navigate(safeRedirect, { replace: true });
         } else {
           const target = await getPostAuthDestination(currentUser.uid, role);
           if (mounted) {
@@ -66,11 +78,20 @@ export const AuthPage: React.FC = () => {
         }
       }
     }
-    redirect();
+    redirectWhenReady();
     return () => {
       mounted = false;
     };
-  }, [isAuthenticated, authLoading, role, currentUser, navigate, searchParams]);
+  }, [
+    isAuthenticated,
+    authLoading,
+    needsEmailVerification,
+    authError,
+    role,
+    currentUser,
+    navigate,
+    safeRedirect
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,13 +112,15 @@ export const AuthPage: React.FC = () => {
         if (password.length < 6) {
           throw new Error('Password must be at least 6 characters.');
         }
-        const cred = await signUpWithEmail(trimmedEmail, password, trimmedName);
-        const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : '/dashboard';
-        navigate(dest, { replace: true });
+        // Do not navigate after signup: email/password accounts must verify their email first
+        await signUpWithEmail(trimmedEmail, password, trimmedName);
+        setPassword('');
       } else {
         const cred = await signInWithEmail(trimmedEmail, password);
-        const dest = cred?.user ? await getPostAuthDestination(cred.user.uid) : (isOrganizer ? '/organizer' : '/dashboard');
-        navigate(dest, { replace: true });
+        if (cred?.user?.emailVerified) {
+          const dest = safeRedirect || (await getPostAuthDestination(cred.user.uid));
+          navigate(dest, { replace: true });
+        }
       }
     } catch (err: any) {
       const isOpNotAllowed =
@@ -105,39 +128,24 @@ export const AuthPage: React.FC = () => {
         err?.message?.includes('auth/operation-not-allowed') ||
         err?.message?.includes('operation-not-allowed');
 
-      const isExpectedAuthNotice = [
-        'auth/invalid-credential',
-        'auth/wrong-password',
-        'auth/user-not-found',
-        'auth/invalid-email',
-        'auth/email-already-in-use',
-        'auth/weak-password',
-        'auth/user-disabled',
-        'auth/too-many-requests'
-      ].includes(err?.code) || (err?.message && (
-        err.message.includes('auth/invalid-credential') ||
-        err.message.includes('auth/wrong-password') ||
-        err.message.includes('auth/user-not-found') ||
-        err.message.includes('auth/invalid-email') ||
-        err.message.includes('auth/email-already-in-use') ||
-        err.message.includes('auth/weak-password')
-      ));
-
       if (isOpNotAllowed) {
         console.warn('Firebase Email/Password provider notice. Google authentication available.');
-      } else if (isExpectedAuthNotice) {
-        console.warn('Authentication validation notice:', err?.code || err?.message);
       } else {
-        console.warn('Authentication Error Notice:', err?.code || err?.message);
+        console.warn('Authentication validation notice:', err?.code || err?.message);
       }
 
       let message = err.message || 'Authentication failed. Please verify your credentials.';
       if (isOpNotAllowed) {
         message = 'Email & password sign-in is disabled for this project. Please continue with Google.';
-      } else if (message.includes('auth/invalid-credential') || message.includes('auth/wrong-password') || message.includes('auth/user-not-found')) {
-        message = mode === 'signin'
-          ? 'Invalid email or password. Please check your credentials or create an account.'
-          : 'Unable to authenticate. Please verify your email and password.';
+      } else if (
+        message.includes('auth/invalid-credential') ||
+        message.includes('auth/wrong-password') ||
+        message.includes('auth/user-not-found')
+      ) {
+        message =
+          mode === 'signin'
+            ? 'Invalid email or password. Please check your credentials or create an account.'
+            : 'Unable to authenticate. Please verify your email and password.';
       } else if (message.includes('auth/email-already-in-use')) {
         message = 'An account with this email already exists. Please sign in instead.';
       } else if (message.includes('auth/weak-password')) {
@@ -156,8 +164,8 @@ export const AuthPage: React.FC = () => {
     setLoading(true);
     try {
       const cred = await signInWithGoogle();
-      if (cred?.user) {
-        const dest = await getPostAuthDestination(cred.user.uid);
+      if (cred?.user?.emailVerified) {
+        const dest = safeRedirect || (await getPostAuthDestination(cred.user.uid));
         navigate(dest, { replace: true });
       }
     } catch (err: any) {
@@ -184,7 +192,18 @@ export const AuthPage: React.FC = () => {
     }
   };
 
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title="Verify Your Email to Continue"
+        subtitle="We need to confirm your email address before opening your dashboard, event passes, or registration forms."
+      />
+    );
+  }
 
+  if (authError) {
+    return <AuthSyncErrorScreen error={authError} />;
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
@@ -206,10 +225,9 @@ export const AuthPage: React.FC = () => {
           </p>
         </div>
 
-
         {/* Auth Box */}
         <div className="rounded-2xl border border-[#242730] bg-[#14161a] p-6 sm:p-8 space-y-6 shadow-2xl">
-            {/* Tab Selector */}
+          {/* Tab Selector */}
           <div className="grid grid-cols-2 p-1 bg-[#191b20] rounded-xl border border-[#2e3442]">
             <button
               type="button"
@@ -217,7 +235,7 @@ export const AuthPage: React.FC = () => {
                 setMode('signin');
                 setErrorMsg(null);
               }}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 mode === 'signin'
                   ? 'bg-[#ff4f1a] text-white shadow-sm'
                   : 'text-[#9da3b4] hover:text-white'
@@ -231,7 +249,7 @@ export const AuthPage: React.FC = () => {
                 setMode('signup');
                 setErrorMsg(null);
               }}
-              className={`py-2 text-xs font-semibold rounded-lg transition-all ${
+              className={`py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                 mode === 'signup'
                   ? 'bg-[#ff4f1a] text-white shadow-sm'
                   : 'text-[#9da3b4] hover:text-white'
@@ -278,7 +296,6 @@ export const AuthPage: React.FC = () => {
                 </svg>
                 <span>{loading ? 'Authenticating with Google...' : 'Continue with Google'}</span>
               </button>
-
             </div>
           </div>
 
@@ -334,7 +351,7 @@ export const AuthPage: React.FC = () => {
                   <input
                     type="text"
                     required
-                    placeholder="Tanvir Ahmed"
+                    placeholder="Your Full Name"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
                     className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
@@ -350,7 +367,7 @@ export const AuthPage: React.FC = () => {
                 <input
                   type="email"
                   required
-                  placeholder="student@drmc.edu.bd"
+                  placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-[#191b20] border border-[#2e3442] rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-[#656c80] focus:outline-none focus:border-[#ff4f1a]"
@@ -373,6 +390,12 @@ export const AuthPage: React.FC = () => {
               </div>
             </div>
 
+            {mode === 'signup' && (
+              <p className="text-[11px] text-[#9da3b4] leading-relaxed">
+                We will send a verification link to your email before enabling event registration and dashboard access.
+              </p>
+            )}
+
             <button
               type="submit"
               disabled={loading}
@@ -383,7 +406,6 @@ export const AuthPage: React.FC = () => {
             </button>
           </form>
         </div>
-
 
         {/* Link to Admin Login */}
         <div className="text-center text-xs text-[#656c80]">

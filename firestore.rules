@@ -15,7 +15,7 @@ service cloud.firestore {
 
     // Helper functions
     function isSignedIn() {
-      return request.auth != null;
+      return request.auth != null && request.auth.token.email_verified == true;
     }
 
     function isOwner(userId) {
@@ -178,7 +178,7 @@ service cloud.firestore {
           request.resource.data.status == 'approved'
         )
       );
-      allow delete: if isAdmin() || (isOrgOwner(organizationId) && (!('status' in resource.data) || resource.data.status == 'approved'));
+      allow delete: if isSignedIn() && (isAdmin() || (isOrgOwner(organizationId) && (!('status' in resource.data) || resource.data.status == 'approved')));
     }
 
     // ORGANIZATION MEMBERS (Private Membership Mapping)
@@ -318,7 +318,7 @@ service cloud.firestore {
           request.resource.data.slug.size() <= 80
         )
       );
-      allow update, delete: if isAdmin();
+      allow update, delete: if isSignedIn() && isAdmin();
     }
 
     // EVENTS COLLECTION (Public Contests & Challenges Lifecycle)
@@ -586,7 +586,7 @@ service cloud.firestore {
           )
         )
       );
-      allow delete: if isAdmin() || isOrgOwner(resource.data.organizationId);
+      allow delete: if isSignedIn() && (isAdmin() || isOrgOwner(resource.data.organizationId));
     }
 
     // REGISTRATION FORM TEMPLATES (Reusable Organizer Questionnaire Layouts)

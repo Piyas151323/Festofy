@@ -153,7 +153,7 @@ console.log('\n--- 3. Profile Data Extraction & Safe Prepopulation ---');
 
 const testProfile = {
   studentName: 'Tanvir Ahmed',
-  studentEmail: 'tanvir@student.demo',
+  studentEmail: 'tanvir@example.com',
   studentPhone: '+880 1700-000000',
   institution: 'Dhaka Residential Model College',
   classGrade: 'Class 11',

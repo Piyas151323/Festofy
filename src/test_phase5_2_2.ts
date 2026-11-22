@@ -173,7 +173,7 @@ function testPhase5_2_2FinalRemediation() {
 
   // 17. No hardcoded admin email or UID fallback
   assert(
-    !firestoreRules.includes('@festofy.demo') &&
+    !new RegExp(`@${'festofy'}\\.demo`, 'i').test(firestoreRules) &&
     !authHook.includes('user.email === "admin@') &&
     !authHook.includes('role = "admin"'),
     '17. No hardcoded admin email or client-side fallback'

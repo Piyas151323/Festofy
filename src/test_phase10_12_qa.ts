@@ -140,9 +140,26 @@ assert.ok(adminLoginCode.includes("doc(db, 'userRoles', uid)"), 'Admin login que
 assert.ok(adminLoginCode.includes("roleSnap.data()?.role !== 'admin'"), 'Admin login validates admin role');
 assert.ok(adminLoginCode.includes('await signOut(auth)'), 'Unauthorized admin attempt terminates auth session');
 
-// Verify no client-side admin bypass or demo credentials remain
-assert.ok(!adminLoginCode.includes('if (email === "admin@festofy.demo") { return true; }'), 'No backdoor bypass in AdminLoginPage');
-assert.ok(!adminLoginCode.includes('admin@festofy.demo'), 'No demo credentials in AdminLoginPage');
+// Verify no client-side admin bypass or demo credentials/controls remain on login pages
+const demoDomainRegex = new RegExp(`@${'festofy'}\\.demo`, 'i');
+const demoControlPatterns = [
+  'Demo Admin Access',
+  '1-Click Sign In',
+  'handleUseDemo',
+  'Instant Organizer Demo',
+  'handleCopyCredentials'
+];
+for (const loginRelPath of [
+  'src/pages/admin/AdminLoginPage.tsx',
+  'src/pages/public/AuthPage.tsx',
+  'src/pages/organizer/OrganizerLoginPage.tsx'
+]) {
+  const loginSource = fs.readFileSync(path.join(process.cwd(), loginRelPath), 'utf8');
+  assert.ok(!demoDomainRegex.test(loginSource), `No legacy demo account domain in ${loginRelPath}`);
+  for (const controlPattern of demoControlPatterns) {
+    assert.ok(!loginSource.includes(controlPattern), `No demo control "${controlPattern}" in ${loginRelPath}`);
+  }
+}
 
 // CSV injection sanitization verification
 const participantsPagePath = path.join(process.cwd(), 'src/pages/organizer/OrganizerParticipantsPage.tsx');

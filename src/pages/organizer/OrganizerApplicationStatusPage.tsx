@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Link, Navigate } from 'react-router-dom';
 import {
   Clock,
   CheckCircle2,
@@ -7,32 +7,38 @@ import {
   Building2,
   RefreshCw,
   ArrowRight,
-  ExternalLink,
   ShieldCheck,
   CalendarDays,
-  FileCheck2,
   Sparkles,
-  HelpCircle,
   Layers,
-  Users2,
   QrCode
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { getMyOrganizationRequests } from '../../services/organizationService';
-import { Organization, OrganizationStatus } from '../../types';
+import { Organization } from '../../types';
 import { formatDateTime } from '../../utils/dateUtils';
+import { EmailVerificationScreen } from '../../components/auth/EmailVerificationScreen';
+import { AuthSyncErrorScreen } from '../../components/auth/AuthSyncErrorScreen';
 
 export const OrganizerApplicationStatusPage: React.FC = () => {
-  const { currentUser, role, refreshUserRole } = useAuth();
-  const navigate = useNavigate();
+  const {
+    currentUser,
+    firebaseUser,
+    isAuthenticated,
+    needsEmailVerification,
+    authError,
+    loading: authLoading,
+    refreshUserRole
+  } = useAuth();
 
   const [requests, setRequests] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchStatus = async () => {
-    if (!currentUser?.uid) {
+  const fetchStatus = useCallback(async () => {
+    if (!isAuthenticated || !currentUser?.uid) {
       setLoading(false);
+      setRefreshing(false);
       return;
     }
     try {
@@ -45,17 +51,47 @@ export const OrganizerApplicationStatusPage: React.FC = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [currentUser?.uid, isAuthenticated, refreshUserRole]);
 
   useEffect(() => {
     document.title = 'Application Status & Onboarding · Festofy Organizer';
-    fetchStatus();
-  }, [currentUser]);
+    if (!authLoading && isAuthenticated && currentUser?.uid) {
+      fetchStatus();
+    } else if (!authLoading) {
+      setLoading(false);
+    }
+  }, [authLoading, isAuthenticated, currentUser?.uid, fetchStatus]);
 
   const handleManualRefresh = async () => {
     setRefreshing(true);
     await fetchStatus();
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-[50vh] flex flex-col items-center justify-center space-y-4">
+        <div className="w-8 h-8 rounded-full border-2 border-[#ff4f1a] border-t-transparent animate-spin" />
+        <p className="text-xs text-[#9da3b4] font-mono">Checking account verification...</p>
+      </div>
+    );
+  }
+
+  if (!firebaseUser) {
+    return <Navigate to={`/organizer/login?redirect=${encodeURIComponent('/organizer/status')}`} replace />;
+  }
+
+  if (needsEmailVerification) {
+    return (
+      <EmailVerificationScreen
+        title="Verify Email to View Application Status"
+        subtitle="Confirm your email address before checking or submitting your organization application."
+      />
+    );
+  }
+
+  if (authError || !isAuthenticated) {
+    return <AuthSyncErrorScreen error={authError} />;
+  }
 
   const activeRequest = requests[0] || null;
 
